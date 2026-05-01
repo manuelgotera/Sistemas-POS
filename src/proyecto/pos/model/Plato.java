@@ -1,0 +1,78 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package proyecto.pos.model;
+
+/**
+ *
+ * @author HP
+ */
+public class Plato {
+
+    private int platoId;
+    private String nombre;
+    private double precio;
+    private CategoriaMenu categoria;
+    private String disponible;
+
+    public Plato() {
+    }
+
+    public Plato(int platoId, String nombre, double precio, CategoriaMenu categoria, String disponible) {
+        this.platoId = platoId;
+        this.nombre = nombre;
+        this.precio = precio;
+        this.categoria = categoria;
+        this.disponible = disponible;
+    }
+
+    public Plato(String nombre, double precio, CategoriaMenu categoria, String disponible) {
+        this.nombre = nombre;
+        this.precio = precio;
+        this.categoria = categoria;
+        this.disponible = disponible;
+    }
+
+    public int getPlatoId() {
+        return platoId;
+    }
+
+    public void setPlatoId(int platoId) {
+        this.platoId = platoId;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public double getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(double precio) {
+        this.precio = precio;
+    }
+
+    public CategoriaMenu getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(CategoriaMenu categoria) {
+        this.categoria = categoria;
+    }
+
+    public String getDisponible() {
+        return disponible;
+    }
+
+    public void setDisponible(String disponible) {
+        this.disponible = disponible;
+    }
+    
+    
+}
