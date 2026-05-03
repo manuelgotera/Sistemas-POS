@@ -152,7 +152,7 @@ public class EmpleadoDAOImpl implements EmpleadoDAO {
         e.setDni(rs.getString("dni"));
         e.setTelefono(rs.getString("telefono"));
         e.setEmail(rs.getString("email"));
-        e.setEstado(EstadoEmpleado.valueOf(rs.getString("estado")));
+        e.setEstado(EstadoEmpleado.valueOf(rs.getString("estado").toUpperCase()));
         e.setFecha_contratación(rs.getDate("fecha_contratacion"));
         Rol rol = new Rol();
         rol.setId(rs.getInt("rol_id"));

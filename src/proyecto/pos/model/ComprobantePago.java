@@ -13,8 +13,8 @@ import java.util.Date;
 public class ComprobantePago {
     private int comprobanteId;
     private String tipo_comprobante;
-    private int serie_numero;
-    private String metodo_pago;
+    private String serie_numero;
+    private MetodoPago metodo_pago;
     private Date fecha_emision;
     private String estado;
 
@@ -22,7 +22,7 @@ public class ComprobantePago {
     }
 
     
-    public ComprobantePago(int comprobanteId, String tipo_comprobante, int serie_numero, String metodo_pago, Date fecha_emision, String estado) {
+    public ComprobantePago(int comprobanteId, String tipo_comprobante, String serie_numero, MetodoPago metodo_pago, Date fecha_emision, String estado) {
         this.comprobanteId = comprobanteId;
         this.tipo_comprobante = tipo_comprobante;
         this.serie_numero = serie_numero;
@@ -31,7 +31,7 @@ public class ComprobantePago {
         this.estado = estado;
     }
 
-    public ComprobantePago(String tipo_comprobante, int serie_numero, String metodo_pago, Date fecha_emision, String estado) {
+    public ComprobantePago(String tipo_comprobante, String serie_numero, MetodoPago metodo_pago, Date fecha_emision, String estado) {
         this.tipo_comprobante = tipo_comprobante;
         this.serie_numero = serie_numero;
         this.metodo_pago = metodo_pago;
@@ -47,11 +47,11 @@ public class ComprobantePago {
         this.tipo_comprobante = tipo_comprobante;
     }
 
-    public void setSerie_numero(int serie_numero) {
+    public void setSerie_numero(String serie_numero) {
         this.serie_numero = serie_numero;
     }
 
-    public void setMetodo_pago(String metodo_pago) {
+    public void setMetodo_pago(MetodoPago metodo_pago) {
         this.metodo_pago = metodo_pago;
     }
 
@@ -73,11 +73,11 @@ public class ComprobantePago {
         return tipo_comprobante;
     }
 
-    public int getSerie_numero() {
+    public String getSerie_numero() {
         return serie_numero;
     }
 
-    public String getMetodo_pago() {
+    public MetodoPago getMetodo_pago() {
         return metodo_pago;
     }
 
@@ -89,5 +89,15 @@ public class ComprobantePago {
         return estado;
     }
     
-    
+    @Override
+    public String toString() {
+        return "ComprobantePago{" +
+                "comprobanteId=" + comprobanteId +
+                ", tipo_comprobante='" + tipo_comprobante + '\'' +
+                ", serie_numero='" + serie_numero + '\'' +
+                ", metodo_pago=" + (metodo_pago != null ? metodo_pago.toString() : "null") +
+                ", fecha_emision=" + fecha_emision +
+                ", estado='" + estado + '\'' +
+                '}';
+    }
 }

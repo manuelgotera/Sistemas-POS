@@ -4,6 +4,7 @@
  */
 package proyecto.pos.model;
 import java.time.LocalDate;
+import java.util.Date;
 
 /**
  *
@@ -12,17 +13,26 @@ import java.time.LocalDate;
 public class Caja {
 
     private int cajaId;
-    private LocalDate fecha_apertura;
-    private LocalDate fecha_cierre;
+    private Date fecha_apertura;
+    private Date fecha_cierre;
     private double monto_inicial;
     private double monto_final;
     private String estado;
     private double diferencia;
+    private Empleado empleado;
 
     public Caja() {
     }
 
-    public Caja(LocalDate fecha_apertura, LocalDate fecha_cierre, double monto_inicial, double monto_final, String estado, double diferencia) {
+    public Caja(Date fecha_apertura, double monto_inicial, String estado, Empleado empleado) {
+        this.fecha_apertura = fecha_apertura;
+        this.monto_inicial = monto_inicial;
+        this.estado = estado;
+        this.empleado = empleado;
+    }
+    
+    public Caja(Empleado empleado, Date fecha_apertura, Date fecha_cierre, double monto_inicial, double monto_final, String estado, double diferencia) {
+        this.empleado = empleado;
         this.fecha_apertura = fecha_apertura;
         this.fecha_cierre = fecha_cierre;
         this.monto_inicial = monto_inicial;
@@ -32,7 +42,8 @@ public class Caja {
     }
 
     
-    public Caja(int cajaId, LocalDate fecha_apertura, LocalDate fecha_cierre, double monto_inicial, double monto_final, String estado, double diferencia) {
+    public Caja(int cajaId, Empleado empleado, Date fecha_apertura, Date fecha_cierre, double monto_inicial, double monto_final, String estado, double diferencia) {
+        this.empleado = empleado;
         this.cajaId = cajaId;
         this.fecha_apertura = fecha_apertura;
         this.fecha_cierre = fecha_cierre;
@@ -50,19 +61,19 @@ public class Caja {
         this.cajaId = cajaId;
     }
 
-    public LocalDate getFecha_apertura() {
+    public Date getFecha_apertura() {
         return fecha_apertura;
     }
 
-    public void setFecha_apertura(LocalDate fecha_apertura) {
+    public void setFecha_apertura(Date fecha_apertura) {
         this.fecha_apertura = fecha_apertura;
     }
 
-    public LocalDate getFecha_cierre() {
+    public Date getFecha_cierre() {
         return fecha_cierre;
     }
 
-    public void setFecha_cierre(LocalDate fecha_cierre) {
+    public void setFecha_cierre(Date fecha_cierre) {
         this.fecha_cierre = fecha_cierre;
     }
 
@@ -98,5 +109,30 @@ public class Caja {
         this.diferencia = diferencia;
     }
 
-   
+    public Empleado getEmpleado() {
+        return empleado;
+    }
+
+    public void setEmpleado(Empleado empleado) {
+        this.empleado = empleado;
+    }
+
+   @Override
+    public String toString() {
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("Caja {")
+          .append("ID=").append(cajaId)
+          .append(", Apertura=").append(fecha_apertura)
+          .append(", Cierre=").append(fecha_cierre)
+          .append(", Monto Inicial=").append(monto_inicial)
+          .append(", Monto Final=").append(monto_final)
+          .append(", Estado='").append(estado).append('\'')
+          .append(", Diferencia=").append(diferencia)
+          .append(", Empleado=").append(empleado != null ? empleado.toString() : "null")
+          .append("}");
+
+        return sb.toString();
+    }
 }

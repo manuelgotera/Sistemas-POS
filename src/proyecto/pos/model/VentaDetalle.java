@@ -40,4 +40,54 @@ public class VentaDetalle {
     public double calcularSubtotal() {
         return cantidad * precioUnitario;
     }
+
+    public int getDetalleId() {
+        return detalleId;
+    }
+
+    public void setDetalleId(int detalleId) {
+        this.detalleId = detalleId;
+    }
+
+    public Plato getPlato() {
+        return plato;
+    }
+
+    public void setPlato(Plato plato) {
+        this.plato = plato;
+    }
+
+    public int getCantidad() {
+        return cantidad;
+    }
+
+    public void setCantidad(int cantidad) {
+        this.cantidad = cantidad;
+    }
+
+    public double getPrecioUnitario() {
+        return precioUnitario;
+    }
+
+    public void setPrecioUnitario(double precioUnitario) {
+        this.precioUnitario = precioUnitario;
+    }
+
+    public double getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(double subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public String getComentario() {
+        return comentario;
+    }
+
+    public void setComentario(String comentario) {
+        this.comentario = comentario;
+    }
+    
+    
 }

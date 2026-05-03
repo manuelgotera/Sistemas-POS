@@ -12,9 +12,9 @@ public class Mesa {
     private int mesaId;
     private int numero_mesa;
     private int capacidad;
-    private String estado_mesa;
+    private int estado_mesa;
 
-    public Mesa(int mesaId, int numero_mesa, int capacidad, String estado_mesa) {
+    public Mesa(int mesaId, int numero_mesa, int capacidad, int estado_mesa) {
         this.mesaId = mesaId;
         this.numero_mesa = numero_mesa;
         this.capacidad = capacidad;
@@ -36,11 +36,11 @@ public class Mesa {
         this.capacidad = capacidad;
     }
 
-    public void setEstado_mesa(String estado_mesa) {
+    public void setEstado_mesa(int estado_mesa) {
         this.estado_mesa = estado_mesa;
     }
 
-    public Mesa(int numero_mesa, int capacidad, String estado_mesa) {
+    public Mesa(int numero_mesa, int capacidad, int estado_mesa) {
         this.numero_mesa = numero_mesa;
         this.capacidad = capacidad;
         this.estado_mesa = estado_mesa;
@@ -58,7 +58,7 @@ public class Mesa {
         return capacidad;
     }
 
-    public String getEstado_mesa() {
+    public int getEstado_mesa() {
         return estado_mesa;
     }
     

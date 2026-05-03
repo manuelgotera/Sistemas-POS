@@ -3,24 +3,20 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
  */
 package proyecto.pos;
-import java.sql.Connection;
 import proyecto.pos.config.DatabaseConnection;
-import proyecto.pos.model.Cliente;
-import proyecto.pos.dao.impl.ClienteDAOImpl;
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
-import proyecto.pos.dao.impl.InsumoDAOImpl;
-import proyecto.pos.model.Insumo;
-import proyecto.pos.model.Proveedor;
-import proyecto.pos.*;
+import java.util.List;
+import proyecto.pos.dao.impl.CajaDAOImpl;
+import proyecto.pos.dao.impl.ClienteDAOImpl;
 import proyecto.pos.dao.impl.EmpleadoDAOImpl;
-import proyecto.pos.model.Empleado;
-import proyecto.pos.model.EstadoEmpleado;
-import proyecto.pos.model.Rol;
+import proyecto.pos.dao.impl.PlatoDAOImpl;
+import proyecto.pos.dao.impl.VentaDAOImpl;
+import proyecto.pos.dao.interfaces.*;
+import proyecto.pos.model.*;
+
 /**
  *
  * @author User
@@ -31,28 +27,96 @@ public class ProyectoPOS {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        
         DatabaseConnection db = new DatabaseConnection();
         Connection conexion = db.conectar();
+        ClienteDAOImpl cliente_dao = new ClienteDAOImpl(conexion);
+        PlatoDAOImpl plato_dao = new PlatoDAOImpl(conexion);
         EmpleadoDAOImpl empleado_dao = new EmpleadoDAOImpl(conexion);
+        VentaDAOImpl venta_dao = new VentaDAOImpl(conexion);
+        CajaDAOImpl caja_dao = new CajaDAOImpl(conexion);
         
-        Rol r1 = new Rol(1, "Administrador", "Acceso total al sistema");
-        Rol r2 = new Rol(2, "Cajero", "Gestión de ventas y cobros");
-        Rol r3 = new Rol(3, "Almacenero", "Control de inventario");
-        Rol r4 = new Rol(4, "Supervisor", "Supervisa operaciones");
-        Rol r5 = new Rol(5, "Soporte", "Atención al cliente y soporte técnico");
+        ArrayList<Empleado> empleados = (ArrayList<Empleado>) empleado_dao.listar();
+        Empleado e1 = empleados.get(1);
+        Empleado e2 = empleados.get(3);
         
-        Empleado e1 = new Empleado(r1,EstadoEmpleado.ACTIVO,new Date(),"Juanete","Pérez","12345789","987654321","juan@gmail.com");
+        /*Caja caja = new Caja(e1, new Date(), new Date(), 1000, 1500, "CERRADO", -500);
+        Caja caja1 = new Caja(e2, new Date(), new Date(), 1000, 1500, "ABIERTA", -500);
+        caja_dao.insertar(caja1);
+        caja1.setEmpleado(e1);
+        caja_dao.insertar(caja1);
+        caja = caja_dao.obtenerPorId(1);
+        System.out.println(caja.toString());
+        caja = caja_dao.obtenerCajaAbierta();
+        System.out.println(caja);*/
+        /*ArrayList<Caja> cajas = (ArrayList<Caja>) caja_dao.listar();
+        for (Caja c: cajas) {
+            System.out.println(c);*/
+        venta();
+
         
-        Empleado e2 = new Empleado(r2,EstadoEmpleado.ACTIVO,new Date(),"María","Gómez","23456899","987654322","maria@gmail.com");
+    }
+    
+    public static void venta(){
+        //metodo de recontramrd 
+        DatabaseConnection db = new DatabaseConnection();
+        Connection conexion = db.conectar();
+        ClienteDAOImpl cliente_dao = new ClienteDAOImpl(conexion);
+        PlatoDAOImpl plato_dao = new PlatoDAOImpl(conexion);
+        EmpleadoDAOImpl empleado_dao = new EmpleadoDAOImpl(conexion);
+        VentaDAOImpl venta_dao = new VentaDAOImpl(conexion);
         
-        Empleado e3 = new Empleado(r3, EstadoEmpleado.INACTIVO, new Date(), "Luis","Ramírez","45967890","987654323","luis@gmail.com");
+        ArrayList<VentaDetalle> ventas_detalles = new ArrayList<>();
+        ArrayList<ComprobantePago> comprobantes = new ArrayList<>();
         
-        Empleado empleado = empleado_dao.obtenerPorDni("12345789");
-        empleado.setNombre("juanete");
-        empleado_dao.actualizar(empleado);
-        Empleado empleado_ = empleado_dao.obtenerPorDni("12345789");
-        System.out.println(empleado_.toString());
+        Cliente c1 = cliente_dao.obtenerPorId(1);
+        Cliente c2 = cliente_dao.obtenerPorId(2);
+        
+        Empleado e1 = empleado_dao.obtenerPorId(24);
+        Empleado e2 = empleado_dao.obtenerPorId(25);
+        
+        Date f1 = new Date();
+        Date f2 = new Date();
+        
+        Mesa m1 = new Mesa(1,2,2,2);
+    
+        Plato p1 = plato_dao.obtenerPorId(1);
+        Plato p2 = plato_dao.obtenerPorId(2);
+    
+        VentaDetalle vd1 = new VentaDetalle(p1,3,2,5,"xd");
+        VentaDetalle vd2 = new VentaDetalle(p2,3,2,5,"xd");
+        
+        ventas_detalles.add(vd1);
+        ventas_detalles.add(vd2);
+        
+        
+        MetodoPago mp1 = new MetodoPago(1,"YAPE");
+        MetodoPago mp2 = new MetodoPago(2,"BCP");
+    
+        ComprobantePago cp1 = new ComprobantePago("FACTURA", "221", mp1, f1, "PAGADO");
+        ComprobantePago cp2 = new ComprobantePago("BOLETA", "1423", mp2, f1, "PAGADO");
+        
+        comprobantes.add(cp1);
+        comprobantes.add(cp2);
+        
+        /*Venta venta = new Venta(c1,e1,f1,ventas_detalles,9,7,6,m1,EstadoPago.PAGADO,comprobantes);
+        venta_dao.insertar(venta);*/
+        
+        ArrayList<Venta> ventas = (ArrayList<Venta>) venta_dao.listar();
+        for (Venta v : ventas){
+            System.out.println(v.toString());
+        }
+        /*System.out.println(ventas.toString());
+        Venta v1 = venta_dao.obtenerPorId(42);
+        System.out.println(v1);*/
+        
+        /*cp1.setSerie_numero("xddxxddx1");
+        cp2.setSerie_numero("eoo2");
+        Venta v2 = venta_dao.obtenerPorId(13);
+        v2.setComprobantes(comprobantes);
+        v2.setDetalles(ventas_detalles);
+        venta_dao.actualizar(v2);
+        v2 = venta_dao.obtenerPorId(13);
+        System.out.println(v2.toString());*/
     }
      
  }
