@@ -388,6 +388,66 @@ public class VentaDAOImpl implements VentaDAO {
         return ventas;
     }
     
+    public List<Venta> listarPorRangoFecha(Date inicio, Date fin) {
+        List<Venta> ventas = new ArrayList<>();
+
+        String sql = """
+            SELECT v.venta_id,
+                   v.fecha_hora,
+                   v.total,
+                   v.estado_pago,
+                   v.caja_id,
+                   c.nombre AS cliente_nombre,
+                   e.nombre AS empleado_nombre,
+                   m.numero_mesa
+            FROM caja_diaria cd
+            JOIN ventas_cabecera v ON cd.caja_id = v.caja_id
+            JOIN clientes c ON v.cliente_id = c.cliente_id
+            JOIN empleados e ON v.empleado_id = e.empleado_id
+            JOIN mesas m ON v.mesa_id = m.mesa_id
+            WHERE v.fecha_hora BETWEEN ? AND ?
+            ORDER BY v.venta_id
+        """;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, new java.sql.Timestamp(inicio.getTime()));
+            ps.setTimestamp(2, new java.sql.Timestamp(fin.getTime()));
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                while (rs.next()) {
+                    Venta v = new Venta();
+
+                    v.setVentaId(rs.getInt("venta_id"));
+                    v.setFecha(rs.getTimestamp("fecha_hora"));
+                    v.setTotal(rs.getDouble("total"));
+                    v.setCaja_id(rs.getInt("caja_id"));
+                    v.setEstadoPago(EstadoPago.valueOf(rs.getString("estado_pago")));
+
+                    Cliente c = new Cliente();
+                    c.setNombre(rs.getString("cliente_nombre"));
+                    v.setCliente(c);
+
+                    Empleado e = new Empleado();
+                    e.setNombre(rs.getString("empleado_nombre"));
+                    v.setEmpleado(e);
+
+                    Mesa m = new Mesa();
+                    m.setEstado_mesa(rs.getInt("numero_mesa"));
+                    v.setMesa(m);
+
+                    ventas.add(v);
+                }
+            }
+
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar ventas", ex);
+        }
+
+        return ventas;
+    }
+    
     public Venta obtenerPorId(int ventaId) {
         Venta venta = null;
 
@@ -449,6 +509,50 @@ public class VentaDAOImpl implements VentaDAO {
         }
 
         return venta;
+    }
+    
+    public List<ComprobantePago> obtenerComprobantesPorFecha(Date inicio, Date fin) {
+        List<ComprobantePago> lista = new ArrayList<>();
+
+        String sql = """
+            SELECT cp.comprobante_id,
+                   cp.tipo_comprobante,
+                   cp.serie_numero,
+                   cp.id_metodo,
+                   cp.fecha_emision,
+                   cp.estado,
+                   cp.venta_id,
+                   mp.nombre AS metodo_pago_nombre
+            FROM comprobantes_pago cp
+            JOIN metodos_pago mp ON cp.id_metodo = mp.id_metodo_pago
+            WHERE cp.fecha_emision BETWEEN ? AND ?
+        """;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, new java.sql.Timestamp(inicio.getTime()));
+            ps.setTimestamp(2, new java.sql.Timestamp(fin.getTime()));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+
+                    ComprobantePago cp = new ComprobantePago();
+
+                    cp.setComprobanteId(rs.getInt("comprobante_id"));
+                    cp.setTipo_comprobante(rs.getString("tipo_comprobante"));
+                    cp.setSerie_numero(rs.getString("serie_numero"));
+                    cp.setFecha_emision(rs.getDate("fecha_emision"));
+                    cp.setEstado(rs.getString("estado"));
+
+                    lista.add(cp);
+                }
+            }
+
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener comprobantes por fecha", ex);
+        }
+
+        return lista;
     }
     
     public void eliminar(int ventaId) {

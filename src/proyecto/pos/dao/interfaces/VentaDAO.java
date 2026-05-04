@@ -13,6 +13,8 @@ import proyecto.pos.model.Venta;
 
 public interface VentaDAO {
     void insertar(Venta venta);
+    public void actualizar(Venta venta);
+    public void eliminar(int ventaId);
     Venta obtenerPorId(int id);
     List<Venta> listar();
 }

@@ -15,7 +15,11 @@ import proyecto.pos.dao.impl.EmpleadoDAOImpl;
 import proyecto.pos.dao.impl.PlatoDAOImpl;
 import proyecto.pos.dao.impl.VentaDAOImpl;
 import proyecto.pos.dao.interfaces.*;
+import proyecto.pos.gui.ArticulosStockFrame;
+import proyecto.pos.gui.HistorialTransaccionesFrame;
+import proyecto.pos.gui.TestHistorial;
 import proyecto.pos.model.*;
+import proyecto.pos.service.VentaService;
 
 /**
  *
@@ -27,34 +31,17 @@ public class ProyectoPOS {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        DatabaseConnection db = new DatabaseConnection();
-        Connection conexion = db.conectar();
-        ClienteDAOImpl cliente_dao = new ClienteDAOImpl(conexion);
-        PlatoDAOImpl plato_dao = new PlatoDAOImpl(conexion);
-        EmpleadoDAOImpl empleado_dao = new EmpleadoDAOImpl(conexion);
-        VentaDAOImpl venta_dao = new VentaDAOImpl(conexion);
-        CajaDAOImpl caja_dao = new CajaDAOImpl(conexion);
+        HistorialTransaccionesFrame jf1 = new HistorialTransaccionesFrame();
+        jf1.setVisible(true);
+        /*DatabaseConnection db = new DatabaseConnection();
+        Connection c = db.conectar();
         
-        ArrayList<Empleado> empleados = (ArrayList<Empleado>) empleado_dao.listar();
-        Empleado e1 = empleados.get(1);
-        Empleado e2 = empleados.get(3);
-        
-        /*Caja caja = new Caja(e1, new Date(), new Date(), 1000, 1500, "CERRADO", -500);
-        Caja caja1 = new Caja(e2, new Date(), new Date(), 1000, 1500, "ABIERTA", -500);
-        caja_dao.insertar(caja1);
-        caja1.setEmpleado(e1);
-        caja_dao.insertar(caja1);
-        caja = caja_dao.obtenerPorId(1);
-        System.out.println(caja.toString());
-        caja = caja_dao.obtenerCajaAbierta();
-        System.out.println(caja);*/
-        /*ArrayList<Caja> cajas = (ArrayList<Caja>) caja_dao.listar();
-        for (Caja c: cajas) {
-            System.out.println(c);*/
-        venta();
-
-        
-    }
+        TestHistorial jf1 = new TestHistorial();
+        VentaService vs = new VentaService(new VentaDAOImpl(c));
+        ArrayList<Venta> ventas = (ArrayList<Venta>) vs.listarVentas();
+        for (Venta v : ventas) {
+            System.out.println(v.toString());*/
+        }
     
     public static void venta(){
         //metodo de recontramrd 
