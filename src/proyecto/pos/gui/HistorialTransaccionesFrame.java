@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -32,6 +33,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import java.awt.Image;
+
 
 public class HistorialTransaccionesFrame extends JFrame {
 
@@ -77,111 +83,181 @@ public class HistorialTransaccionesFrame extends JFrame {
     }
 
 
-    private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(190, 0));
-        sidebar.setBackground(Color.WHITE);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
+    // ─── NUEVO SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
 
-        // Logo
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
-        top.setBorder(new EmptyBorder(22, 18, 18, 18));
+        private JPanel crearSidebar() {
+            JPanel sidebar = new JPanel();
+            sidebar.setPreferredSize(new Dimension(220, 0));
+            sidebar.setBackground(new Color(250, 250, 250));
+            sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(230, 230, 230)));
+            sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
 
-        JPanel logoPanel = new JPanel(new BorderLayout(8, 0));
-        logoPanel.setBackground(Color.WHITE);
+            // Cabecera del Sidebar (Logo y texto)
+            JPanel cabeceraSidebar = new JPanel(new BorderLayout());
+            cabeceraSidebar.setBackground(new Color(250, 250, 250));
+            cabeceraSidebar.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+            cabeceraSidebar.setMaximumSize(new Dimension(220, 75));
 
-        // Ícono circular azul con símbolo carrito
-        JLabel logoIcono = new JLabel("");
-        logoIcono.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
-        logoIcono.setOpaque(true);
-        logoIcono.setBackground(AZUL);
-        logoIcono.setForeground(Color.WHITE);
-        logoIcono.setPreferredSize(new Dimension(36, 36));
-        logoIcono.setHorizontalAlignment(SwingConstants.CENTER);
-        logoIcono.setBorder(BorderFactory.createLineBorder(AZUL, 6));
+            JPanel panelLogoTextos = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            panelLogoTextos.setBackground(new Color(250, 250, 250));
 
-        JPanel logoTexto = new JPanel(new BorderLayout());
-        logoTexto.setBackground(Color.WHITE);
+            JLabel lblIconoPOS = new JLabel(redimensionarIcono("/img/icono_carrito_blanco.png", 20, 20), SwingConstants.CENTER);
+            lblIconoPOS.setPreferredSize(new Dimension(40, 40));
+            lblIconoPOS.setBackground(new Color(26, 79, 156)); 
+            lblIconoPOS.setOpaque(true);
 
-        JLabel logo = new JLabel("Pos");
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        logo.setForeground(AZUL);
+            JPanel textosPOS = new JPanel();
+            textosPOS.setLayout(new BoxLayout(textosPOS, BoxLayout.Y_AXIS));
+            textosPOS.setBackground(new Color(250, 250, 250));
+            JLabel lblPOS = new JLabel("Pos");
+            lblPOS.setFont(new Font("Segoe UI", Font.BOLD, 18));
+            lblPOS.setForeground(new Color(26, 79, 156));
+            JLabel lblDesc = new JLabel("Sistema de Caja");
+            lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblDesc.setForeground(Color.GRAY);
 
-        JLabel sub = new JLabel("Sistema de Caja");
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        sub.setForeground(Color.GRAY);
+            textosPOS.add(lblPOS);
+            textosPOS.add(lblDesc);
 
-        logoTexto.add(logo, BorderLayout.NORTH);
-        logoTexto.add(sub, BorderLayout.CENTER);
+            panelLogoTextos.add(lblIconoPOS);
+            panelLogoTextos.add(textosPOS);
 
-        logoPanel.add(logoIcono, BorderLayout.WEST);
-        logoPanel.add(logoTexto, BorderLayout.CENTER);
-        top.add(logoPanel, BorderLayout.CENTER);
-        sidebar.add(top, BorderLayout.NORTH);
+            JButton btnColapsar = new JButton("≪");
+            btnColapsar.setFocusPainted(false);
+            btnColapsar.setBorderPainted(false);
+            btnColapsar.setBackground(new Color(235, 235, 235));
+            btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btnColapsar.setPreferredSize(new Dimension(35, 35));
 
-        // Menú
-        JPanel menu = new JPanel(new GridBagLayout());
-        menu.setBackground(Color.WHITE);
+            cabeceraSidebar.add(panelLogoTextos, BorderLayout.CENTER);
+            cabeceraSidebar.add(btnColapsar, BorderLayout.EAST);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
-        gbc.insets = new Insets(3, 14, 3, 14);
+            JPanel divisorTop = new JPanel();
+            divisorTop.setMaximumSize(new Dimension(220, 1));
+            divisorTop.setBackground(new Color(230, 230, 230));
 
-        String[] opciones = {
-            "Cajero", "Artículos y Stock",
-            "Historial de Transacciones",
-            "Reportes", "Gastos", "Configuración"
-        };
-        String[] iconos = {"", "", "", "", "", ""};
+            sidebar.add(cabeceraSidebar);
+            sidebar.add(divisorTop);
 
-        for (int i = 0; i < opciones.length; i++) {
-            gbc.gridy = i;
-            boolean activo = opciones[i].equals("Historial de Transacciones");
-            menu.add(crearItemMenu(opciones[i], iconos[i], activo), gbc);
+            // Agregamos los botones de navegación
+            actualizarNavegacionSidebar(sidebar); 
+
+            return sidebar;
         }
 
-        sidebar.add(menu, BorderLayout.CENTER);
+        private void actualizarNavegacionSidebar(JPanel sidebar) {
+            sidebar.add(Box.createVerticalStrut(180)); // Tu espaciado superior
 
-        JPanel bottom = new JPanel(new GridBagLayout());
-        bottom.setBackground(Color.WHITE);
-        bottom.setBorder(new EmptyBorder(12, 14, 22, 14));
+            // ¡ATENCIÓN AQUÍ! "Historial de Trans." está en TRUE, los demás en FALSE
+            JButton btnCajero = crearBotonMenu("Cajero", false, "/img/icon_cart.png");
+            JButton btnStock = crearBotonMenu("Artículos y Stock", false, "/img/icon_box.png");
+            JButton btnHistorial = crearBotonMenu("Historial de Trans.", true, "/img/icon_history.png"); 
+            JButton btnReportes = crearBotonMenu("Reportes", false, "/img/icon_chart.png");
+            JButton btnGastos = crearBotonMenu("Gastos", false, "/img/icon_wallet.png");
+            JButton btnConfig = crearBotonMenu("Configuración", false, "/img/icon_settings.png");
 
-        GridBagConstraints gbcB = new GridBagConstraints();
-        gbcB.gridx = 0;
-        gbcB.fill = GridBagConstraints.HORIZONTAL;
-        gbcB.weightx = 1;
-        gbcB.insets = new Insets(3, 0, 3, 0);
+            // ACCIONES DE NAVEGACIÓN
+            btnCajero.addActionListener(e -> {
+                new Caja_GUI().setVisible(true);
+                this.dispose(); 
+            });
 
-        gbcB.gridy = 0;
-        bottom.add(crearItemMenu("Modo Tampilan", "", false), gbcB);
+            btnStock.addActionListener(e -> {
+                new ArticulosStockFrame().setVisible(true);
+                this.dispose(); 
+            });
 
-        gbcB.gridy = 1;
-        JLabel salir = crearItemMenu("Salir", "", false);
-        salir.setForeground(new Color(220, 53, 69));
-        bottom.add(salir, gbcB);
+            // Nota: btnHistorial no lleva ActionListener porque ya estamos en esta ventana.
 
-        sidebar.add(bottom, BorderLayout.SOUTH);
-        return sidebar;
-    }
+            sidebar.add(btnCajero);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnStock);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnHistorial);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnReportes);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnGastos);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnConfig);
 
-    private JLabel crearItemMenu(String texto, String emoji, boolean activo) {
-        JLabel item = new JLabel(emoji + "  " + texto);
-        item.setOpaque(true);
-        item.setBorder(new EmptyBorder(10, 12, 10, 12));
-        item.setFont(new Font("Segoe UI", activo ? Font.BOLD : Font.PLAIN, 13));
-        item.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        if (activo) {
-            item.setBackground(AZUL_CLARO);
-            item.setForeground(AZUL);
-        } else {
-            item.setBackground(Color.WHITE);
-            item.setForeground(new Color(55, 55, 55));
+            sidebar.add(Box.createVerticalGlue()); // Empuja lo demás hacia abajo
+
+            // SECCIÓN INFERIOR
+            JPanel divisorBottom = new JPanel();
+            divisorBottom.setMaximumSize(new Dimension(220, 1));
+            divisorBottom.setBackground(new Color(230, 230, 230));
+            sidebar.add(divisorBottom);
+            sidebar.add(Box.createVerticalStrut(10));
+
+            JButton btnModo = crearBotonMenu("Mode Tampilan", false, "/img/icon_bell.png");
+            JButton btnSalir = crearBotonMenu("Salir", false, "/img/icon_logout.png");
+            btnSalir.setForeground(new Color(220, 53, 69)); 
+
+            btnSalir.addActionListener(e -> System.exit(0));
+
+            sidebar.add(btnModo);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnSalir);
+            sidebar.add(Box.createVerticalStrut(20));
+
+            sidebar.revalidate();
+            sidebar.repaint();
         }
-        return item;
-    }
+
+        private JButton crearBotonMenu(String texto, boolean seleccionado, String iconPath) {
+            JButton btn = new JButton(texto);
+
+            if (iconPath != null && !iconPath.isEmpty()) {
+                btn.setIcon(redimensionarIcono(iconPath, 20, 20));
+                btn.setIconTextGap(15);
+            }
+
+            btn.setMaximumSize(new Dimension(190, 45));
+            btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            btn.setHorizontalAlignment(SwingConstants.LEFT); 
+            btn.setBorder(new EmptyBorder(0, 15, 0, 0));
+
+            btn.setFocusPainted(false);
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            if (seleccionado) {
+                btn.setBackground(new Color(235, 240, 255));
+                btn.setForeground(new Color(26, 79, 156));
+                btn.setFont(new Font("Segoe UI", Font.BOLD, 17)); // Tu nuevo tamaño de fuente
+                btn.putClientProperty("JButton.buttonType", "roundRect"); 
+            } else {
+                btn.setBackground(new Color(250, 250, 250));
+                btn.setForeground(new Color(80, 80, 80));
+                btn.setFont(new Font("Segoe UI", Font.PLAIN, 17)); // Tu nuevo tamaño de fuente
+                btn.setBorderPainted(false);
+            }
+
+            btn.addMouseListener(new java.awt.event.MouseAdapter() {
+                public void mouseEntered(java.awt.event.MouseEvent evt) {
+                    if (!seleccionado) btn.setBackground(new Color(242, 242, 242));
+                }
+                public void mouseExited(java.awt.event.MouseEvent evt) {
+                    if (!seleccionado) btn.setBackground(new Color(250, 250, 250));
+                }
+            });
+
+            return btn;
+        }
+
+        private ImageIcon redimensionarIcono(String path, int width, int height) {
+            try {
+                java.net.URL imgURL = getClass().getResource(path);
+                if (imgURL != null) {
+                    ImageIcon iconOriginal = new ImageIcon(imgURL);
+                    Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                    return new ImageIcon(img);
+                }
+            } catch (Exception e) {
+                System.err.println("No se encontró el icono: " + path);
+            }
+            return null; 
+        }
 
     // CONTENIDO 
     private JPanel crearContenido() {
@@ -490,10 +566,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         modeloTabla.addRow(new Object[]{num, fecha, cajero, items, monto, metodo, estado, ""});
     }
 
-    /**
-     * Abre el modal "Detalles de la transaccion" con toda la información.
-     * Incluye: cabecera, productos, subtotal, IVA, monto pagado y pago.
-     */
     private void abrirDetalleTransaccion(int filaModelo) {
         String numTrx = String.valueOf(modeloTabla.getValueAt(filaModelo, 0));
         String fecha  = String.valueOf(modeloTabla.getValueAt(filaModelo, 1));
