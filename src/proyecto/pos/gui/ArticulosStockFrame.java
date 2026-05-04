@@ -1,70 +1,46 @@
 package proyecto.pos.gui;
 
-// Librerías para construir la interfaz gráfica con Swing
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-// Utilidades para filtros de búsqueda
+import java.awt.event.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
+import javax.swing.event.*;
+import javax.swing.table.*;
 
-/**
- * Ventana principal del módulo "Artículos y Stock".
- *
- * Esta clase pertenece al FRONTEND del sistema.
- * Su responsabilidad es mostrar la lista de productos, permitir búsquedas,
- * filtrar por categoría, agregar, editar y eliminar productos desde la interfaz.
- *
- * Actualmente trabaja con datos de prueba.
- * Más adelante se puede reemplazar cargarDatosDemo() por llamadas al DAO.
- */
 public class ArticulosStockFrame extends JFrame {
 
-    // Colores principales de la interfaz, basados en el diseño de Figma
     private static final Color AZUL = new Color(26, 83, 160);
+    private static final Color AZUL_HOVER = new Color(18, 65, 128);
     private static final Color AZUL_CLARO = new Color(232, 241, 255);
     private static final Color FONDO = new Color(246, 248, 251);
-    private static final Color BORDE = new Color(225, 228, 233);
+    private static final Color SIDEBAR = new Color(250, 251, 253);
+    private static final Color BORDE = new Color(225, 229, 236);
+    private static final Color TEXTO = new Color(30, 37, 48);
+    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
     private static final Color ROJO = new Color(220, 53, 69);
     private static final Color AMARILLO_FONDO = new Color(255, 249, 219);
-    private static final Color AMARILLO_BORDE = new Color(255, 220, 100);
+    private static final Color AMARILLO_BORDE = new Color(245, 213, 93);
+    private static final Color AMARILLO_TEXTO = new Color(128, 89, 0);
 
-    // Tabla principal donde se muestran los productos
     private JTable tablaProductos;
-
-    // Modelo de datos de la tabla.
-    // Aquí se agregan, editan y eliminan filas visualmente.
     private DefaultTableModel modeloTabla;
-
-    // Permite aplicar filtros a la tabla sin modificar los datos originales.
     private TableRowSorter<DefaultTableModel> sorter;
-
-    // Componentes de búsqueda y filtro
     private JTextField txtBuscar;
     private JComboBox<String> cboCategoria;
-
-    // Etiquetas dinámicas
     private JLabel lblAlerta;
     private JLabel lblFooter;
 
-    /**
-     * Constructor principal de la ventana.
-     * Configura la ventana, construye la interfaz y carga datos iniciales.
-     */
     public ArticulosStockFrame() {
         configurarVentana();
         construirInterfaz();
         cargarDatosDemo();
         actualizarAlertaStock();
+        actualizarFooter();
     }
 
-    /**
-     * Configuración general de la ventana.
-     */
     private void configurarVentana() {
         setTitle("Artículos y Stock");
         setSize(1180, 720);
@@ -73,275 +49,285 @@ public class ArticulosStockFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    /**
-     * Construye la estructura base de la ventana:
-     * sidebar izquierda + contenido principal.
-     */
     private void construirInterfaz() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-
         root.add(crearSidebar(), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
-    /**
-     * Crea el menú lateral izquierdo.
-     * Este menú simula la navegación general del POS.
-     */
-    // ─── NUEVO SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
-
     private JPanel crearSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setPreferredSize(new Dimension(220, 0));
-        sidebar.setBackground(new Color(250, 250, 250));
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(230, 230, 230)));
+        sidebar.setBackground(SIDEBAR);
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
 
-        // Cabecera del Sidebar (Logo y texto)
-        JPanel cabeceraSidebar = new JPanel(new BorderLayout());
-        cabeceraSidebar.setBackground(new Color(250, 250, 250));
-        cabeceraSidebar.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        cabeceraSidebar.setMaximumSize(new Dimension(220, 75));
+        sidebar.add(crearHeaderSidebar());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(34));
 
-        JPanel panelLogoTextos = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelLogoTextos.setBackground(new Color(250, 250, 250));
-        
-        JLabel lblIconoPOS = new JLabel(redimensionarIcono("/img/icono_carrito_blanco.png", 20, 20), SwingConstants.CENTER);
-        lblIconoPOS.setPreferredSize(new Dimension(40, 40));
-        lblIconoPOS.setBackground(new Color(26, 79, 156)); 
-        lblIconoPOS.setOpaque(true);
+        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
+        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", true);
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
+        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", false);
+        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
+        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", false);
 
-        JPanel textosPOS = new JPanel();
-        textosPOS.setLayout(new BoxLayout(textosPOS, BoxLayout.Y_AXIS));
-        textosPOS.setBackground(new Color(250, 250, 250));
-        JLabel lblPOS = new JLabel("Pos");
-        lblPOS.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblPOS.setForeground(new Color(26, 79, 156));
-        JLabel lblDesc = new JLabel("Sistema de Caja");
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblDesc.setForeground(Color.GRAY);
-        
-        textosPOS.add(lblPOS);
-        textosPOS.add(lblDesc);
-
-        panelLogoTextos.add(lblIconoPOS);
-        panelLogoTextos.add(textosPOS);
-
-        JButton btnColapsar = new JButton("≪");
-        btnColapsar.setFocusPainted(false);
-        btnColapsar.setBorderPainted(false);
-        btnColapsar.setBackground(new Color(235, 235, 235));
-        btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnColapsar.setPreferredSize(new Dimension(35, 35));
-
-        cabeceraSidebar.add(panelLogoTextos, BorderLayout.CENTER);
-        cabeceraSidebar.add(btnColapsar, BorderLayout.EAST);
-        
-        JPanel divisorTop = new JPanel();
-        divisorTop.setMaximumSize(new Dimension(220, 1));
-        divisorTop.setBackground(new Color(230, 230, 230));
-
-        sidebar.add(cabeceraSidebar);
-        sidebar.add(divisorTop);
-
-        // Agregamos los botones de navegación
-        actualizarNavegacionSidebar(sidebar); 
-
-        return sidebar;
-    }
-
-    private void actualizarNavegacionSidebar(JPanel sidebar) {
-        sidebar.add(Box.createVerticalStrut(180)); // Espaciado superior
-
-        // ¡ATENCIÓN AQUÍ! "Artículos y Stock" está en TRUE, los demás en FALSE
-        JButton btnCajero = crearBotonMenu("Cajero", false, "/img/icon_cart.png");
-        JButton btnStock = crearBotonMenu("Artículos y Stock", true, "/img/icon_box.png");
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", false, "/img/icon_history.png"); 
-        JButton btnReportes = crearBotonMenu("Reportes", false, "/img/icon_chart.png");
-        JButton btnGastos = crearBotonMenu("Gastos", false, "/img/icon_wallet.png");
-        JButton btnConfig = crearBotonMenu("Configuración", false, "/img/icon_settings.png");
-
-        // ACCIONES DE NAVEGACIÓN
         btnCajero.addActionListener(e -> {
             new Caja_GUI().setVisible(true);
-            this.dispose(); 
+            dispose();
         });
 
         btnHistorial.addActionListener(e -> {
             new HistorialTransaccionesFrame().setVisible(true);
-            this.dispose(); 
+            dispose();
         });
 
-        // Nota: btnStock no lleva ActionListener porque ya estamos en esta ventana.
+        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
+        sidebar.add(Box.createVerticalGlue());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(12));
 
-        sidebar.add(btnCajero);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnStock);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnHistorial);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnReportes);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnGastos);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnConfig);
-
-        sidebar.add(Box.createVerticalGlue()); // Empuja lo demás hacia abajo
-
-        // SECCIÓN INFERIOR
-        JPanel divisorBottom = new JPanel();
-        divisorBottom.setMaximumSize(new Dimension(220, 1));
-        divisorBottom.setBackground(new Color(230, 230, 230));
-        sidebar.add(divisorBottom);
-        sidebar.add(Box.createVerticalStrut(10));
-
-        JButton btnModo = crearBotonMenu("Mode Tampilan", false, "/img/icon_bell.png");
-        JButton btnSalir = crearBotonMenu("Salir", false, "/img/icon_logout.png");
-        btnSalir.setForeground(new Color(220, 53, 69)); 
-
+        JButton btnModo = crearBotonMenu("Mode Tampilan", "/img/ojo.png", false);
+        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
+        btnSalir.setForeground(ROJO);
         btnSalir.addActionListener(e -> System.exit(0));
 
-        sidebar.add(btnModo);
-        sidebar.add(Box.createVerticalStrut(5));
-        sidebar.add(btnSalir);
-        sidebar.add(Box.createVerticalStrut(20));
+        agregarMenu(sidebar, btnModo, btnSalir);
+        sidebar.add(Box.createVerticalStrut(18));
 
-        sidebar.revalidate();
-        sidebar.repaint();
+        return sidebar;
     }
 
-    private JButton crearBotonMenu(String texto, boolean seleccionado, String iconPath) {
-        JButton btn = new JButton(texto);
-
-        if (iconPath != null && !iconPath.isEmpty()) {
-            btn.setIcon(redimensionarIcono(iconPath, 20, 20));
-            btn.setIconTextGap(15);
+    private void agregarMenu(JPanel panel, JButton... botones) {
+        for (JButton boton : botones) {
+            panel.add(boton);
+            panel.add(Box.createVerticalStrut(7));
         }
+    }
 
-        btn.setMaximumSize(new Dimension(190, 45));
-        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btn.setHorizontalAlignment(SwingConstants.LEFT); 
-        btn.setBorder(new EmptyBorder(0, 15, 0, 0));
+    private JPanel crearHeaderSidebar() {
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.setBackground(SIDEBAR);
+        header.setBorder(new EmptyBorder(16, 16, 16, 14));
+        header.setMaximumSize(new Dimension(220, 78));
 
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        marca.setOpaque(false);
+
+        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
+        logo.setHorizontalAlignment(SwingConstants.CENTER);
+        logo.setOpaque(true);
+        logo.setBackground(AZUL);
+        logo.setPreferredSize(new Dimension(40, 40));
+        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
+
+        JPanel textos = new JPanel();
+        textos.setOpaque(false);
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
+
+        JLabel lblPos = new JLabel("Pos");
+        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblPos.setForeground(AZUL);
+
+        JLabel lblDesc = new JLabel("Sistema de Caja");
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblDesc.setForeground(TEXTO_SUAVE);
+
+        textos.add(lblPos);
+        textos.add(lblDesc);
+
+        marca.add(logo);
+        marca.add(textos);
+
+        JButton btnColapsar = new JButton("≪");
+        btnColapsar.setPreferredSize(new Dimension(34, 34));
+        btnColapsar.setFocusPainted(false);
+        btnColapsar.setBorderPainted(false);
+        btnColapsar.setBackground(new Color(236, 239, 244));
+        btnColapsar.setForeground(new Color(80, 86, 98));
+        btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        header.add(marca, BorderLayout.CENTER);
+        header.add(btnColapsar, BorderLayout.EAST);
+
+        return header;
+    }
+
+    private JPanel crearLinea() {
+        JPanel linea = new JPanel();
+        linea.setMaximumSize(new Dimension(220, 1));
+        linea.setPreferredSize(new Dimension(220, 1));
+        linea.setBackground(new Color(232, 235, 241));
+        return linea;
+    }
+
+    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
+        JButton boton = new JButton(texto);
+        boton.setIcon(redimensionarIcono(iconPath, 18, 18));
+        boton.setIconTextGap(13);
+        boton.setMaximumSize(new Dimension(190, 40));
+        boton.setPreferredSize(new Dimension(190, 40));
+        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        boton.setHorizontalAlignment(SwingConstants.LEFT);
+        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
+        boton.setFocusPainted(false);
+        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
 
         if (seleccionado) {
-            btn.setBackground(new Color(235, 240, 255));
-            btn.setForeground(new Color(26, 79, 156));
-            btn.setFont(new Font("Segoe UI", Font.BOLD, 17)); // Tu tamaño de fuente
-            btn.putClientProperty("JButton.buttonType", "roundRect"); 
+            boton.setBackground(AZUL_CLARO);
+            boton.setForeground(AZUL);
+            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
         } else {
-            btn.setBackground(new Color(250, 250, 250));
-            btn.setForeground(new Color(80, 80, 80));
-            btn.setFont(new Font("Segoe UI", Font.PLAIN, 17)); // Tu tamaño de fuente
-            btn.setBorderPainted(false);
+            boton.setBackground(SIDEBAR);
+            boton.setForeground(new Color(62, 70, 82));
+            boton.setBorderPainted(false);
         }
 
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                if (!seleccionado) btn.setBackground(new Color(242, 242, 242));
+        boton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(new Color(240, 243, 248));
+                }
             }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                if (!seleccionado) btn.setBackground(new Color(250, 250, 250));
+
+            public void mouseExited(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(SIDEBAR);
+                }
             }
         });
 
-        return btn;
+        return boton;
     }
 
-    private ImageIcon redimensionarIcono(String path, int width, int height) {
-        try {
-            java.net.URL imgURL = getClass().getResource(path);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
-            }
-        } catch (Exception e) {
-            System.err.println("No se encontró el icono: " + path);
-        }
-        return null; 
-    }
-
-    /**
-     * Crea el contenido principal de la pantalla.
-     */
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(FONDO);
-        contenedor.setBorder(new EmptyBorder(24, 26, 24, 26));
-
+        contenedor.setBorder(new EmptyBorder(26, 28, 24, 28));
         contenedor.add(crearHeader(), BorderLayout.NORTH);
         contenedor.add(crearPanelPrincipal(), BorderLayout.CENTER);
-
         return contenedor;
     }
 
-    /**
-     * Crea el encabezado superior:
-     * título, subtítulo, hora y usuario.
-     */
     private JPanel crearHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(FONDO);
         header.setBorder(new EmptyBorder(0, 0, 18, 0));
 
-        JPanel titulos = new JPanel(new BorderLayout());
-        titulos.setBackground(FONDO);
+        JPanel titulos = new JPanel();
+        titulos.setOpaque(false);
+        titulos.setLayout(new BoxLayout(titulos, BoxLayout.Y_AXIS));
 
         JLabel titulo = new JLabel("Lista de Productos");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titulo.setForeground(Color.BLACK);
 
         JLabel subtitulo = new JLabel("Gestionar datos de productos e inventario");
         subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        subtitulo.setForeground(Color.GRAY);
+        subtitulo.setForeground(TEXTO_SUAVE);
 
-        titulos.add(titulo, BorderLayout.NORTH);
-        titulos.add(subtitulo, BorderLayout.CENTER);
+        titulos.add(titulo);
+        titulos.add(Box.createVerticalStrut(4));
+        titulos.add(subtitulo);
 
-        JPanel usuario = new JPanel(new GridBagLayout());
-        usuario.setBackground(FONDO);
-
-        JLabel hora = new JLabel("<html><b>Hora</b><br>15:07:14 WIB</html>");
-        hora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        hora.setOpaque(true);
-        hora.setBackground(Color.WHITE);
-        hora.setBorder(new EmptyBorder(8, 14, 8, 14));
-
-        JLabel perfil = new JLabel("<html><b>uwu fernandez</b><br>Cajero</html>");
-        perfil.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        perfil.setOpaque(true);
-        perfil.setBackground(Color.WHITE);
-        perfil.setBorder(new EmptyBorder(8, 14, 8, 14));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(0, 5, 0, 5);
-
-        gbc.gridx = 0;
-        usuario.add(hora, gbc);
-
-        gbc.gridx = 1;
-        usuario.add(perfil, gbc);
+        JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        derecha.setOpaque(false);
+        derecha.add(crearBotonIcono("/img/ojo.png"));
+        derecha.add(crearTarjetaHora());
+        derecha.add(crearTarjetaUsuario());
 
         header.add(titulos, BorderLayout.WEST);
-        header.add(usuario, BorderLayout.EAST);
+        header.add(derecha, BorderLayout.EAST);
 
         return header;
     }
 
-    /**
-     * Crea el panel principal blanco que contiene:
-     * botones, alerta, filtros, tabla y footer.
-     */
+    private JButton crearBotonIcono(String iconPath) {
+        JButton boton = new JButton(redimensionarIcono(iconPath, 18, 18));
+        boton.setPreferredSize(new Dimension(44, 40));
+        boton.setBackground(Color.WHITE);
+        boton.setFocusPainted(false);
+        boton.setBorder(new RoundedBorder(BORDE, 12));
+        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return boton;
+    }
+
+    private JPanel crearTarjetaHora() {
+        JPanel tarjeta = crearTarjetaHeader(110);
+
+        JLabel lblTitulo = new JLabel("Hora");
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblTitulo.setForeground(TEXTO);
+
+        JLabel lblHora = new JLabel(new SimpleDateFormat("HH:mm:ss").format(new Date()) + " WIB");
+        lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lblHora.setForeground(TEXTO_SUAVE);
+
+        new Timer(1000, e -> {
+            lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()) + " WIB");
+        }).start();
+
+        tarjeta.add(lblTitulo);
+        tarjeta.add(lblHora);
+
+        return tarjeta;
+    }
+
+    private JPanel crearTarjetaHeader(int ancho) {
+        JPanel tarjeta = new JPanel();
+        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
+        tarjeta.setBackground(Color.WHITE);
+        tarjeta.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(BORDE, 12),
+                new EmptyBorder(6, 14, 6, 14)
+        ));
+        tarjeta.setPreferredSize(new Dimension(ancho, 40));
+        return tarjeta;
+    }
+
+    private JPanel crearTarjetaUsuario() {
+        JPanel tarjeta = new JPanel(new BorderLayout(8, 0));
+        tarjeta.setBackground(Color.WHITE);
+        tarjeta.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(BORDE, 12),
+                new EmptyBorder(6, 10, 6, 12)
+        ));
+        tarjeta.setPreferredSize(new Dimension(150, 40));
+
+        JLabel avatar = new JLabel(redimensionarIcono("/img/perfilPedro.jpg", 28, 28));
+        avatar.setPreferredSize(new Dimension(28, 28));
+
+        JPanel textos = new JPanel();
+        textos.setOpaque(false);
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
+
+        JLabel nombre = new JLabel("uwu fernandez");
+        nombre.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        nombre.setForeground(TEXTO);
+
+        JLabel rol = new JLabel("Cajero");
+        rol.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        rol.setForeground(TEXTO_SUAVE);
+
+        textos.add(nombre);
+        textos.add(rol);
+
+        tarjeta.add(avatar, BorderLayout.WEST);
+        tarjeta.add(textos, BorderLayout.CENTER);
+
+        return tarjeta;
+    }
+
     private JPanel crearPanelPrincipal() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDE),
-                new EmptyBorder(18, 18, 18, 18)
+                new RoundedBorder(BORDE, 14),
+                new EmptyBorder(16, 16, 14, 16)
         ));
 
         panel.add(crearBarraAcciones(), BorderLayout.NORTH);
@@ -351,215 +337,245 @@ public class ArticulosStockFrame extends JFrame {
         return panel;
     }
 
-    /**
-     * Crea la zona superior del panel:
-     * botones de acción, alerta de stock, filtro y búsqueda.
-     */
     private JPanel crearBarraAcciones() {
         JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setBackground(Color.WHITE);
+        wrapper.setOpaque(false);
+        wrapper.setBorder(new EmptyBorder(0, 0, 14, 0));
 
-        // Botones superiores: Exportar y Añadir
-        JPanel botones = new JPanel(new GridBagLayout());
-        botones.setBackground(Color.WHITE);
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        botones.setOpaque(false);
 
-        JButton btnExportar = crearBotonSecundario("Exportar PDF");
-        JButton btnAgregar = crearBotonPrimario("+ Añadir Producto");
+        JButton btnExportar = crearBotonSecundario("Exportar PDF", "/img/imprimir.png", 150);
+        JButton btnAgregar = crearBotonPrimario("+  Añadir Producto", 170);
 
-        // Abre el formulario modal para agregar producto
-        btnAgregar.addActionListener(e -> abrirDialogoAgregar());
-
-        GridBagConstraints gbcBtn = new GridBagConstraints();
-        gbcBtn.insets = new Insets(0, 5, 0, 5);
-
-        gbcBtn.gridx = 0;
-        botones.add(btnExportar, gbcBtn);
-
-        gbcBtn.gridx = 1;
-        botones.add(btnAgregar, gbcBtn);
-
-        wrapper.add(botones, BorderLayout.EAST);
-
-        // Alerta de bajo stock
-        lblAlerta = new JLabel("  1 producto tiene existencias por debajo del mínimo");
-        lblAlerta.setOpaque(true);
-        lblAlerta.setBackground(AMARILLO_FONDO);
-        lblAlerta.setForeground(new Color(130, 90, 0));
-        lblAlerta.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblAlerta.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AMARILLO_BORDE),
-                new EmptyBorder(10, 12, 10, 12)
+        btnExportar.addActionListener(e -> JOptionPane.showMessageDialog(
+                this,
+                "La exportación a PDF todavía no está conectada.",
+                "Exportar PDF",
+                JOptionPane.INFORMATION_MESSAGE
         ));
 
-        // Filtros: categoría y búsqueda textual
+        btnAgregar.addActionListener(e -> abrirDialogoAgregar());
+
+        botones.add(btnExportar);
+        botones.add(btnAgregar);
+
+        lblAlerta = new JLabel("1 producto tiene existencias por debajo del mínimo");
+        lblAlerta.setIcon(redimensionarIcono("/img/stock.png", 17, 17));
+        lblAlerta.setIconTextGap(8);
+        lblAlerta.setOpaque(true);
+        lblAlerta.setBackground(AMARILLO_FONDO);
+        lblAlerta.setForeground(AMARILLO_TEXTO);
+        lblAlerta.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblAlerta.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(AMARILLO_BORDE, 10),
+                new EmptyBorder(9, 12, 9, 12)
+        ));
+
         JPanel filtros = new JPanel(new BorderLayout(12, 0));
-        filtros.setBackground(Color.WHITE);
-        filtros.setBorder(new EmptyBorder(14, 0, 14, 0));
+        filtros.setOpaque(false);
+        filtros.setBorder(new EmptyBorder(14, 0, 0, 0));
 
         cboCategoria = new JComboBox<>(new String[]{"Todas las categorías", "Comida", "Bebida"});
         cboCategoria.setPreferredSize(new Dimension(190, 36));
-
-        txtBuscar = new JTextField();
-        txtBuscar.setPreferredSize(new Dimension(270, 36));
-        txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar por nombre o código");
-
-        // Cada vez que el usuario escribe, se aplica filtro en tiempo real
-        txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent e) {
-                aplicarFiltros();
-            }
-        });
-
-        // Cada vez que cambia la categoría, se aplica filtro
+        cboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cboCategoria.setBackground(Color.WHITE);
         cboCategoria.addActionListener(e -> aplicarFiltros());
 
         filtros.add(cboCategoria, BorderLayout.WEST);
-        filtros.add(txtBuscar, BorderLayout.EAST);
+        filtros.add(crearBuscador(), BorderLayout.EAST);
 
         JPanel centro = new JPanel(new BorderLayout());
-        centro.setBackground(Color.WHITE);
-        centro.setBorder(new EmptyBorder(16, 0, 0, 0));
+        centro.setOpaque(false);
+        centro.setBorder(new EmptyBorder(14, 0, 0, 0));
         centro.add(lblAlerta, BorderLayout.NORTH);
         centro.add(filtros, BorderLayout.CENTER);
 
-        wrapper.add(centro, BorderLayout.SOUTH);
+        wrapper.add(botones, BorderLayout.NORTH);
+        wrapper.add(centro, BorderLayout.CENTER);
 
         return wrapper;
     }
 
-    /**
-     * Crea y configura la tabla de productos.
-     */
+    private JPanel crearBuscador() {
+        JPanel panel = new JPanel(new BorderLayout(8, 0));
+        panel.setBackground(Color.WHITE);
+        panel.setPreferredSize(new Dimension(280, 36));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(BORDE, 10),
+                new EmptyBorder(0, 10, 0, 10)
+        ));
+
+        JLabel icono = new JLabel(redimensionarIcono("/img/Lupa.png", 16, 16));
+
+        txtBuscar = new JTextField();
+        txtBuscar.setBorder(null);
+        txtBuscar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtBuscar.setForeground(TEXTO);
+        txtBuscar.putClientProperty("JTextField.placeholderText", "name or code product");
+        txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
+        });
+
+        panel.add(icono, BorderLayout.WEST);
+        panel.add(txtBuscar, BorderLayout.CENTER);
+
+        return panel;
+    }
+
     private JScrollPane crearTabla() {
         String[] columnas = {
             "Código", "Nombre", "Categoría", "Costo", "Precio",
             "Stock", "Min. stock", "Status", "Acciones"
         };
 
-        // Modelo no editable directamente.
-        // Las modificaciones se hacen con los botones editar/eliminar.
         modeloTabla = new DefaultTableModel(columnas, 0) {
-            @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
 
         tablaProductos = new JTable(modeloTabla);
-        tablaProductos.setRowHeight(42);
-        tablaProductos.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        tablaProductos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        tablaProductos.getTableHeader().setReorderingAllowed(false);
+        tablaProductos.setRowHeight(38);
+        tablaProductos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tablaProductos.setShowVerticalLines(false);
+        tablaProductos.setShowHorizontalLines(true);
+        tablaProductos.setGridColor(new Color(235, 238, 244));
         tablaProductos.setSelectionBackground(AZUL_CLARO);
-        tablaProductos.setSelectionForeground(Color.BLACK);
-        tablaProductos.setGridColor(new Color(235, 235, 235));
+        tablaProductos.setSelectionForeground(TEXTO);
+        tablaProductos.setFillsViewportHeight(true);
+        tablaProductos.setIntercellSpacing(new Dimension(0, 0));
 
-        // Ordenador/filtro de la tabla
+        JTableHeader header = tablaProductos.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        header.setForeground(new Color(45, 52, 65));
+        header.setBackground(Color.WHITE);
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 40));
+        header.setReorderingAllowed(false);
+
         sorter = new TableRowSorter<>(modeloTabla);
         tablaProductos.setRowSorter(sorter);
 
-        // Tamaño aproximado de columnas
-        tablaProductos.getColumnModel().getColumn(0).setPreferredWidth(80);
-        tablaProductos.getColumnModel().getColumn(1).setPreferredWidth(180);
-        tablaProductos.getColumnModel().getColumn(2).setPreferredWidth(110);
-        tablaProductos.getColumnModel().getColumn(3).setPreferredWidth(90);
-        tablaProductos.getColumnModel().getColumn(4).setPreferredWidth(90);
-        tablaProductos.getColumnModel().getColumn(5).setPreferredWidth(80);
-        tablaProductos.getColumnModel().getColumn(6).setPreferredWidth(90);
-        tablaProductos.getColumnModel().getColumn(7).setPreferredWidth(90);
-        tablaProductos.getColumnModel().getColumn(8).setPreferredWidth(120);
-
-        // Renderizadores personalizados para status, acciones y stock bajo
-        tablaProductos.getColumnModel().getColumn(7).setCellRenderer(new StatusRenderer());
-        tablaProductos.getColumnModel().getColumn(8).setCellRenderer(new AccionesRenderer());
-        tablaProductos.getColumnModel().getColumn(5).setCellRenderer(new StockRenderer());
-
-        /*
-         * Manejo de clicks en la columna "Acciones".
-         * Si el click cae en la mitad izquierda: Editar.
-         * Si cae en la mitad derecha: Eliminar.
-         */
-        tablaProductos.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int fila = tablaProductos.rowAtPoint(e.getPoint());
-                int columna = tablaProductos.columnAtPoint(e.getPoint());
-
-                if (fila >= 0 && columna == 8) {
-                    int filaModelo = tablaProductos.convertRowIndexToModel(fila);
-                    int xRelativo = e.getX() - tablaProductos.getCellRect(fila, columna, true).x;
-                    int anchoColumna = tablaProductos.getColumnModel().getColumn(columna).getWidth();
-
-                    if (xRelativo < anchoColumna / 2) {
-                        abrirDialogoEditar(filaModelo);
-                    } else {
-                        eliminarProducto(filaModelo);
-                    }
-                }
-            }
-        });
+        ajustarColumnas();
+        aplicarRenderers();
+        agregarAccionesTabla();
 
         JScrollPane scroll = new JScrollPane(tablaProductos);
-        scroll.setBorder(BorderFactory.createLineBorder(BORDE));
+        scroll.setBorder(new RoundedBorder(BORDE, 10));
         scroll.getViewport().setBackground(Color.WHITE);
 
         return scroll;
     }
 
-    /**
-     * Footer inferior de la tabla.
-     * Muestra cuántos registros están visibles.
-     */
+    private void ajustarColumnas() {
+        int[] anchos = {85, 175, 110, 85, 85, 75, 95, 95, 115};
+
+        for (int i = 0; i < anchos.length; i++) {
+            tablaProductos.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+        }
+    }
+
+    private void aplicarRenderers() {
+        tablaProductos.getColumnModel().getColumn(0).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(1).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(2).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(3).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(4).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(5).setCellRenderer(new StockRenderer());
+        tablaProductos.getColumnModel().getColumn(6).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(7).setCellRenderer(new StatusRenderer());
+        tablaProductos.getColumnModel().getColumn(8).setCellRenderer(new AccionesRenderer());
+    }
+
+    private void agregarAccionesTabla() {
+        tablaProductos.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                int filaVista = tablaProductos.rowAtPoint(e.getPoint());
+                int columnaVista = tablaProductos.columnAtPoint(e.getPoint());
+
+                if (filaVista < 0 || columnaVista < 0) {
+                    return;
+                }
+
+                if (tablaProductos.convertColumnIndexToModel(columnaVista) != 8) {
+                    return;
+                }
+
+                int filaModelo = tablaProductos.convertRowIndexToModel(filaVista);
+                int xRelativo = e.getX() - tablaProductos.getCellRect(filaVista, columnaVista, true).x;
+                int ancho = tablaProductos.getColumnModel().getColumn(columnaVista).getWidth();
+
+                if (xRelativo < ancho / 2) {
+                    abrirDialogoEditar(filaModelo);
+                } else {
+                    eliminarProducto(filaModelo);
+                }
+            }
+        });
+    }
+
     private JPanel crearFooter() {
         JPanel footer = new JPanel(new BorderLayout());
-        footer.setBackground(Color.WHITE);
-        footer.setBorder(new EmptyBorder(12, 0, 0, 0));
+        footer.setOpaque(false);
+        footer.setBorder(new EmptyBorder(10, 0, 0, 0));
 
         lblFooter = new JLabel("Mostrando 0 datos");
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblFooter.setForeground(new Color(90, 90, 90));
+        lblFooter.setForeground(new Color(80, 88, 100));
 
         footer.add(lblFooter, BorderLayout.WEST);
 
         return footer;
     }
 
-    /**
-     * Botón principal azul.
-     */
-    private JButton crearBotonPrimario(String texto) {
-        JButton boton = new JButton(texto);
+    private JButton crearBotonPrimario(String texto, int ancho) {
+        JButton boton = crearBotonBase(texto, ancho);
         boton.setBackground(AZUL);
         boton.setForeground(Color.WHITE);
-        boton.setFocusPainted(false);
-        boton.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        boton.setPreferredSize(new Dimension(165, 38));
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        boton.setBorder(new RoundedBorder(AZUL, 10));
+
+        boton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                boton.setBackground(AZUL_HOVER);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                boton.setBackground(AZUL);
+            }
+        });
+
         return boton;
     }
 
-    /**
-     * Botón secundario blanco con texto azul.
-     */
-    private JButton crearBotonSecundario(String texto) {
-        JButton boton = new JButton(texto);
+    private JButton crearBotonSecundario(String texto, String iconPath, int ancho) {
+        JButton boton = crearBotonBase(texto, ancho);
+        boton.setIcon(redimensionarIcono(iconPath, 16, 16));
+        boton.setIconTextGap(8);
         boton.setBackground(Color.WHITE);
         boton.setForeground(AZUL);
-        boton.setFocusPainted(false);
+        boton.setBorder(new RoundedBorder(AZUL, 10));
+        return boton;
+    }
+
+    private JButton crearBotonBase(String texto, int ancho) {
+        JButton boton = new JButton(texto);
+        boton.setPreferredSize(new Dimension(ancho, 40));
         boton.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        boton.setPreferredSize(new Dimension(150, 38));
+        boton.setFocusPainted(false);
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return boton;
     }
 
-    /**
-     * Carga datos temporales de prueba.
-     *
-     * IMPORTANTE:
-     * Esta función luego puede reemplazarse por una llamada al backend:
-     * productoDAO.listar()
-     */
     private void cargarDatosDemo() {
         agregarFila("BRG-001", "Inka kola", "Bebida", 3.00, 5.00, 120, 20, true);
         agregarFila("BRG-002", "Chicha morada", "Bebida", 4.00, 8.00, 81, 20, true);
@@ -568,16 +584,8 @@ public class ArticulosStockFrame extends JFrame {
         agregarFila("BRG-0A1", "Lomo saltado", "Comida", 4.00, 18.00, 3, 20, true);
         agregarFila("BRG-0S1", "Anticucho Corazon", "Comida", 4.00, 15.00, 120, 20, true);
         agregarFila("BRG-0S2", "Aji de Gallina", "Comida", 4.00, 15.00, 33, 20, true);
-
-        actualizarFooter();
     }
 
-    /**
-     * Agrega una fila al modelo de tabla.
-     *
-     * Este método sirve tanto para datos demo como para insertar visualmente
-     * productos creados desde el formulario.
-     */
     private void agregarFila(String codigo, String nombre, String categoria, double costo, double precio,
                              int stock, int stockMin, boolean activo) {
         modeloTabla.addRow(new Object[]{
@@ -593,19 +601,14 @@ public class ArticulosStockFrame extends JFrame {
         });
     }
 
-    /**
-     * Abre el formulario para agregar un producto.
-     */
     private void abrirDialogoAgregar() {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner);
         dialog.setVisible(true);
 
-        // Si el usuario presionó Aceptar y pasó las validaciones
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
 
-            // Validación visual para evitar códigos duplicados en la tabla
             if (codigoExiste(data.codigo)) {
                 JOptionPane.showMessageDialog(
                         this,
@@ -616,11 +619,6 @@ public class ArticulosStockFrame extends JFrame {
                 return;
             }
 
-            /*
-             * Aquí actualmente se agrega solo a la tabla.
-             * Luego se puede reemplazar o complementar con:
-             * productoDAO.insertar(data)
-             */
             agregarFila(data.codigo, data.nombre, data.categoria, data.costo, data.precio,
                     data.stock, data.stockMinimo, data.activo);
 
@@ -630,12 +628,8 @@ public class ArticulosStockFrame extends JFrame {
         }
     }
 
-    /**
-     * Abre el formulario para editar el producto seleccionado.
-     */
     private void abrirDialogoEditar(int filaModelo) {
         ProductoDialog.ProductoFormData actual = obtenerDataDesdeFila(filaModelo);
-
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner, actual);
         dialog.setVisible(true);
@@ -643,7 +637,6 @@ public class ArticulosStockFrame extends JFrame {
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
 
-            // Evita duplicar código si el usuario lo cambia al editar
             if (!data.codigo.equalsIgnoreCase(actual.codigo) && codigoExiste(data.codigo)) {
                 JOptionPane.showMessageDialog(
                         this,
@@ -654,11 +647,6 @@ public class ArticulosStockFrame extends JFrame {
                 return;
             }
 
-            /*
-             * Se actualiza visualmente la fila.
-             * Más adelante aquí se puede llamar:
-             * productoDAO.actualizar(data)
-             */
             modeloTabla.setValueAt(data.codigo, filaModelo, 0);
             modeloTabla.setValueAt(data.nombre, filaModelo, 1);
             modeloTabla.setValueAt(data.categoria, filaModelo, 2);
@@ -674,9 +662,6 @@ public class ArticulosStockFrame extends JFrame {
         }
     }
 
-    /**
-     * Elimina un producto de la tabla luego de confirmar.
-     */
     private void eliminarProducto(int filaModelo) {
         String nombre = String.valueOf(modeloTabla.getValueAt(filaModelo, 1));
 
@@ -689,23 +674,13 @@ public class ArticulosStockFrame extends JFrame {
         );
 
         if (opcion == JOptionPane.YES_OPTION) {
-            /*
-             * Actualmente elimina solo de la tabla.
-             * Luego puede reemplazarse por:
-             * productoDAO.eliminar(codigo)
-             */
             modeloTabla.removeRow(filaModelo);
-
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Producto eliminado correctamente");
         }
     }
 
-    /**
-     * Convierte una fila de la tabla en un objeto ProductoFormData.
-     * Esto permite reutilizar el mismo dialog para editar.
-     */
     private ProductoDialog.ProductoFormData obtenerDataDesdeFila(int fila) {
         String codigo = String.valueOf(modeloTabla.getValueAt(fila, 0));
         String nombre = String.valueOf(modeloTabla.getValueAt(fila, 1));
@@ -719,41 +694,34 @@ public class ArticulosStockFrame extends JFrame {
         return new ProductoDialog.ProductoFormData(codigo, nombre, categoria, costo, precio, stock, stockMin, activo);
     }
 
-    /**
-     * Verifica si un código ya existe dentro de la tabla.
-     */
     private boolean codigoExiste(String codigo) {
         for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-            String codigoTabla = String.valueOf(modeloTabla.getValueAt(i, 0));
-            if (codigoTabla.equalsIgnoreCase(codigo)) {
+            if (String.valueOf(modeloTabla.getValueAt(i, 0)).equalsIgnoreCase(codigo)) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * Aplica los filtros de búsqueda por texto y categoría.
-     */
     private void aplicarFiltros() {
+        if (sorter == null || txtBuscar == null || cboCategoria == null) {
+            return;
+        }
+
         String texto = txtBuscar.getText().trim();
         String categoria = String.valueOf(cboCategoria.getSelectedItem());
 
         RowFilter<DefaultTableModel, Object> filtroTexto = null;
         RowFilter<DefaultTableModel, Object> filtroCategoria = null;
 
-        // Filtro por código o nombre
         if (!texto.isEmpty()) {
-            String regex = "(?i)" + Pattern.quote(texto);
-            filtroTexto = RowFilter.regexFilter(regex, 0, 1);
+            filtroTexto = RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1);
         }
 
-        // Filtro por categoría
         if (!categoria.equals("Todas las categorías")) {
             filtroCategoria = RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", 2);
         }
 
-        // Combina los filtros según corresponda
         if (filtroTexto != null && filtroCategoria != null) {
             sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));
         } else if (filtroTexto != null) {
@@ -767,10 +735,6 @@ public class ArticulosStockFrame extends JFrame {
         actualizarFooter();
     }
 
-    /**
-     * Revisa cuántos productos tienen stock menor al mínimo.
-     * Si hay productos bajos, muestra la alerta amarilla.
-     */
     private void actualizarAlertaStock() {
         int bajoMinimo = 0;
 
@@ -785,36 +749,38 @@ public class ArticulosStockFrame extends JFrame {
 
         if (bajoMinimo > 0) {
             lblAlerta.setVisible(true);
-            lblAlerta.setText("  " + bajoMinimo + " producto(s) tiene(n) existencias por debajo del mínimo");
+            lblAlerta.setText(
+                    bajoMinimo == 1
+                            ? "1 producto tiene existencias por debajo del mínimo"
+                            : bajoMinimo + " productos tienen existencias por debajo del mínimo"
+            );
         } else {
             lblAlerta.setVisible(false);
         }
     }
 
-    /**
-     * Actualiza el texto inferior de la tabla.
-     */
     private void actualizarFooter() {
         int visibles = tablaProductos == null ? 0 : tablaProductos.getRowCount();
         int total = modeloTabla == null ? 0 : modeloTabla.getRowCount();
         lblFooter.setText("Mostrando " + visibles + " - " + total + " de " + total + " datos");
     }
 
-    /**
-     * Muestra una notificación flotante temporal tipo "toast".
-     */
     private void mostrarToast(String mensaje) {
-        final JLabel toast = new JLabel("  " + mensaje + "  ");
+        JLabel toast = new JLabel(mensaje);
         toast.setOpaque(true);
         toast.setBackground(new Color(235, 244, 255));
         toast.setForeground(AZUL);
         toast.setFont(new Font("Segoe UI", Font.BOLD, 13));
         toast.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(170, 205, 255)),
+                new RoundedBorder(new Color(174, 204, 252), 10),
                 new EmptyBorder(10, 14, 10, 14)
         ));
 
-        JDialogToast dialog = new JDialogToast(this, toast);
+        JDialog dialog = new JDialog(this, false);
+        dialog.setUndecorated(true);
+        dialog.add(toast);
+        dialog.pack();
+        dialog.setLocation(getX() + getWidth() - dialog.getWidth() - 40, getY() + 70);
         dialog.setVisible(true);
 
         Timer timer = new Timer(1800, e -> dialog.dispose());
@@ -822,106 +788,172 @@ public class ArticulosStockFrame extends JFrame {
         timer.start();
     }
 
-    /**
-     * Formatea valores monetarios para mostrarlos en la tabla.
-     */
     private String formatoMoneda(double valor) {
         return String.format("S/ %.2f", valor);
     }
 
-    /**
-     * Quita el símbolo de moneda para volver a convertir a double.
-     */
     private double limpiarMoneda(String texto) {
         return Double.parseDouble(texto.replace("S/", "").trim());
     }
 
-    /**
-     * Renderizador para la columna "Status".
-     * Da estilo visual al texto activo/inactivo.
-     */
-    private static class StatusRenderer extends DefaultTableCellRenderer {
-        @Override
+    private ImageIcon redimensionarIcono(String path, int width, int height) {
+        try {
+            java.net.URL imgURL = getClass().getResource(path);
+
+            if (imgURL != null) {
+                ImageIcon iconOriginal = new ImageIcon(imgURL);
+                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(img);
+            }
+        } catch (Exception e) {
+            System.err.println("No se encontró el icono: " + path);
+        }
+
+        return null;
+    }
+
+    private static class TextoRenderer extends DefaultTableCellRenderer {
+        private final int alineacion;
+
+        public TextoRenderer(int alineacion) {
+            this.alineacion = alineacion;
+        }
+
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column
+            );
 
-            if (!isSelected) {
-                label.setForeground(Color.WHITE);
-                label.setBackground(new Color(83, 137, 174));
-            }
+            label.setHorizontalAlignment(alineacion);
+            label.setBorder(new EmptyBorder(0, 8, 0, 8));
+            label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            label.setForeground(TEXTO);
+            label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
 
             return label;
         }
     }
 
-    /**
-     * Renderizador para la columna "Acciones".
-     * Muestra visualmente las opciones Editar y Eliminar.
-     */
-    private static class AccionesRenderer extends DefaultTableCellRenderer {
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setText("Editar   Eliminar");
-            label.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-            if (!isSelected) {
-                label.setForeground(AZUL);
-                label.setBackground(Color.WHITE);
-            }
-
-            return label;
-        }
-    }
-
-    /**
-     * Renderizador para la columna "Stock".
-     * Si el stock está debajo del mínimo, se muestra en rojo.
-     */
     private static class StockRenderer extends DefaultTableCellRenderer {
-        @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
                                                        boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            label.setHorizontalAlignment(SwingConstants.CENTER);
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column
+            );
 
             int stock = Integer.parseInt(String.valueOf(value));
             int stockMin = Integer.parseInt(String.valueOf(table.getValueAt(row, 6)));
+            boolean bajo = stock < stockMin;
 
-            if (!isSelected) {
-                if (stock < stockMin) {
-                    label.setForeground(ROJO);
-                    label.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                } else {
-                    label.setForeground(Color.BLACK);
-                    label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-                }
-                label.setBackground(Color.WHITE);
-            }
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setBorder(new EmptyBorder(0, 8, 0, 8));
+            label.setForeground(bajo ? ROJO : TEXTO);
+            label.setFont(new Font("Segoe UI", bajo ? Font.BOLD : Font.PLAIN, 12));
+            label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
 
             return label;
         }
     }
 
-    /**
-     * Dialog pequeño usado como notificación flotante.
-     */
-    private static class JDialogToast extends javax.swing.JDialog {
-        public JDialogToast(JFrame owner, JLabel label) {
-            super(owner, false);
-            setUndecorated(true);
-            add(label);
-            pack();
+    private static class StatusRenderer extends JPanel implements TableCellRenderer {
+        public StatusRenderer() {
+            setLayout(new GridBagLayout());
+            setOpaque(true);
+        }
 
-            int x = owner.getX() + owner.getWidth() - getWidth() - 45;
-            int y = owner.getY() + 65;
-            setLocation(x, y);
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            removeAll();
+            setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
+            String estado = String.valueOf(value);
+            Color color = estado.equalsIgnoreCase("activo")
+                    ? new Color(83, 137, 174)
+                    : new Color(150, 157, 168);
+
+            add(new PillLabel(estado, color), new GridBagConstraints());
+
+            return this;
         }
     }
-    
+
+    private static class AccionesRenderer extends JPanel implements TableCellRenderer {
+        public AccionesRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 10, 7));
+            setOpaque(true);
+        }
+
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            removeAll();
+            setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
+            JLabel editar = new JLabel("✎");
+            editar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            editar.setForeground(AZUL);
+
+            JLabel eliminar = new JLabel("⌫");
+            eliminar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            eliminar.setForeground(ROJO);
+
+            add(editar);
+            add(eliminar);
+
+            return this;
+        }
+    }
+
+    private static class PillLabel extends JLabel {
+        private final Color colorFondo;
+
+        public PillLabel(String texto, Color colorFondo) {
+            super(texto, SwingConstants.CENTER);
+            this.colorFondo = colorFondo;
+            setForeground(Color.WHITE);
+            setFont(new Font("Segoe UI", Font.BOLD, 11));
+            setBorder(new EmptyBorder(4, 13, 4, 13));
+            setOpaque(false);
+        }
+
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(colorFondo);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+            g2.dispose();
+
+            super.paintComponent(g);
+        }
+    }
+
+    private static class RoundedBorder extends AbstractBorder {
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.dispose();
+        }
+
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
+
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1;
+            insets.right = 1;
+            insets.top = 1;
+            insets.bottom = 1;
+            return insets;
+        }
+    }
 }
