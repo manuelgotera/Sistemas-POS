@@ -11,7 +11,6 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Insets;
@@ -56,10 +55,19 @@ public class ReportesFrame extends JFrame {
 
     private final DecimalFormat formato = new DecimalFormat("#,##0.00");
 
-    private final String[] dias = {"10 Nov", "11 Nov", "12 Nov", "13 Nov", "14 Nov", "15 Nov"};
-    private final double[] ingresos = {1200, 2100, 800, 1050, 3600, 4350};
-    private final double[] gastos = {600, 1200, 2100, 1500, 1600, 1000};
-    private final int[] metodosPago = {18, 21, 15};
+    private String periodoActual = "Últimos 7 días";
+    private String tabActual = "ingresos";
+
+    private String[] dias = {"10 Nov", "11 Nov", "12 Nov", "13 Nov", "14 Nov", "15 Nov"};
+    private double[] ingresos = {1200, 2100, 800, 1050, 3600, 4350};
+    private double[] gastos = {600, 1200, 2100, 1500, 1600, 1000};
+    private int[] metodosPago = {18, 21, 15};
+    private int totalTransacciones = 54;
+
+    private KpiCard cardTransacciones;
+    private KpiCard cardVentas;
+    private KpiCard cardGastos;
+    private KpiCard cardUtilidad;
 
     private LineChartPanel graficoLinea;
     private BarChartPanel graficoBarras;
@@ -68,6 +76,7 @@ public class ReportesFrame extends JFrame {
     private JButton tabIngresos;
     private JButton tabGastos;
     private JButton tabComparacion;
+    private JButton btnFiltroPeriodo;
 
     public ReportesFrame() {
         configurarVentana();
@@ -77,7 +86,7 @@ public class ReportesFrame extends JFrame {
     private void configurarVentana() {
         setTitle("Reportes");
         setSize(1180, 740);
-        setMinimumSize(new Dimension(1050, 650));
+        setMinimumSize(new Dimension(1050, 680));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -363,52 +372,51 @@ public class ReportesFrame extends JFrame {
     }
 
     private JPanel crearPanelPrincipal() {
-    RoundedPanel panel = new RoundedPanel(Color.WHITE, 14);
-    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-    panel.setBorder(BorderFactory.createCompoundBorder(
-            new RoundedBorder(BORDE, 14),
-            new EmptyBorder(14, 14, 14, 14)
-    ));
+        RoundedPanel panel = new RoundedPanel(Color.WHITE, 14);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(BORDE, 14),
+                new EmptyBorder(14, 14, 14, 14)
+        ));
 
-    JPanel acciones = crearBarraAcciones();
-    JPanel kpis = crearKPIs();
-    JPanel tabs = crearTabs();
+        JPanel acciones = crearBarraAcciones();
+        JPanel kpis = crearKPIs();
+        JPanel tabs = crearTabs();
 
-    graficoLinea = new LineChartPanel("Ingresos diarios", dias, ingresos, AZUL);
+        graficoLinea = new LineChartPanel("Ingresos diarios", dias, ingresos, AZUL);
 
-    JPanel graficosInferiores = crearGraficosInferiores();
+        JPanel graficosInferiores = crearGraficosInferiores();
 
-    // Alturas ajustadas para que no se corte en ventana 1180x720
-    estirar(acciones, 42);
-    estirar(kpis, 78);
-    estirar(tabs, 38);
-    estirar(graficoLinea, 205);
-    estirar(graficosInferiores, 165);
+        estirar(acciones, 42);
+        estirar(kpis, 78);
+        estirar(tabs, 38);
+        estirar(graficoLinea, 205);
+        estirar(graficosInferiores, 165);
 
-    panel.add(acciones);
-    panel.add(Box.createVerticalStrut(8));
-    panel.add(kpis);
-    panel.add(Box.createVerticalStrut(10));
-    panel.add(tabs);
-    panel.add(Box.createVerticalStrut(8));
-    panel.add(graficoLinea);
-    panel.add(Box.createVerticalStrut(8));
-    panel.add(graficosInferiores);
+        panel.add(acciones);
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(kpis);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(tabs);
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(graficoLinea);
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(graficosInferiores);
 
-    return panel;
-}
+        return panel;
+    }
 
     private JPanel crearBarraAcciones() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
 
-        JButton btnFiltro = crearBotonSecundario("Filtrar periodo", "/img/Historial.png", 150);
+        btnFiltroPeriodo = crearBotonSecundario(periodoActual, "/img/Historial.png", 150);
         JButton btnImprimir = crearBotonSecundario("Exportar reporte", "/img/imprimir.png", 170);
 
-        btnFiltro.addActionListener(e -> mostrarPendiente("Luego puedes conectar aquí un filtro por fechas."));
+        btnFiltroPeriodo.addActionListener(e -> mostrarFiltroPeriodo());
         btnImprimir.addActionListener(e -> mostrarPendiente("Exportación de reporte pendiente de conectar."));
 
-        panel.add(btnFiltro, BorderLayout.WEST);
+        panel.add(btnFiltroPeriodo, BorderLayout.WEST);
         panel.add(btnImprimir, BorderLayout.EAST);
 
         return panel;
@@ -422,37 +430,42 @@ public class ReportesFrame extends JFrame {
         double totalGastos = sumar(gastos);
         double utilidad = totalIngresos - totalGastos;
 
-        panel.add(new KpiCard(
+        cardTransacciones = new KpiCard(
                 redimensionarIcono("/img/carrito.png", 22, 22),
                 "Total transacciones",
-                "54",
+                String.valueOf(totalTransacciones),
                 MORADO,
                 new Color(245, 228, 255)
-        ));
+        );
 
-        panel.add(new KpiCard(
+        cardVentas = new KpiCard(
                 redimensionarIcono("/img/Reporte.png", 22, 22),
                 "Ventas totales",
                 soles(totalIngresos),
                 CELESTE,
                 new Color(225, 241, 255)
-        ));
+        );
 
-        panel.add(new KpiCard(
+        cardGastos = new KpiCard(
                 redimensionarIcono("/img/billetera.png", 22, 22),
                 "Total gastos",
                 soles(totalGastos),
                 ROJO,
                 new Color(255, 230, 232)
-        ));
+        );
 
-        panel.add(new KpiCard(
+        cardUtilidad = new KpiCard(
                 redimensionarIcono("/img/stock.png", 22, 22),
                 "Utilidad bruta",
                 soles(utilidad),
-                VERDE,
-                new Color(222, 250, 234)
-        ));
+                utilidad >= 0 ? VERDE : ROJO,
+                utilidad >= 0 ? new Color(222, 250, 234) : new Color(255, 230, 232)
+        );
+
+        panel.add(cardTransacciones);
+        panel.add(cardVentas);
+        panel.add(cardGastos);
+        panel.add(cardUtilidad);
 
         return panel;
     }
@@ -487,6 +500,8 @@ public class ReportesFrame extends JFrame {
     }
 
     private void cambiarTab(String tipo) {
+        tabActual = tipo;
+
         aplicarEstadoTab(tabIngresos, tipo.equals("ingresos"));
         aplicarEstadoTab(tabGastos, tipo.equals("gastos"));
         aplicarEstadoTab(tabComparacion, tipo.equals("comparacion"));
@@ -564,11 +579,105 @@ public class ReportesFrame extends JFrame {
     }
 
     private void estirar(Component componente, int alto) {
-    Dimension dimension = new Dimension(100, alto);
-    componente.setPreferredSize(dimension);
-    componente.setMinimumSize(dimension);
-    componente.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
-}
+        Dimension dimension = new Dimension(100, alto);
+        componente.setPreferredSize(dimension);
+        componente.setMinimumSize(dimension);
+        componente.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
+    }
+
+    private void mostrarFiltroPeriodo() {
+        String[] opciones = {
+            "Hoy",
+            "Últimos 7 días",
+            "Últimos 30 días",
+            "Este mes"
+        };
+
+        String seleccion = (String) JOptionPane.showInputDialog(
+                this,
+                "Seleccione el periodo del reporte:",
+                "Filtrar periodo",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                opciones,
+                periodoActual
+        );
+
+        if (seleccion != null) {
+            aplicarPeriodoDemo(seleccion);
+        }
+    }
+
+    private void aplicarPeriodoDemo(String periodo) {
+        periodoActual = periodo;
+
+        switch (periodo) {
+            case "Hoy":
+                dias = new String[]{"08:00", "10:00", "12:00", "14:00", "16:00", "18:00"};
+                ingresos = new double[]{120, 250, 600, 430, 780, 950};
+                gastos = new double[]{80, 90, 180, 150, 210, 260};
+                metodosPago = new int[]{8, 5, 4};
+                totalTransacciones = 17;
+                break;
+
+            case "Últimos 30 días":
+                dias = new String[]{"Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Hoy"};
+                ingresos = new double[]{6200, 7100, 8400, 7600, 9100, 10300};
+                gastos = new double[]{3200, 3900, 4100, 4300, 4700, 5000};
+                metodosPago = new int[]{70, 83, 61};
+                totalTransacciones = 214;
+                break;
+
+            case "Este mes":
+                dias = new String[]{"01-05", "06-10", "11-15", "16-20", "21-25", "26-30"};
+                ingresos = new double[]{5300, 6900, 8100, 7400, 9500, 11200};
+                gastos = new double[]{2900, 3400, 4600, 4200, 5200, 6100};
+                metodosPago = new int[]{86, 92, 73};
+                totalTransacciones = 251;
+                break;
+
+            default:
+                dias = new String[]{"10 Nov", "11 Nov", "12 Nov", "13 Nov", "14 Nov", "15 Nov"};
+                ingresos = new double[]{1200, 2100, 800, 1050, 3600, 4350};
+                gastos = new double[]{600, 1200, 2100, 1500, 1600, 1000};
+                metodosPago = new int[]{18, 21, 15};
+                totalTransacciones = 54;
+                break;
+        }
+
+        btnFiltroPeriodo.setText(periodo);
+        actualizarKPIs();
+        actualizarGraficos();
+    }
+
+    private void actualizarKPIs() {
+        double totalIngresos = sumar(ingresos);
+        double totalGastos = sumar(gastos);
+        double utilidad = totalIngresos - totalGastos;
+
+        cardTransacciones.setValor(String.valueOf(totalTransacciones));
+        cardVentas.setValor(soles(totalIngresos));
+        cardGastos.setValor(soles(totalGastos));
+        cardUtilidad.setValor(soles(utilidad));
+        cardUtilidad.setColorValor(utilidad >= 0 ? VERDE : ROJO);
+    }
+
+    private void actualizarGraficos() {
+        graficoDonut.setData(
+                new String[]{"Efectivo", "Tarjeta", "Yape / QR"},
+                metodosPago
+        );
+
+        graficoBarras.setData(dias, ingresos, gastos);
+
+        if (tabActual.equals("ingresos")) {
+            graficoLinea.setData("Ingresos diarios", dias, ingresos, AZUL);
+        } else if (tabActual.equals("gastos")) {
+            graficoLinea.setData("Gastos diarios", dias, gastos, ROJO);
+        } else {
+            graficoLinea.setData("Utilidad diaria", dias, calcularUtilidadDiaria(), VERDE);
+        }
+    }
 
     private double sumar(double[] datos) {
         double total = 0;
@@ -580,9 +689,11 @@ public class ReportesFrame extends JFrame {
 
     private double[] calcularUtilidadDiaria() {
         double[] utilidad = new double[ingresos.length];
+
         for (int i = 0; i < ingresos.length; i++) {
             utilidad[i] = ingresos[i] - gastos[i];
         }
+
         return utilidad;
     }
 
@@ -597,6 +708,7 @@ public class ReportesFrame extends JFrame {
     private ImageIcon redimensionarIcono(String path, int width, int height) {
         try {
             java.net.URL imgURL = getClass().getResource(path);
+
             if (imgURL != null) {
                 ImageIcon iconOriginal = new ImageIcon(imgURL);
                 Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
@@ -605,11 +717,13 @@ public class ReportesFrame extends JFrame {
         } catch (Exception e) {
             System.err.println("No se encontró el icono: " + path);
         }
+
         return null;
     }
 
     public static void main(String[] args) {
         activarVisual();
+
         SwingUtilities.invokeLater(() -> new ReportesFrame().setVisible(true));
     }
 
@@ -628,6 +742,8 @@ public class ReportesFrame extends JFrame {
     }
 
     private static class KpiCard extends RoundedPanel {
+
+        private JLabel lblValor;
 
         public KpiCard(ImageIcon icono, String titulo, String valor, Color colorPrincipal, Color colorFondoIcono) {
             super(Color.WHITE, 12);
@@ -648,7 +764,7 @@ public class ReportesFrame extends JFrame {
             lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             lblTitulo.setForeground(colorPrincipal);
 
-            JLabel lblValor = new JLabel(valor);
+            lblValor = new JLabel(valor);
             lblValor.setFont(new Font("Segoe UI", Font.BOLD, 17));
             lblValor.setForeground(colorPrincipal);
 
@@ -661,9 +777,20 @@ public class ReportesFrame extends JFrame {
             add(circulo, BorderLayout.WEST);
             add(textos, BorderLayout.CENTER);
         }
+
+        public void setValor(String nuevoValor) {
+            lblValor.setText(nuevoValor);
+            repaint();
+        }
+
+        public void setColorValor(Color color) {
+            lblValor.setForeground(color);
+            repaint();
+        }
     }
 
     private static class CircleIconPanel extends JPanel {
+
         private final ImageIcon icono;
         private final Color colorFondo;
 
@@ -676,6 +803,7 @@ public class ReportesFrame extends JFrame {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = preparar(g);
+
             int size = Math.min(getWidth(), getHeight()) - 2;
             int x = (getWidth() - size) / 2;
             int y = (getHeight() - size) / 2;
@@ -694,6 +822,7 @@ public class ReportesFrame extends JFrame {
     }
 
     private static class LineChartPanel extends RoundedPanel {
+
         private String titulo;
         private String[] labels;
         private double[] values;
@@ -705,6 +834,7 @@ public class ReportesFrame extends JFrame {
             this.labels = labels;
             this.values = values;
             this.lineColor = lineColor;
+
             setBorder(BorderFactory.createCompoundBorder(
                     new RoundedBorder(BORDE, 12),
                     new EmptyBorder(12, 14, 12, 14)
@@ -736,15 +866,33 @@ public class ReportesFrame extends JFrame {
             g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
             g2.drawString(titulo, 14, 25);
 
+            double min = obtenerMinimo(values);
             double max = obtenerMaximo(values);
-            max = redondearMaximo(max);
+
+            if (min > 0) {
+                min = 0;
+            }
+
+            if (max < 0) {
+                max = 0;
+            }
+
+            double rango = max - min;
+
+            if (rango == 0) {
+                rango = 1;
+            }
+
+            double padding = rango * 0.15;
+            min -= padding;
+            max += padding;
+            rango = max - min;
 
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-            g2.setColor(new Color(145, 153, 166));
 
             for (int i = 0; i <= 5; i++) {
                 int y = top + (h * i / 5);
-                double valor = max - (max * i / 5);
+                double valor = max - (rango * i / 5);
 
                 g2.setColor(new Color(225, 229, 236));
                 g2.setStroke(new BasicStroke(1));
@@ -752,6 +900,14 @@ public class ReportesFrame extends JFrame {
 
                 g2.setColor(new Color(145, 153, 166));
                 g2.drawString(formatoCorto(valor), 10, y + 4);
+            }
+
+            int yCero = top + (int) ((max - 0) / rango * h);
+
+            if (yCero >= top && yCero <= top + h) {
+                g2.setColor(new Color(180, 187, 198));
+                g2.setStroke(new BasicStroke(1.4f));
+                g2.drawLine(left, yCero, left + w, yCero);
             }
 
             g2.setColor(new Color(225, 229, 236));
@@ -763,7 +919,7 @@ public class ReportesFrame extends JFrame {
 
             for (int i = 0; i < values.length; i++) {
                 xs[i] = left + (w * i / (values.length - 1));
-                ys[i] = top + h - (int) ((values[i] / max) * h);
+                ys[i] = top + (int) ((max - values[i]) / rango * h);
             }
 
             g2.setColor(lineColor);
@@ -776,6 +932,7 @@ public class ReportesFrame extends JFrame {
             for (int i = 0; i < xs.length; i++) {
                 g2.setColor(Color.WHITE);
                 g2.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
+
                 g2.setColor(lineColor);
                 g2.setStroke(new BasicStroke(2));
                 g2.drawOval(xs[i] - 4, ys[i] - 4, 8, 8);
@@ -789,7 +946,8 @@ public class ReportesFrame extends JFrame {
                 g2.drawString(labels[i], xs[i] - textW / 2, top + h + 22);
             }
 
-            dibujarTooltip(g2, xs[Math.min(2, xs.length - 1)], ys[Math.min(2, ys.length - 1)], values[Math.min(2, values.length - 1)]);
+            int index = Math.min(2, values.length - 1);
+            dibujarTooltip(g2, xs[index], ys[index], values[index]);
 
             g2.dispose();
         }
@@ -817,9 +975,10 @@ public class ReportesFrame extends JFrame {
     }
 
     private static class DonutChartPanel extends RoundedPanel {
+
         private final String titulo;
-        private final String[] labels;
-        private final int[] values;
+        private String[] labels;
+        private int[] values;
         private final Color[] colors;
 
         public DonutChartPanel(String titulo, String[] labels, int[] values, Color[] colors) {
@@ -828,15 +987,23 @@ public class ReportesFrame extends JFrame {
             this.labels = labels;
             this.values = values;
             this.colors = colors;
+
             setBorder(BorderFactory.createCompoundBorder(
                     new RoundedBorder(BORDE, 12),
                     new EmptyBorder(12, 14, 12, 14)
             ));
         }
 
+        public void setData(String[] labels, int[] values) {
+            this.labels = labels;
+            this.values = values;
+            repaint();
+        }
+
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
+
             Graphics2D g2 = preparar(g);
 
             g2.setColor(TEXTO);
@@ -844,8 +1011,14 @@ public class ReportesFrame extends JFrame {
             g2.drawString(titulo, 14, 24);
 
             int total = 0;
+
             for (int value : values) {
                 total += value;
+            }
+
+            if (total <= 0) {
+                g2.dispose();
+                return;
             }
 
             int size = Math.min(125, getHeight() - 62);
@@ -868,6 +1041,7 @@ public class ReportesFrame extends JFrame {
             int legendY = y + 12;
 
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+
             for (int i = 0; i < labels.length; i++) {
                 int itemY = legendY + i * 28;
 
@@ -879,6 +1053,7 @@ public class ReportesFrame extends JFrame {
 
                 String porcentaje = String.format("%.1f%%", values[i] * 100.0 / total);
                 String texto = values[i] + " (" + porcentaje + ")";
+
                 g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
                 g2.drawString(texto, getWidth() - 105, itemY);
                 g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
@@ -889,10 +1064,11 @@ public class ReportesFrame extends JFrame {
     }
 
     private static class BarChartPanel extends RoundedPanel {
+
         private final String titulo;
-        private final String[] labels;
-        private final double[] ingresos;
-        private final double[] gastos;
+        private String[] labels;
+        private double[] ingresos;
+        private double[] gastos;
 
         public BarChartPanel(String titulo, String[] labels, double[] ingresos, double[] gastos) {
             super(Color.WHITE, 12);
@@ -900,10 +1076,18 @@ public class ReportesFrame extends JFrame {
             this.labels = labels;
             this.ingresos = ingresos;
             this.gastos = gastos;
+
             setBorder(BorderFactory.createCompoundBorder(
                     new RoundedBorder(BORDE, 12),
                     new EmptyBorder(12, 14, 12, 14)
             ));
+        }
+
+        public void setData(String[] labels, double[] ingresos, double[] gastos) {
+            this.labels = labels;
+            this.ingresos = ingresos;
+            this.gastos = gastos;
+            repaint();
         }
 
         @Override
@@ -927,6 +1111,7 @@ public class ReportesFrame extends JFrame {
             max = redondearMaximo(max);
 
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+
             for (int i = 0; i <= 4; i++) {
                 int y = top + (h * i / 4);
 
@@ -957,6 +1142,7 @@ public class ReportesFrame extends JFrame {
 
                 g2.setColor(new Color(145, 153, 166));
                 g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+
                 String label = labels[i];
                 int textW = g2.getFontMetrics().stringWidth(label);
                 g2.drawString(label, baseX - textW / 2, baseY + 20);
@@ -983,6 +1169,7 @@ public class ReportesFrame extends JFrame {
     }
 
     private static class RoundedPanel extends JPanel {
+
         private final Color fondo;
         private final int arc;
 
@@ -998,11 +1185,13 @@ public class ReportesFrame extends JFrame {
             g2.setColor(fondo);
             g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
             g2.dispose();
+
             super.paintComponent(g);
         }
     }
 
     private static class RoundedBorder extends AbstractBorder {
+
         private final Color color;
         private final int arc;
 
@@ -1042,38 +1231,65 @@ public class ReportesFrame extends JFrame {
     }
 
     private static double obtenerMaximo(double[] datos) {
-        double max = 0;
+        double max = datos.length > 0 ? datos[0] : 0;
+
         for (double dato : datos) {
             if (dato > max) {
                 max = dato;
             }
         }
-        return max <= 0 ? 1 : max;
+
+        return max;
+    }
+
+    private static double obtenerMinimo(double[] datos) {
+        double min = datos.length > 0 ? datos[0] : 0;
+
+        for (double dato : datos) {
+            if (dato < min) {
+                min = dato;
+            }
+        }
+
+        return min;
     }
 
     private static double redondearMaximo(double max) {
+        if (max <= 0) {
+            return 1000;
+        }
+
         if (max <= 1000) {
             return 1000;
         }
+
         if (max <= 2000) {
             return 2000;
         }
+
         if (max <= 3000) {
             return 3000;
         }
+
         if (max <= 4000) {
             return 4000;
         }
+
         if (max <= 5000) {
             return 5000;
         }
+
         return Math.ceil(max / 1000.0) * 1000;
     }
 
     private static String formatoCorto(double valor) {
-        if (valor >= 1000) {
-            return String.format("%.0fk", valor / 1000.0);
+        double abs = Math.abs(valor);
+        String signo = valor < 0 ? "-" : "";
+
+        if (abs >= 1000) {
+            return signo + String.format("%.0fk", abs / 1000.0);
         }
+
         return String.valueOf((int) valor);
     }
 }
