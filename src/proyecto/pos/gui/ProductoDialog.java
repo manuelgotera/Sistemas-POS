@@ -1,45 +1,47 @@
 package proyecto.pos.gui;
 
-// Librerías para construir el formulario modal
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Image;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.Window;
-
-// Componentes Swing
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.SwingConstants;
+import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Dialog/modal para agregar o editar productos.
- *
- * Esta clase forma parte del FRONTEND.
- * Se encarga de mostrar el formulario y validar los datos antes de enviarlos
- * a la ventana principal.
- *
- * No guarda directamente en base de datos.
- * Devuelve los datos validados a ArticulosStockFrame.
- */
 public class ProductoDialog extends JDialog {
 
-    // Colores principales usados en el formulario
     private static final Color AZUL = new Color(26, 83, 160);
-    private static final Color BORDE = new Color(225, 228, 233);
+    private static final Color AZUL_HOVER = new Color(18, 65, 128);
+    private static final Color FONDO = new Color(255, 255, 255);
+    private static final Color TEXTO = new Color(28, 35, 46);
+    private static final Color BORDE = new Color(225, 229, 236);
+    private static final Color BORDE_FOCUS = new Color(159, 190, 238);
+    private static final Color ROJO = new Color(220, 53, 69);
 
-    // Campos del formulario
     private JTextField txtNombre;
     private JTextField txtCodigo;
     private JTextField txtBarcode;
@@ -48,63 +50,62 @@ public class ProductoDialog extends JDialog {
     private JTextField txtStock;
     private JTextField txtStockMinimo;
     private JComboBox<String> cboCategoria;
-    private JCheckBox chkActivo;
+    private ToggleSwitch swActivo;
 
-    // Indica si el usuario presionó "Aceptar" correctamente
     private boolean confirmado = false;
-
-    // Objeto temporal donde se guardan los datos validados
     private ProductoFormData productoData;
 
-    /**
-     * Constructor usado cuando se va a agregar un producto nuevo.
-     */
     public ProductoDialog(Window owner) {
         super(owner, "Agregar un nuevo producto", ModalityType.APPLICATION_MODAL);
-        construirInterfaz();
+        construirInterfaz(false);
     }
 
-    /**
-     * Constructor usado cuando se va a editar un producto existente.
-     */
     public ProductoDialog(Window owner, ProductoFormData data) {
         super(owner, "Editar producto", ModalityType.APPLICATION_MODAL);
-        construirInterfaz();
+        construirInterfaz(true);
         cargarDatos(data);
     }
 
-    /**
-     * Construye la estructura del dialog:
-     * header, formulario y botones.
-     */
-    private void construirInterfaz() {
-        setSize(570, 610);
-        setMinimumSize(new Dimension(570, 610));
+    private void construirInterfaz(boolean editar) {
+        setUndecorated(true);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setSize(560, 690);
+        setMinimumSize(new Dimension(560, 650));
         setLocationRelativeTo(getOwner());
-        setLayout(new BorderLayout());
-        getContentPane().setBackground(Color.WHITE);
 
-        add(crearHeader(), BorderLayout.NORTH);
-        add(crearFormulario(), BorderLayout.CENTER);
-        add(crearBotones(), BorderLayout.SOUTH);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(FONDO);
+        root.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(new Color(205, 211, 220), 14),
+                new EmptyBorder(0, 0, 0, 0)
+        ));
+
+        root.add(crearHeader(), BorderLayout.NORTH);
+        root.add(crearFormulario(editar), BorderLayout.CENTER);
+        root.add(crearBotones(), BorderLayout.SOUTH);
+
+        setContentPane(root);
     }
 
-    /**
-     * Crea el encabezado del modal.
-     */
     private JPanel crearHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Color.WHITE);
-        header.setBorder(new EmptyBorder(18, 22, 14, 22));
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDE),
+                new EmptyBorder(17, 22, 15, 18)
+        ));
 
         JLabel titulo = new JLabel(getTitle());
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        titulo.setForeground(Color.BLACK);
 
-        JButton cerrar = new JButton("X");
+        JButton cerrar = new JButton("×");
+        cerrar.setPreferredSize(new Dimension(32, 32));
         cerrar.setFocusPainted(false);
         cerrar.setBorderPainted(false);
         cerrar.setContentAreaFilled(false);
-        cerrar.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        cerrar.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        cerrar.setForeground(new Color(25, 31, 40));
         cerrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         cerrar.addActionListener(e -> dispose());
 
@@ -114,23 +115,20 @@ public class ProductoDialog extends JDialog {
         return header;
     }
 
-    /**
-     * Crea todos los campos del formulario.
-     */
-    private JPanel crearFormulario() {
+    private JPanel crearFormulario(boolean editar) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 1, 0, BORDE),
-                new EmptyBorder(18, 22, 18, 22)
-        ));
+        panel.setBorder(new EmptyBorder(18, 22, 8, 22));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1;
 
-        JLabel descripcion = new JLabel("Ingrese los detalles del nuevo producto");
-        descripcion.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        JLabel descripcion = new JLabel(editar
+                ? "Actualiza los detalles del producto seleccionado"
+                : "Ingrese los detalles del nuevo producto");
+        descripcion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        descripcion.setForeground(new Color(55, 63, 75));
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -138,154 +136,241 @@ public class ProductoDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 12, 0);
         panel.add(descripcion, gbc);
 
-        // Campo de nombre
         txtNombre = crearCampo("Ejemplo: Producto A");
-        agregarCampoCompleto(panel, gbc, 1, "Nombre producto *", txtNombre);
+        agregarCampoCompleto(panel, gbc, 1, "Nombre producto", true, txtNombre);
 
-        // Código y barcode
         txtCodigo = crearCampo("Ejemplo: BRG-001");
         txtBarcode = crearCampo("Ejemplo: 00000000");
-        agregarDosCampos(panel, gbc, 3, "Código del producto *", txtCodigo, "Barcode (opcional)", txtBarcode);
+        agregarDosCampos(panel, gbc, 3,
+                "Código del producto", true, txtCodigo,
+                "Barcode", false, txtBarcode);
 
-        // Botón visual para imagen.
-        // Actualmente solo es parte visual, no abre selector de archivo.
-        JButton btnImagen = new JButton("<html><center>Imagen<br>Click para subir</center></html>");
-        btnImagen.setPreferredSize(new Dimension(130, 90));
-        btnImagen.setFocusPainted(false);
-        btnImagen.setBackground(Color.WHITE);
-        btnImagen.setForeground(Color.GRAY);
-        btnImagen.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
+        JPanel imagenBox = crearImagenBox();
         gbc.gridx = 0;
         gbc.gridy = 5;
-        gbc.gridwidth = 1;
-        gbc.insets = new Insets(8, 0, 5, 10);
-        JLabel lblImagen = crearLabel("Imagen del producto (opcional)");
-        panel.add(lblImagen, gbc);
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(6, 0, 6, 0);
+        panel.add(crearLabel("Imagen del producto (opcional)", false), gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 6;
+        gbc.gridwidth = 1;
         gbc.insets = new Insets(0, 0, 12, 10);
-        panel.add(btnImagen, gbc);
+        panel.add(imagenBox, gbc);
 
-        // Categoría
         cboCategoria = new JComboBox<>(new String[]{"Seleccionar categoría", "Comida", "Bebida"});
-        agregarCampoCompleto(panel, gbc, 7, "Categoría *", cboCategoria);
+        cboCategoria.setPreferredSize(new Dimension(210, 38));
+        cboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cboCategoria.setBackground(Color.WHITE);
+        cboCategoria.setBorder(new RoundedBorder(BORDE, 10));
+        agregarCampoCompleto(panel, gbc, 7, "Categoría", true, cboCategoria);
 
-        // Costo y precio de venta
         txtCosto = crearCampo("0.00");
         txtPrecio = crearCampo("0.00");
-        agregarDosCampos(panel, gbc, 9, "Costo *", txtCosto, "Precio venta *", txtPrecio);
+        agregarDosCampos(panel, gbc, 9,
+                "Costo", true, txtCosto,
+                "Precio venta", true, txtPrecio);
 
-        // Stock inicial y stock mínimo
         txtStock = crearCampo("0");
         txtStockMinimo = crearCampo("0");
-        agregarDosCampos(panel, gbc, 11, "Stock inicial *", txtStock, "Stock mínimo *", txtStockMinimo);
+        agregarDosCampos(panel, gbc, 11,
+                "Stock inicial", true, txtStock,
+                "Stock mínimo", true, txtStockMinimo);
 
-        // Estado del producto
-        chkActivo = new JCheckBox("Status activo");
-        chkActivo.setSelected(true);
-        chkActivo.setBackground(Color.WHITE);
-        chkActivo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-
+        JPanel estadoPanel = crearEstadoPanel();
         gbc.gridx = 0;
         gbc.gridy = 13;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(6, 0, 0, 0);
-        panel.add(chkActivo, gbc);
+        gbc.insets = new Insets(5, 0, 0, 0);
+        panel.add(estadoPanel, gbc);
 
         return panel;
     }
 
-    /**
-     * Crea los botones inferiores: Cancelar y Aceptar.
-     */
+    private JPanel crearImagenBox() {
+        JPanel box = new JPanel(new GridBagLayout());
+        box.setPreferredSize(new Dimension(112, 90));
+        box.setBackground(Color.WHITE);
+        box.setBorder(new RoundedBorder(BORDE, 10));
+        box.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JPanel contenido = new JPanel();
+        contenido.setOpaque(false);
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+
+        JLabel icono = new JLabel(redimensionarIcono("/img/stock.png", 20, 20));
+        icono.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel texto = new JLabel("Click para subir");
+        texto.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        texto.setForeground(new Color(160, 166, 176));
+        texto.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        contenido.add(icono);
+        contenido.add(Box.createVerticalStrut(8));
+        contenido.add(texto);
+        box.add(contenido);
+
+        box.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                JOptionPane.showMessageDialog(
+                        ProductoDialog.this,
+                        "La carga de imagen aún es visual. Puedes conectarla luego con JFileChooser.",
+                        "Imagen del producto",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+        });
+
+        return box;
+    }
+
+    private JPanel crearEstadoPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(2, 0, 0, 0));
+
+        JLabel label = crearLabel("Status activo", false);
+        swActivo = new ToggleSwitch();
+        swActivo.setSelected(true);
+
+        JPanel izquierda = new JPanel();
+        izquierda.setOpaque(false);
+        izquierda.setLayout(new BoxLayout(izquierda, BoxLayout.Y_AXIS));
+        izquierda.add(label);
+        izquierda.add(Box.createVerticalStrut(7));
+        izquierda.add(swActivo);
+
+        panel.add(izquierda, BorderLayout.WEST);
+        return panel;
+    }
+
     private JPanel crearBotones() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(Color.WHITE);
         panel.setBorder(new EmptyBorder(14, 22, 18, 22));
 
-        JButton btnCancelar = new JButton("Cancelar");
-        btnCancelar.setPreferredSize(new Dimension(220, 40));
-        btnCancelar.setFocusPainted(false);
-        btnCancelar.setForeground(AZUL);
-        btnCancelar.setBackground(Color.WHITE);
-        btnCancelar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JButton btnCancelar = crearBoton("Cancelar", false);
+        JButton btnAceptar = crearBoton("Aceptar", true);
+
         btnCancelar.addActionListener(e -> dispose());
-
-        JButton btnAceptar = new JButton("Aceptar");
-        btnAceptar.setPreferredSize(new Dimension(220, 40));
-        btnAceptar.setFocusPainted(false);
-        btnAceptar.setForeground(Color.WHITE);
-        btnAceptar.setBackground(AZUL);
-        btnAceptar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-
-        // Ejecuta las validaciones y guarda temporalmente los datos
         btnAceptar.addActionListener(e -> guardar());
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(0, 5, 0, 5);
-
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1;
+        gbc.insets = new Insets(0, 0, 0, 8);
         gbc.gridx = 0;
         panel.add(btnCancelar, gbc);
 
+        gbc.insets = new Insets(0, 8, 0, 0);
         gbc.gridx = 1;
         panel.add(btnAceptar, gbc);
 
         return panel;
     }
 
-    /**
-     * Crea un campo de texto con placeholder.
-     * FlatLaf permite usar la propiedad "JTextField.placeholderText".
-     */
+    private JButton crearBoton(String texto, boolean primario) {
+        JButton boton = new JButton(texto);
+        boton.setPreferredSize(new Dimension(220, 42));
+        boton.setFocusPainted(false);
+        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        boton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
+        if (primario) {
+            boton.setBackground(AZUL);
+            boton.setForeground(Color.WHITE);
+            boton.setBorder(new RoundedBorder(AZUL, 10));
+            boton.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    boton.setBackground(AZUL_HOVER);
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    boton.setBackground(AZUL);
+                }
+            });
+        } else {
+            boton.setBackground(Color.WHITE);
+            boton.setForeground(AZUL);
+            boton.setBorder(new RoundedBorder(AZUL, 10));
+        }
+
+        return boton;
+    }
+
     private JTextField crearCampo(String placeholder) {
         JTextField campo = new JTextField();
-        campo.setPreferredSize(new Dimension(210, 36));
+        campo.setPreferredSize(new Dimension(210, 38));
+        campo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        campo.setForeground(TEXTO);
+        campo.setBackground(Color.WHITE);
+        campo.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(BORDE, 10),
+                new EmptyBorder(0, 10, 0, 10)
+        ));
         campo.putClientProperty("JTextField.placeholderText", placeholder);
+
+        campo.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                campo.setBorder(BorderFactory.createCompoundBorder(
+                        new RoundedBorder(BORDE_FOCUS, 10),
+                        new EmptyBorder(0, 10, 0, 10)
+                ));
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                campo.setBorder(BorderFactory.createCompoundBorder(
+                        new RoundedBorder(BORDE, 10),
+                        new EmptyBorder(0, 10, 0, 10)
+                ));
+            }
+        });
+
         return campo;
     }
 
-    /**
-     * Crea un JLabel estándar del formulario.
-     */
-    private JLabel crearLabel(String texto) {
-        JLabel label = new JLabel(texto);
-        label.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+    private JLabel crearLabel(String texto, boolean requerido) {
+        String labelText = requerido
+                ? "<html>" + texto + " <font color='#dc3545'>*</font></html>"
+                : texto;
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        label.setForeground(new Color(40, 47, 58));
         return label;
     }
 
-    /**
-     * Agrega un campo que ocupa el ancho completo del formulario.
-     */
-    private void agregarCampoCompleto(JPanel panel, GridBagConstraints gbc, int fila, String label, java.awt.Component campo) {
+    private void agregarCampoCompleto(JPanel panel, GridBagConstraints gbc, int fila,
+                                      String label, boolean requerido, Component campo) {
         gbc.gridx = 0;
         gbc.gridy = fila;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(6, 0, 5, 0);
-        panel.add(crearLabel(label), gbc);
+        gbc.insets = new Insets(6, 0, 6, 0);
+        panel.add(crearLabel(label, requerido), gbc);
 
         gbc.gridy = fila + 1;
         gbc.insets = new Insets(0, 0, 8, 0);
         panel.add(campo, gbc);
     }
 
-    /**
-     * Agrega dos campos en la misma fila.
-     */
     private void agregarDosCampos(JPanel panel, GridBagConstraints gbc, int fila,
-                                  String label1, java.awt.Component campo1,
-                                  String label2, java.awt.Component campo2) {
+                                  String label1, boolean req1, Component campo1,
+                                  String label2, boolean req2, Component campo2) {
         gbc.gridwidth = 1;
 
         gbc.gridx = 0;
         gbc.gridy = fila;
-        gbc.insets = new Insets(6, 0, 5, 10);
-        panel.add(crearLabel(label1), gbc);
+        gbc.insets = new Insets(6, 0, 6, 10);
+        panel.add(crearLabel(label1, req1), gbc);
 
         gbc.gridx = 1;
-        gbc.insets = new Insets(6, 10, 5, 0);
-        panel.add(crearLabel(label2), gbc);
+        gbc.insets = new Insets(6, 10, 6, 0);
+        panel.add(crearLabel(label2, req2), gbc);
 
         gbc.gridx = 0;
         gbc.gridy = fila + 1;
@@ -297,9 +382,6 @@ public class ProductoDialog extends JDialog {
         panel.add(campo2, gbc);
     }
 
-    /**
-     * Carga los datos existentes en el formulario cuando se edita un producto.
-     */
     private void cargarDatos(ProductoFormData data) {
         txtCodigo.setText(data.codigo);
         txtNombre.setText(data.nombre);
@@ -308,19 +390,14 @@ public class ProductoDialog extends JDialog {
         txtPrecio.setText(String.valueOf(data.precio));
         txtStock.setText(String.valueOf(data.stock));
         txtStockMinimo.setText(String.valueOf(data.stockMinimo));
-        chkActivo.setSelected(data.activo);
+        swActivo.setSelected(data.activo);
     }
 
-    /**
-     * Valida los campos y, si todo está correcto, guarda los datos
-     * en productoData.
-     */
     private void guardar() {
         String nombre = txtNombre.getText().trim();
         String codigo = txtCodigo.getText().trim();
         String categoria = String.valueOf(cboCategoria.getSelectedItem());
 
-        // Validaciones de campos obligatorios
         if (nombre.isEmpty()) {
             mostrarError("El nombre del producto es obligatorio.", txtNombre);
             return;
@@ -342,7 +419,6 @@ public class ProductoDialog extends JDialog {
         int stock;
         int stockMinimo;
 
-        // Validación de costo
         try {
             costo = Double.parseDouble(txtCosto.getText().trim());
             if (costo < 0) {
@@ -354,7 +430,6 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
-        // Validación de precio
         try {
             precio = Double.parseDouble(txtPrecio.getText().trim());
             if (precio < 0) {
@@ -366,14 +441,11 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
-        // Regla de negocio básica:
-        // el precio de venta no debería ser menor al costo
         if (precio < costo) {
             mostrarError("El precio de venta no puede ser menor que el costo.", txtPrecio);
             return;
         }
 
-        // Validación de stock inicial
         try {
             stock = Integer.parseInt(txtStock.getText().trim());
             if (stock < 0) {
@@ -385,7 +457,6 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
-        // Validación de stock mínimo
         try {
             stockMinimo = Integer.parseInt(txtStockMinimo.getText().trim());
             if (stockMinimo < 0) {
@@ -397,7 +468,6 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
-        // Si pasó todas las validaciones, se crea el objeto temporal.
         productoData = new ProductoFormData(
                 codigo,
                 nombre,
@@ -406,41 +476,104 @@ public class ProductoDialog extends JDialog {
                 precio,
                 stock,
                 stockMinimo,
-                chkActivo.isSelected()
+                swActivo.isSelected()
         );
 
         confirmado = true;
         dispose();
     }
 
-    /**
-     * Muestra mensaje de error y enfoca el campo correspondiente.
-     */
-    private void mostrarError(String mensaje, java.awt.Component campo) {
+    private void mostrarError(String mensaje, Component campo) {
         JOptionPane.showMessageDialog(this, mensaje, "Validación", JOptionPane.WARNING_MESSAGE);
         campo.requestFocus();
     }
 
-    /**
-     * Indica si el formulario fue aceptado correctamente.
-     */
     public boolean isConfirmado() {
         return confirmado;
     }
 
-    /**
-     * Devuelve los datos validados del formulario.
-     */
     public ProductoFormData getProductoData() {
         return productoData;
     }
 
-    /**
-     * Clase interna usada para transportar los datos del formulario.
-     *
-     * Se usa para no depender todavía directamente del modelo de base de datos.
-     * Luego puede reemplazarse por Insumo, Plato u otra clase del paquete model.
-     */
+    private ImageIcon redimensionarIcono(String path, int width, int height) {
+        try {
+            java.net.URL imgURL = getClass().getResource(path);
+            if (imgURL != null) {
+                ImageIcon iconOriginal = new ImageIcon(imgURL);
+                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(img);
+            }
+        } catch (Exception e) {
+            System.err.println("No se encontró el icono: " + path);
+        }
+        return null;
+    }
+
+    private static class ToggleSwitch extends JToggleButton {
+        public ToggleSwitch() {
+            setPreferredSize(new Dimension(42, 22));
+            setMinimumSize(new Dimension(42, 22));
+            setMaximumSize(new Dimension(42, 22));
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setContentAreaFilled(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth();
+            int h = getHeight();
+            int padding = 3;
+            int circle = h - padding * 2;
+
+            g2.setColor(isSelected() ? AZUL : new Color(190, 196, 205));
+            g2.fillRoundRect(0, 0, w, h, h, h);
+
+            int x = isSelected() ? w - circle - padding : padding;
+            g2.setColor(Color.WHITE);
+            g2.fillOval(x, padding, circle, circle);
+            g2.dispose();
+        }
+    }
+
+    private static class RoundedBorder extends AbstractBorder {
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1;
+            insets.right = 1;
+            insets.top = 1;
+            insets.bottom = 1;
+            return insets;
+        }
+    }
+
     public static class ProductoFormData {
         public String codigo;
         public String nombre;
