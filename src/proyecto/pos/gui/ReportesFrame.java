@@ -49,7 +49,8 @@ public class ReportesFrame extends JFrame {
 
     private static final Color MORADO = new Color(183, 80, 255);
     private static final Color CELESTE = new Color(0, 118, 255);
-    private static final Color ROJO = new Color(235, 32, 49);
+    private static final Color ROJO = new Color(235, 32, 49); // Mantenido para KPIs
+    private static final Color ROJO_SALIR = new Color(220, 53, 69);
     private static final Color VERDE = new Color(0, 172, 65);
     private static final Color NARANJA = new Color(245, 158, 11);
 
@@ -100,6 +101,8 @@ public class ReportesFrame extends JFrame {
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
+    // ─── SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
+
     private JPanel crearSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setPreferredSize(new Dimension(220, 0));
@@ -114,7 +117,7 @@ public class ReportesFrame extends JFrame {
         JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
         JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
         JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
-        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", true);
+        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", true); // <-- ACTIVO
         JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
         JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", false);
 
@@ -127,14 +130,18 @@ public class ReportesFrame extends JFrame {
             new ArticulosStockFrame().setVisible(true);
             dispose();
         });
-
+        
+        btnConfig.addActionListener(e -> {
+            new ConfiguracionFrame().setVisible(true);
+            this.dispose();
+        });
+        
         btnHistorial.addActionListener(e -> {
             new HistorialTransaccionesFrame().setVisible(true);
             dispose();
         });
 
         btnGastos.addActionListener(e -> mostrarPendiente("Módulo de gastos pendiente de conectar."));
-        btnConfig.addActionListener(e -> mostrarPendiente("Módulo de configuración pendiente de conectar."));
 
         agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
 
@@ -142,12 +149,11 @@ public class ReportesFrame extends JFrame {
         sidebar.add(crearLinea());
         sidebar.add(Box.createVerticalStrut(12));
 
-        JButton btnModo = crearBotonMenu("Mode Tampilan", "/img/ojo.png", false);
         JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
-        btnSalir.setForeground(new Color(220, 53, 69));
+        btnSalir.setForeground(ROJO_SALIR);
         btnSalir.addActionListener(e -> System.exit(0));
 
-        agregarMenu(sidebar, btnModo, btnSalir);
+        agregarMenu(sidebar, btnSalir);
         sidebar.add(Box.createVerticalStrut(18));
 
         return sidebar;
@@ -173,8 +179,8 @@ public class ReportesFrame extends JFrame {
         textos.setOpaque(false);
         textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
 
-        JLabel lblPos = new JLabel("Pos System");
-        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        JLabel lblPos = new JLabel("Pos");
+        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblPos.setForeground(AZUL);
 
         JLabel lblDesc = new JLabel("Sistema de Caja");
@@ -187,24 +193,17 @@ public class ReportesFrame extends JFrame {
         marca.add(logo);
         marca.add(textos);
 
-        JButton btnColapsar = new JButton("≪");
-        btnColapsar.setPreferredSize(new Dimension(34, 34));
-        btnColapsar.setFocusPainted(false);
-        btnColapsar.setBorderPainted(false);
-        btnColapsar.setBackground(new Color(236, 239, 244));
-        btnColapsar.setForeground(new Color(80, 86, 98));
-        btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
         header.add(marca, BorderLayout.CENTER);
-        header.add(btnColapsar, BorderLayout.EAST);
 
         return header;
     }
 
     private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
         JButton boton = new JButton(texto);
-        boton.setIcon(redimensionarIcono(iconPath, 18, 18));
-        boton.setIconTextGap(13);
+        if (iconPath != null && !iconPath.isEmpty()) {
+            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
+            boton.setIconTextGap(13);
+        }
         boton.setMaximumSize(new Dimension(190, 40));
         boton.setPreferredSize(new Dimension(190, 40));
         boton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -258,6 +257,8 @@ public class ReportesFrame extends JFrame {
         return linea;
     }
 
+    // ─── CONTENIDO PRINCIPAL ──────────────────────────────────────────────────────
+
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(FONDO);
@@ -292,7 +293,7 @@ public class ReportesFrame extends JFrame {
 
         JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         derecha.setOpaque(false);
-        derecha.add(crearBotonIcono("/img/ojo.png"));
+        // Se ha omitido el botón ojo para estandarizar con las demás ventanas.
         derecha.add(crearTarjetaHora());
         derecha.add(crearTarjetaUsuario());
 
@@ -300,16 +301,6 @@ public class ReportesFrame extends JFrame {
         header.add(derecha, BorderLayout.EAST);
 
         return header;
-    }
-
-    private JButton crearBotonIcono(String iconPath) {
-        JButton boton = new JButton(redimensionarIcono(iconPath, 18, 18));
-        boton.setPreferredSize(new Dimension(44, 40));
-        boton.setBackground(Color.WHITE);
-        boton.setFocusPainted(false);
-        boton.setBorder(new RoundedBorder(BORDE, 12));
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return boton;
     }
 
     private JPanel crearTarjetaHora() {

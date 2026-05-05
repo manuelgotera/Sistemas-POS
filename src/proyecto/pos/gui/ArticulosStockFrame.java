@@ -79,6 +79,16 @@ public class ArticulosStockFrame extends JFrame {
             new Caja_GUI().setVisible(true);
             dispose();
         });
+        
+        btnReportes.addActionListener(e -> {
+            new ReportesFrame().setVisible(true);
+            this.dispose();
+        });
+        
+        btnConfig.addActionListener(e -> {
+            new ConfiguracionFrame().setVisible(true);
+            this.dispose();
+        });
 
         btnHistorial.addActionListener(e -> {
             new HistorialTransaccionesFrame().setVisible(true);
@@ -90,12 +100,12 @@ public class ArticulosStockFrame extends JFrame {
         sidebar.add(crearLinea());
         sidebar.add(Box.createVerticalStrut(12));
 
-        JButton btnModo = crearBotonMenu("Mode Tampilan", "/img/ojo.png", false);
+        // Se eliminó el botón de Modo Tampilan
         JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
         btnSalir.setForeground(ROJO);
         btnSalir.addActionListener(e -> System.exit(0));
 
-        agregarMenu(sidebar, btnModo, btnSalir);
+        agregarMenu(sidebar, btnSalir);
         sidebar.add(Box.createVerticalStrut(18));
 
         return sidebar;
@@ -142,16 +152,8 @@ public class ArticulosStockFrame extends JFrame {
         marca.add(logo);
         marca.add(textos);
 
-        JButton btnColapsar = new JButton("≪");
-        btnColapsar.setPreferredSize(new Dimension(34, 34));
-        btnColapsar.setFocusPainted(false);
-        btnColapsar.setBorderPainted(false);
-        btnColapsar.setBackground(new Color(236, 239, 244));
-        btnColapsar.setForeground(new Color(80, 86, 98));
-        btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
+        // Se eliminó el botón btnColapsar de aquí
         header.add(marca, BorderLayout.CENTER);
-        header.add(btnColapsar, BorderLayout.EAST);
 
         return header;
     }
@@ -236,7 +238,7 @@ public class ArticulosStockFrame extends JFrame {
 
         JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         derecha.setOpaque(false);
-        derecha.add(crearBotonIcono("/img/ojo.png"));
+        // Se eliminó crearBotonIcono("/img/ojo.png") de aquí
         derecha.add(crearTarjetaHora());
         derecha.add(crearTarjetaUsuario());
 
@@ -246,34 +248,23 @@ public class ArticulosStockFrame extends JFrame {
         return header;
     }
 
-    private JButton crearBotonIcono(String iconPath) {
-        JButton boton = new JButton(redimensionarIcono(iconPath, 18, 18));
-        boton.setPreferredSize(new Dimension(44, 40));
-        boton.setBackground(Color.WHITE);
-        boton.setFocusPainted(false);
-        boton.setBorder(new RoundedBorder(BORDE, 12));
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return boton;
-    }
-
+    // El resto del código se mantiene igual...
     private JPanel crearTarjetaHora() {
         JPanel tarjeta = crearTarjetaHeader(110);
-
         JLabel lblTitulo = new JLabel("Hora");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblTitulo.setForeground(TEXTO);
 
-        JLabel lblHora = new JLabel(new SimpleDateFormat("HH:mm:ss").format(new Date()) + " WIB");
+        JLabel lblHora = new JLabel(new SimpleDateFormat("HH:mm:ss").format(new Date()));
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblHora.setForeground(TEXTO_SUAVE);
 
         new Timer(1000, e -> {
-            lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()) + " WIB");
+            lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()));
         }).start();
 
         tarjeta.add(lblTitulo);
         tarjeta.add(lblHora);
-
         return tarjeta;
     }
 
@@ -305,7 +296,7 @@ public class ArticulosStockFrame extends JFrame {
         textos.setOpaque(false);
         textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
 
-        JLabel nombre = new JLabel("uwu fernandez");
+        JLabel nombre = new JLabel("Manuel Gotera");
         nombre.setFont(new Font("Segoe UI", Font.BOLD, 10));
         nombre.setForeground(TEXTO);
 
@@ -414,17 +405,9 @@ public class ArticulosStockFrame extends JFrame {
         txtBuscar.setForeground(TEXTO);
         txtBuscar.putClientProperty("JTextField.placeholderText", "name or code product");
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) {
-                aplicarFiltros();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                aplicarFiltros();
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                aplicarFiltros();
-            }
+            public void insertUpdate(DocumentEvent e) { aplicarFiltros(); }
+            public void removeUpdate(DocumentEvent e) { aplicarFiltros(); }
+            public void changedUpdate(DocumentEvent e) { aplicarFiltros(); }
         });
 
         panel.add(icono, BorderLayout.WEST);
@@ -434,15 +417,9 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private JScrollPane crearTabla() {
-        String[] columnas = {
-            "Código", "Nombre", "Categoría", "Costo", "Precio",
-            "Stock", "Min. stock", "Status", "Acciones"
-        };
-
+        String[] columnas = { "Código", "Nombre", "Categoría", "Costo", "Precio", "Stock", "Min. stock", "Status", "Acciones" };
         modeloTabla = new DefaultTableModel(columnas, 0) {
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+            public boolean isCellEditable(int row, int column) { return false; }
         };
 
         tablaProductos = new JTable(modeloTabla);
@@ -479,7 +456,6 @@ public class ArticulosStockFrame extends JFrame {
 
     private void ajustarColumnas() {
         int[] anchos = {85, 175, 110, 85, 85, 75, 95, 95, 115};
-
         for (int i = 0; i < anchos.length; i++) {
             tablaProductos.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
         }
@@ -502,14 +478,8 @@ public class ArticulosStockFrame extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 int filaVista = tablaProductos.rowAtPoint(e.getPoint());
                 int columnaVista = tablaProductos.columnAtPoint(e.getPoint());
-
-                if (filaVista < 0 || columnaVista < 0) {
-                    return;
-                }
-
-                if (tablaProductos.convertColumnIndexToModel(columnaVista) != 8) {
-                    return;
-                }
+                if (filaVista < 0 || columnaVista < 0) return;
+                if (tablaProductos.convertColumnIndexToModel(columnaVista) != 8) return;
 
                 int filaModelo = tablaProductos.convertRowIndexToModel(filaVista);
                 int xRelativo = e.getX() - tablaProductos.getCellRect(filaVista, columnaVista, true).x;
@@ -528,13 +498,10 @@ public class ArticulosStockFrame extends JFrame {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
         footer.setBorder(new EmptyBorder(10, 0, 0, 0));
-
         lblFooter = new JLabel("Mostrando 0 datos");
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblFooter.setForeground(new Color(80, 88, 100));
-
         footer.add(lblFooter, BorderLayout.WEST);
-
         return footer;
     }
 
@@ -543,17 +510,10 @@ public class ArticulosStockFrame extends JFrame {
         boton.setBackground(AZUL);
         boton.setForeground(Color.WHITE);
         boton.setBorder(new RoundedBorder(AZUL, 10));
-
         boton.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                boton.setBackground(AZUL_HOVER);
-            }
-
-            public void mouseExited(MouseEvent e) {
-                boton.setBackground(AZUL);
-            }
+            public void mouseEntered(MouseEvent e) { boton.setBackground(AZUL_HOVER); }
+            public void mouseExited(MouseEvent e) { boton.setBackground(AZUL); }
         });
-
         return boton;
     }
 
@@ -586,42 +546,21 @@ public class ArticulosStockFrame extends JFrame {
         agregarFila("BRG-0S2", "Aji de Gallina", "Comida", 4.00, 15.00, 33, 20, true);
     }
 
-    private void agregarFila(String codigo, String nombre, String categoria, double costo, double precio,
-                             int stock, int stockMin, boolean activo) {
-        modeloTabla.addRow(new Object[]{
-            codigo,
-            nombre,
-            categoria,
-            formatoMoneda(costo),
-            formatoMoneda(precio),
-            stock,
-            stockMin,
-            activo ? "activo" : "inactivo",
-            "Editar   Eliminar"
-        });
+    private void agregarFila(String codigo, String nombre, String categoria, double costo, double precio, int stock, int stockMin, boolean activo) {
+        modeloTabla.addRow(new Object[]{ codigo, nombre, categoria, formatoMoneda(costo), formatoMoneda(precio), stock, stockMin, activo ? "activo" : "inactivo", "Editar   Eliminar" });
     }
 
     private void abrirDialogoAgregar() {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner);
         dialog.setVisible(true);
-
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
-
             if (codigoExiste(data.codigo)) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "El código del producto ya existe. Ingrese otro código.",
-                        "Código duplicado",
-                        JOptionPane.WARNING_MESSAGE
-                );
+                JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-
-            agregarFila(data.codigo, data.nombre, data.categoria, data.costo, data.precio,
-                    data.stock, data.stockMinimo, data.activo);
-
+            agregarFila(data.codigo, data.nombre, data.categoria, data.costo, data.precio, data.stock, data.stockMinimo, data.activo);
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Datos agregados con éxito");
@@ -633,20 +572,12 @@ public class ArticulosStockFrame extends JFrame {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner, actual);
         dialog.setVisible(true);
-
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
-
             if (!data.codigo.equalsIgnoreCase(actual.codigo) && codigoExiste(data.codigo)) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        "El código del producto ya existe. Ingrese otro código.",
-                        "Código duplicado",
-                        JOptionPane.WARNING_MESSAGE
-                );
+                JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-
             modeloTabla.setValueAt(data.codigo, filaModelo, 0);
             modeloTabla.setValueAt(data.nombre, filaModelo, 1);
             modeloTabla.setValueAt(data.categoria, filaModelo, 2);
@@ -655,7 +586,6 @@ public class ArticulosStockFrame extends JFrame {
             modeloTabla.setValueAt(data.stock, filaModelo, 5);
             modeloTabla.setValueAt(data.stockMinimo, filaModelo, 6);
             modeloTabla.setValueAt(data.activo ? "activo" : "inactivo", filaModelo, 7);
-
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Datos actualizados con éxito");
@@ -664,15 +594,7 @@ public class ArticulosStockFrame extends JFrame {
 
     private void eliminarProducto(int filaModelo) {
         String nombre = String.valueOf(modeloTabla.getValueAt(filaModelo, 1));
-
-        int opcion = JOptionPane.showConfirmDialog(
-                this,
-                "¿Desea eliminar el producto \"" + nombre + "\"?",
-                "Confirmar eliminación",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-
+        int opcion = JOptionPane.showConfirmDialog(this, "¿Desea eliminar \"" + nombre + "\"?", "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (opcion == JOptionPane.YES_OPTION) {
             modeloTabla.removeRow(filaModelo);
             actualizarAlertaStock();
@@ -690,73 +612,41 @@ public class ArticulosStockFrame extends JFrame {
         int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, 5)));
         int stockMin = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, 6)));
         boolean activo = String.valueOf(modeloTabla.getValueAt(fila, 7)).equalsIgnoreCase("activo");
-
         return new ProductoDialog.ProductoFormData(codigo, nombre, categoria, costo, precio, stock, stockMin, activo);
     }
 
     private boolean codigoExiste(String codigo) {
         for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-            if (String.valueOf(modeloTabla.getValueAt(i, 0)).equalsIgnoreCase(codigo)) {
-                return true;
-            }
+            if (String.valueOf(modeloTabla.getValueAt(i, 0)).equalsIgnoreCase(codigo)) return true;
         }
         return false;
     }
 
     private void aplicarFiltros() {
-        if (sorter == null || txtBuscar == null || cboCategoria == null) {
-            return;
-        }
-
+        if (sorter == null || txtBuscar == null || cboCategoria == null) return;
         String texto = txtBuscar.getText().trim();
         String categoria = String.valueOf(cboCategoria.getSelectedItem());
+        RowFilter<DefaultTableModel, Object> filtroTexto = texto.isEmpty() ? null : RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1);
+        RowFilter<DefaultTableModel, Object> filtroCategoria = categoria.equals("Todas las categorías") ? null : RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", 2);
 
-        RowFilter<DefaultTableModel, Object> filtroTexto = null;
-        RowFilter<DefaultTableModel, Object> filtroCategoria = null;
-
-        if (!texto.isEmpty()) {
-            filtroTexto = RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1);
-        }
-
-        if (!categoria.equals("Todas las categorías")) {
-            filtroCategoria = RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", 2);
-        }
-
-        if (filtroTexto != null && filtroCategoria != null) {
-            sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));
-        } else if (filtroTexto != null) {
-            sorter.setRowFilter(filtroTexto);
-        } else if (filtroCategoria != null) {
-            sorter.setRowFilter(filtroCategoria);
-        } else {
-            sorter.setRowFilter(null);
-        }
-
+        if (filtroTexto != null && filtroCategoria != null) sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));
+        else if (filtroTexto != null) sorter.setRowFilter(filtroTexto);
+        else if (filtroCategoria != null) sorter.setRowFilter(filtroCategoria);
+        else sorter.setRowFilter(null);
         actualizarFooter();
     }
 
     private void actualizarAlertaStock() {
         int bajoMinimo = 0;
-
         for (int i = 0; i < modeloTabla.getRowCount(); i++) {
             int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, 5)));
             int min = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, 6)));
-
-            if (stock < min) {
-                bajoMinimo++;
-            }
+            if (stock < min) bajoMinimo++;
         }
-
         if (bajoMinimo > 0) {
             lblAlerta.setVisible(true);
-            lblAlerta.setText(
-                    bajoMinimo == 1
-                            ? "1 producto tiene existencias por debajo del mínimo"
-                            : bajoMinimo + " productos tienen existencias por debajo del mínimo"
-            );
-        } else {
-            lblAlerta.setVisible(false);
-        }
+            lblAlerta.setText(bajoMinimo == 1 ? "1 producto tiene existencias por debajo del mínimo" : bajoMinimo + " productos tienen existencias por debajo del mínimo");
+        } else lblAlerta.setVisible(false);
     }
 
     private void actualizarFooter() {
@@ -771,189 +661,110 @@ public class ArticulosStockFrame extends JFrame {
         toast.setBackground(new Color(235, 244, 255));
         toast.setForeground(AZUL);
         toast.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        toast.setBorder(BorderFactory.createCompoundBorder(
-                new RoundedBorder(new Color(174, 204, 252), 10),
-                new EmptyBorder(10, 14, 10, 14)
-        ));
-
+        toast.setBorder(BorderFactory.createCompoundBorder(new RoundedBorder(new Color(174, 204, 252), 10), new EmptyBorder(10, 14, 10, 14)));
         JDialog dialog = new JDialog(this, false);
         dialog.setUndecorated(true);
         dialog.add(toast);
         dialog.pack();
         dialog.setLocation(getX() + getWidth() - dialog.getWidth() - 40, getY() + 70);
         dialog.setVisible(true);
-
         Timer timer = new Timer(1800, e -> dialog.dispose());
         timer.setRepeats(false);
         timer.start();
     }
 
-    private String formatoMoneda(double valor) {
-        return String.format("S/ %.2f", valor);
-    }
-
-    private double limpiarMoneda(String texto) {
-        return Double.parseDouble(texto.replace("S/", "").trim());
-    }
+    private String formatoMoneda(double valor) { return String.format("S/ %.2f", valor); }
+    private double limpiarMoneda(String texto) { return Double.parseDouble(texto.replace("S/", "").trim()); }
 
     private ImageIcon redimensionarIcono(String path, int width, int height) {
         try {
             java.net.URL imgURL = getClass().getResource(path);
-
             if (imgURL != null) {
                 ImageIcon iconOriginal = new ImageIcon(imgURL);
                 Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
                 return new ImageIcon(img);
             }
-        } catch (Exception e) {
-            System.err.println("No se encontró el icono: " + path);
-        }
-
+        } catch (Exception e) { System.err.println("No se encontró el icono: " + path); }
         return null;
     }
 
+    // --- Renderers y Clases Auxiliares ---
     private static class TextoRenderer extends DefaultTableCellRenderer {
         private final int alineacion;
-
-        public TextoRenderer(int alineacion) {
-            this.alineacion = alineacion;
-        }
-
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(
-                    table, value, isSelected, hasFocus, row, column
-            );
-
+        public TextoRenderer(int alineacion) { this.alineacion = alineacion; }
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setHorizontalAlignment(alineacion);
             label.setBorder(new EmptyBorder(0, 8, 0, 8));
             label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             label.setForeground(TEXTO);
             label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
-
             return label;
         }
     }
 
     private static class StockRenderer extends DefaultTableCellRenderer {
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(
-                    table, value, isSelected, hasFocus, row, column
-            );
-
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int stock = Integer.parseInt(String.valueOf(value));
             int stockMin = Integer.parseInt(String.valueOf(table.getValueAt(row, 6)));
             boolean bajo = stock < stockMin;
-
             label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setBorder(new EmptyBorder(0, 8, 0, 8));
             label.setForeground(bajo ? ROJO : TEXTO);
             label.setFont(new Font("Segoe UI", bajo ? Font.BOLD : Font.PLAIN, 12));
             label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
-
             return label;
         }
     }
 
     private static class StatusRenderer extends JPanel implements TableCellRenderer {
-        public StatusRenderer() {
-            setLayout(new GridBagLayout());
-            setOpaque(true);
-        }
-
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
+        public StatusRenderer() { setLayout(new GridBagLayout()); setOpaque(true); }
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             removeAll();
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
-
             String estado = String.valueOf(value);
-            Color color = estado.equalsIgnoreCase("activo")
-                    ? new Color(83, 137, 174)
-                    : new Color(150, 157, 168);
-
+            Color color = estado.equalsIgnoreCase("activo") ? new Color(83, 137, 174) : new Color(150, 157, 168);
             add(new PillLabel(estado, color), new GridBagConstraints());
-
             return this;
         }
     }
 
     private static class AccionesRenderer extends JPanel implements TableCellRenderer {
-        public AccionesRenderer() {
-            setLayout(new FlowLayout(FlowLayout.CENTER, 10, 7));
-            setOpaque(true);
-        }
-
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-                                                       boolean hasFocus, int row, int column) {
+        public AccionesRenderer() { setLayout(new FlowLayout(FlowLayout.CENTER, 10, 7)); setOpaque(true); }
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             removeAll();
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
-
-            JLabel editar = new JLabel("✎");
-            editar.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            editar.setForeground(AZUL);
-
-            JLabel eliminar = new JLabel("⌫");
-            eliminar.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            eliminar.setForeground(ROJO);
-
-            add(editar);
-            add(eliminar);
-
+            JLabel editar = new JLabel("✎"); editar.setFont(new Font("Segoe UI", Font.BOLD, 14)); editar.setForeground(AZUL);
+            JLabel eliminar = new JLabel("⌫"); eliminar.setFont(new Font("Segoe UI", Font.BOLD, 14)); eliminar.setForeground(ROJO);
+            add(editar); add(eliminar);
             return this;
         }
     }
 
     private static class PillLabel extends JLabel {
         private final Color colorFondo;
-
         public PillLabel(String texto, Color colorFondo) {
-            super(texto, SwingConstants.CENTER);
-            this.colorFondo = colorFondo;
-            setForeground(Color.WHITE);
-            setFont(new Font("Segoe UI", Font.BOLD, 11));
-            setBorder(new EmptyBorder(4, 13, 4, 13));
-            setOpaque(false);
+            super(texto, SwingConstants.CENTER); this.colorFondo = colorFondo;
+            setForeground(Color.WHITE); setFont(new Font("Segoe UI", Font.BOLD, 11));
+            setBorder(new EmptyBorder(4, 13, 4, 13)); setOpaque(false);
         }
-
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(colorFondo);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-            g2.dispose();
-
-            super.paintComponent(g);
+            g2.setColor(colorFondo); g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+            g2.dispose(); super.paintComponent(g);
         }
     }
 
     private static class RoundedBorder extends AbstractBorder {
-        private final Color color;
-        private final int arc;
-
-        public RoundedBorder(Color color, int arc) {
-            this.color = color;
-            this.arc = arc;
-        }
-
+        private final Color color; private final int arc;
+        public RoundedBorder(Color color, int arc) { this.color = color; this.arc = arc; }
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.setColor(color); g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
             g2.dispose();
         }
-
-        public Insets getBorderInsets(Component c) {
-            return new Insets(1, 1, 1, 1);
-        }
-
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 1;
-            insets.right = 1;
-            insets.top = 1;
-            insets.bottom = 1;
-            return insets;
-        }
+        public Insets getBorderInsets(Component c) { return new Insets(1, 1, 1, 1); }
     }
 }

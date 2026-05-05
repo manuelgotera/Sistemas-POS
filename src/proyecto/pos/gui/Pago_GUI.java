@@ -2,39 +2,56 @@ package proyecto.pos.gui;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
 
 public class Pago_GUI extends JDialog {
 
     private double total;
-    private JButton btnCash, btnTarjeta;
+    private String nombreCliente;
+    private Caja_GUI cajaPadre; 
+    
+    private JTextField txtEfectivo, txtTarjeta;
+    private JLabel lblRestante;
+    private JButton btnGuardarImprimir, btnGuardarSolo;
 
-    public Pago_GUI(JFrame parent, double total) {
-        super(parent, "Pago", true); // true hace que sea modal
+    public Pago_GUI(Caja_GUI parent, double total, String cliente) {
+        super(parent, "Pago", true); 
+        this.cajaPadre = parent;
         this.total = total;
+        this.nombreCliente = cliente;
         configurarVentana();
         initComponents();
+        actualizarCalculos(); 
     }
 
     private void configurarVentana() {
-        setSize(500, 400);
+        setSize(450, 500); 
         setLocationRelativeTo(getOwner());
-        setUndecorated(true); // Quita la barra de título nativa para estilo moderno
-        getRootPane().setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230), 1));
+        setUndecorated(true); 
+        getRootPane().setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 2));
     }
 
     private void initComponents() {
         JPanel panelPrincipal = new JPanel(new BorderLayout());
         panelPrincipal.setBackground(Color.WHITE);
-        panelPrincipal.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panelPrincipal.setBorder(new EmptyBorder(20, 25, 20, 25));
 
         // --- CABECERA ---
         JPanel cabecera = new JPanel(new BorderLayout());
         cabecera.setBackground(Color.WHITE);
-        JLabel lblTitulo = new JLabel("Pago");
+        
+        JLabel lblTitulo = new JLabel("<html>Pago <font size='4' color='gray'>| " + nombreCliente + "</font></html>");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
         
         JButton btnCerrar = new JButton("X");
+        btnCerrar.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnCerrar.setForeground(Color.GRAY);
         btnCerrar.setBorderPainted(false);
         btnCerrar.setContentAreaFilled(false);
         btnCerrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -48,63 +65,106 @@ public class Pago_GUI extends JDialog {
         cuerpo.setLayout(new BoxLayout(cuerpo, BoxLayout.Y_AXIS));
         cuerpo.setBackground(Color.WHITE);
 
-        JLabel lblInstruccion = new JLabel("Por favor, seleccione el método de pago");
+        JLabel lblInstruccion = new JLabel("Ingrese el monto a pagar por método:");
         lblInstruccion.setForeground(Color.GRAY);
         lblInstruccion.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Banner del Total
         JPanel panelTotal = new JPanel(new BorderLayout());
         panelTotal.setBackground(new Color(242, 246, 255));
         panelTotal.setMaximumSize(new Dimension(500, 60));
         panelTotal.setBorder(new EmptyBorder(15, 20, 15, 20));
         
-        JLabel txtTotal = new JLabel("Total a pagar");
-        txtTotal.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        JLabel numTotal = new JLabel("s/ " + String.format("%.2f", total));
+        JLabel txtTotal = new JLabel("Total a pagar:");
+        txtTotal.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        JLabel numTotal = new JLabel("S/ " + String.format("%.2f", total));
         numTotal.setFont(new Font("Segoe UI", Font.BOLD, 22));
         numTotal.setForeground(new Color(26, 79, 156));
         
         panelTotal.add(txtTotal, BorderLayout.WEST);
         panelTotal.add(numTotal, BorderLayout.EAST);
 
-        // Botones de Método
-        JPanel panelMetodos = new JPanel(new GridLayout(1, 2, 15, 0));
-        panelMetodos.setBackground(Color.WHITE);
-        panelMetodos.setMaximumSize(new Dimension(500, 80));
+        // --- ENTRADAS DE PAGO DIVIDIDO ---
+        JPanel panelEntradas = new JPanel(new GridLayout(2, 2, 10, 15));
+        panelEntradas.setBackground(Color.WHITE);
+        panelEntradas.setMaximumSize(new Dimension(500, 80));
+
+        JLabel lblEfectivo = new JLabel("Monto en Efectivo:");
+        lblEfectivo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtEfectivo = new JTextField("");
+        txtEfectivo.putClientProperty("JTextField.placeholderText", "0.00");
+        txtEfectivo.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         
-        btnCash = crearBotonMetodo("Cash", "/img/cash_icon.png"); // Asegúrate de tener los iconos
-        btnTarjeta = crearBotonMetodo("Tarjeta", "/img/card_icon.png");
+        JLabel lblTarjeta = new JLabel("Monto en Tarjeta:");
+        lblTarjeta.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtTarjeta = new JTextField("");
+        txtTarjeta.putClientProperty("JTextField.placeholderText", "0.00");
+        txtTarjeta.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+
+        // VALIDACIÓN: SOLO NÚMEROS Y DECIMALES
+        DocumentFilter decimalFilter = new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+                String newStr = fb.getDocument().getText(0, fb.getDocument().getLength()) + string;
+                if (newStr.matches("\\d*\\.?\\d*")) {
+                    super.insertString(fb, offset, string, attr);
+                }
+            }
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+                String currentText = fb.getDocument().getText(0, fb.getDocument().getLength());
+                String newStr = currentText.substring(0, offset) + text + currentText.substring(offset + length);
+                if (newStr.matches("\\d*\\.?\\d*")) {
+                    super.replace(fb, offset, length, text, attrs);
+                }
+            }
+        };
+
+        ((AbstractDocument) txtEfectivo.getDocument()).setDocumentFilter(decimalFilter);
+        ((AbstractDocument) txtTarjeta.getDocument()).setDocumentFilter(decimalFilter);
+
+        panelEntradas.add(lblEfectivo);
+        panelEntradas.add(txtEfectivo);
+        panelEntradas.add(lblTarjeta);
+        panelEntradas.add(txtTarjeta);
         
-        panelMetodos.add(btnCash);
-        panelMetodos.add(btnTarjeta);
+        agregarEscuchaCalculo(txtEfectivo);
+        agregarEscuchaCalculo(txtTarjeta);
+
+        // --- BANNER DE RESULTADO ---
+        JPanel panelResultado = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelResultado.setBackground(Color.WHITE);
+        lblRestante = new JLabel("Falta: S/ " + String.format("%.2f", total));
+        lblRestante.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblRestante.setForeground(new Color(220, 53, 69)); 
+        panelResultado.add(lblRestante);
 
         cuerpo.add(Box.createVerticalStrut(20));
         cuerpo.add(lblInstruccion);
         cuerpo.add(Box.createVerticalStrut(15));
         cuerpo.add(panelTotal);
+        cuerpo.add(Box.createVerticalStrut(25));
+        cuerpo.add(panelEntradas);
         cuerpo.add(Box.createVerticalStrut(20));
-        cuerpo.add(new JLabel("Método de pago"));
-        cuerpo.add(Box.createVerticalStrut(10));
-        cuerpo.add(panelMetodos);
+        cuerpo.add(panelResultado);
 
         // --- PIE (BOTONES DE ACCIÓN) ---
-        JPanel pie = new JPanel(new GridLayout(1, 2, 10, 0));
+        JPanel pie = new JPanel(new GridLayout(2, 1, 0, 10)); 
         pie.setBackground(Color.WHITE);
-        pie.setPreferredSize(new Dimension(0, 50));
+        pie.setPreferredSize(new Dimension(0, 90));
 
-        JButton btnGuardarImprimir = new JButton("Guardar e imprimir recibo");
-        btnGuardarImprimir.setBackground(new Color(45, 75, 150));
+        btnGuardarImprimir = new JButton("Completar Pago e Imprimir Recibo");
+        btnGuardarImprimir.setBackground(new Color(26, 79, 156));
         btnGuardarImprimir.setForeground(Color.WHITE);
-        btnGuardarImprimir.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnGuardarImprimir.setFont(new Font("Segoe UI", Font.BOLD, 14));
         
-        JButton btnGuardarSolo = new JButton("Guardar sin imprimir");
+        btnGuardarSolo = new JButton("Solo Guardar Venta");
         btnGuardarSolo.setBackground(Color.WHITE);
-        btnGuardarSolo.setBorder(BorderFactory.createLineBorder(new Color(45, 75, 150)));
-        btnGuardarSolo.setForeground(new Color(45, 75, 150));
+        btnGuardarSolo.setBorder(BorderFactory.createLineBorder(new Color(26, 79, 156)));
+        btnGuardarSolo.setForeground(new Color(26, 79, 156));
+        btnGuardarSolo.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-        // Acción final
-        btnGuardarImprimir.addActionListener(e -> finalizado());
-        btnGuardarSolo.addActionListener(e -> finalizado());
+        btnGuardarImprimir.addActionListener(e -> finalizado("Imprimiendo recibo..."));
+        btnGuardarSolo.addActionListener(e -> finalizado("Venta guardada."));
 
         pie.add(btnGuardarImprimir);
         pie.add(btnGuardarSolo);
@@ -116,19 +176,50 @@ public class Pago_GUI extends JDialog {
         add(panelPrincipal);
     }
 
-    private JButton crearBotonMetodo(String texto, String iconPath) {
-        JButton btn = new JButton(texto);
-        btn.setBackground(Color.WHITE);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
-        // Podrías añadir lógica aquí para cambiar el borde al seleccionar
-        return btn;
+    private void agregarEscuchaCalculo(JTextField textField) {
+        textField.getDocument().addDocumentListener(new DocumentListener() {
+            public void changedUpdate(DocumentEvent e) { actualizarCalculos(); }
+            public void removeUpdate(DocumentEvent e) { actualizarCalculos(); }
+            public void insertUpdate(DocumentEvent e) { actualizarCalculos(); }
+        });
     }
 
-    private void finalizado() {
-        JOptionPane.showMessageDialog(this, "¡Venta realizada con éxito!");
-        this.dispose();
-        // Aquí podrías llamar a un método en Caja_GUI para limpiar el carrito
+    private void actualizarCalculos() {
+        try {
+            double pagoEfectivo = txtEfectivo.getText().isEmpty() ? 0 : Double.parseDouble(txtEfectivo.getText());
+            double pagoTarjeta = txtTarjeta.getText().isEmpty() ? 0 : Double.parseDouble(txtTarjeta.getText());
+            
+            double sumatoria = pagoEfectivo + pagoTarjeta;
+            double diferencia = total - sumatoria;
+
+            if (diferencia > 0) {
+                lblRestante.setText("Falta: S/ " + String.format("%.2f", diferencia));
+                lblRestante.setForeground(new Color(220, 53, 69)); 
+                btnGuardarImprimir.setEnabled(false);
+                btnGuardarSolo.setEnabled(false);
+            } else {
+                btnGuardarImprimir.setEnabled(true);
+                btnGuardarSolo.setEnabled(true);
+                
+                if (diferencia == 0) {
+                    lblRestante.setText("Pago exacto ✓");
+                    lblRestante.setForeground(new Color(40, 167, 69)); 
+                } else {
+                    lblRestante.setText("Vuelto a entregar: S/ " + String.format("%.2f", Math.abs(diferencia)));
+                    lblRestante.setForeground(new Color(40, 167, 69)); 
+                }
+            }
+        } catch (NumberFormatException e) {
+            lblRestante.setText("Entrada inválida");
+            lblRestante.setForeground(Color.RED);
+            btnGuardarImprimir.setEnabled(false);
+            btnGuardarSolo.setEnabled(false);
+        }
+    }
+
+    private void finalizado(String mensaje) {
+        JOptionPane.showMessageDialog(this, "¡Venta realizada con éxito!\n" + mensaje);
+        cajaPadre.vaciarTodo(); 
+        this.dispose(); 
     }
 }

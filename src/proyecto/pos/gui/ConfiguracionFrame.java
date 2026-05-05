@@ -1,256 +1,400 @@
 package proyecto.pos.gui;
 
+import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javax.swing.*;
+import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 
 public class ConfiguracionFrame extends JFrame {
 
+    // --- COLORES UNIFICADOS DEL SIDEBAR ---
     private static final Color AZUL = new Color(26, 83, 160);
     private static final Color AZUL_CLARO = new Color(232, 241, 255);
-    private static final Color FONDO = new Color(246, 248, 251);
-    private static final Color BORDE = new Color(225, 228, 233);
+    private static final Color SIDEBAR = new Color(250, 251, 253);
+    private static final Color BORDE = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
+    private static final Color ROJO = new Color(220, 53, 69);
+
+    // Componentes Perfil
+    private JTextField txtNombreTienda, txtTelefono, txtWhatsapp, txtRuc;
+    private JTextArea txtDireccion;
+    
+    // Componentes Impuestos/Recibo
+    private JCheckBox chkIgv;
+    private JTextField txtDescMax, txtFormatoNum, txtMargen;
+    private JComboBox<String> cbRedondeo;
 
     public ConfiguracionFrame() {
-        setTitle("Configuración");
-        setSize(1180, 720);
-        setLocationRelativeTo(null);
+        configurarVentana();
+        initComponents();
+    }
+
+    private void configurarVentana() {
+        FlatLightLaf.setup();
+        setTitle("Sistema de Caja - Configuración");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        construirUI();
+        
+        setSize(1180, 720); 
+        setMinimumSize(new Dimension(1000, 620)); 
+        setLocationRelativeTo(null);
+        getContentPane().setBackground(Color.WHITE);
     }
 
-    private void construirUI() {
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(FONDO);
-        setContentPane(root);
+    private void initComponents() {
+        setLayout(new BorderLayout());
 
-        root.add(crearSidebar(), BorderLayout.WEST);
-        root.add(crearContenido(), BorderLayout.CENTER);
+        // --- 1. SIDEBAR (IZQUIERDA) ---
+        add(crearSidebar(), BorderLayout.WEST);
+
+        // --- 2. ÁREA CENTRAL ---
+        JPanel areaCentro = new JPanel(new BorderLayout());
+        areaCentro.setBackground(Color.WHITE);
+
+        // CABECERA CENTRAL (Con el reloj)
+        JPanel cabeceraCompleta = new JPanel();
+        cabeceraCompleta.setLayout(new BoxLayout(cabeceraCompleta, BoxLayout.Y_AXIS));
+        cabeceraCompleta.setBackground(Color.WHITE);
+
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(Color.WHITE);
+        topBar.setBorder(new EmptyBorder(15, 40, 15, 40));
+
+        JPanel panelTitulo = new JPanel();
+        panelTitulo.setLayout(new BoxLayout(panelTitulo, BoxLayout.Y_AXIS));
+        panelTitulo.setBackground(Color.WHITE);
+
+        JLabel lblPagina = new JLabel("Configuración");
+        lblPagina.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        JLabel lblEmpresa = new JLabel("Ajustes del Sistema");
+        lblEmpresa.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblEmpresa.setForeground(Color.GRAY);
+
+        panelTitulo.add(lblPagina);
+        panelTitulo.add(lblEmpresa);
+        topBar.add(panelTitulo, BorderLayout.WEST);
+
+        JPanel panelPerfil = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        panelPerfil.setBackground(Color.WHITE);
+
+        // Reloj en tiempo real
+        JLabel lblHora = new JLabel();
+        lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        Timer timerReloj = new Timer(1000, e -> {
+            lblHora.setText("<html><b>Hora</b><br><font color='gray'>" + sdf.format(new Date()) + "</font></html>");
+        });
+        timerReloj.start();
+        lblHora.setText("<html><b>Hora</b><br><font color='gray'>" + sdf.format(new Date()) + "</font></html>");
+
+        JLabel lblUsuario = new JLabel("<html><b>Manuel Gotera</b><br><font color='gray'>Administrador</font></html>");
+        lblUsuario.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+
+        JLabel lblAvatar = new JLabel(redimensionarIcono("/img/perfilPedro.jpg", 40, 40));
+        lblAvatar.setPreferredSize(new Dimension(40, 40));
+        lblAvatar.setBackground(Color.LIGHT_GRAY);
+        lblAvatar.setOpaque(true);
+
+        panelPerfil.add(lblHora);
+        panelPerfil.add(lblUsuario);
+        panelPerfil.add(lblAvatar);
+        topBar.add(panelPerfil, BorderLayout.EAST);
+
+        cabeceraCompleta.add(topBar);
+        
+        JPanel divisorTopHeader = new JPanel();
+        divisorTopHeader.setMaximumSize(new Dimension(Short.MAX_VALUE, 1));
+        divisorTopHeader.setBackground(new Color(230, 230, 230));
+        cabeceraCompleta.add(divisorTopHeader);
+
+        areaCentro.add(cabeceraCompleta, BorderLayout.NORTH);
+
+        // CONTENIDO PRINCIPAL DE CONFIGURACIÓN (TABS)
+        JPanel panelContenido = new JPanel(new BorderLayout());
+        panelContenido.setBackground(new Color(248, 249, 251));
+        panelContenido.setBorder(new EmptyBorder(20, 30, 20, 30));
+        
+        panelContenido.add(crearTabs(), BorderLayout.CENTER);
+        
+        areaCentro.add(panelContenido, BorderLayout.CENTER);
+        add(areaCentro, BorderLayout.CENTER);
     }
 
-    // SIDEBAR
+    // ─── SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
+
     private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(200, 0));
-        sidebar.setBackground(Color.WHITE);
+        JPanel sidebar = new JPanel();
+        sidebar.setPreferredSize(new Dimension(220, 0));
+        sidebar.setBackground(SIDEBAR);
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
 
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
-        top.setBorder(new EmptyBorder(20, 15, 20, 15));
+        sidebar.add(crearHeaderSidebar());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(34));
 
-        JLabel logo = new JLabel("▣ POS");
-        logo.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        logo.setForeground(AZUL);
+        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
+        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
+        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", false);
+        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
+        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", true); // <--- ACTIVO
 
-        JLabel sub = new JLabel("Sistema de Caja");
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        sub.setForeground(Color.GRAY);
+        btnCajero.addActionListener(e -> {
+            new Caja_GUI().setVisible(true);
+            dispose();
+        });
+        
+        btnStock.addActionListener(e -> {
+            new ArticulosStockFrame().setVisible(true);
+            this.dispose();
+        });
+        
+        btnHistorial.addActionListener(e -> {
+            new HistorialTransaccionesFrame().setVisible(true);
+            this.dispose();
+        });
+        
+        btnReportes.addActionListener(e -> {
+            new ReportesFrame().setVisible(true);
+            this.dispose();
+        });
 
-        JPanel logoPanel = new JPanel(new BorderLayout());
-        logoPanel.setBackground(Color.WHITE);
-        logoPanel.add(logo, BorderLayout.NORTH);
-        logoPanel.add(sub, BorderLayout.CENTER);
+        btnGastos.addActionListener(e -> JOptionPane.showMessageDialog(this, "Módulo de gastos pendiente de conectar."));
 
-        top.add(logoPanel, BorderLayout.CENTER);
-        sidebar.add(top, BorderLayout.NORTH);
+        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
+        
+        sidebar.add(Box.createVerticalGlue());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(12));
 
-        JPanel menu = new JPanel(new GridLayout(10, 1));
-        menu.setBackground(Color.WHITE);
+        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
+        btnSalir.setForeground(ROJO);
+        btnSalir.addActionListener(e -> System.exit(0));
 
-        String[] opciones = {
-            "Cajero",
-            "Artículos y Stock",
-            "Historial de Transacciones",
-            "Reportes",
-            "Gastos",
-            "Configuración"
-        };
-
-        for (String op : opciones) {
-            JLabel item = new JLabel(op);
-            item.setBorder(new EmptyBorder(10, 15, 10, 15));
-
-            if (op.equals("Configuración")) {
-                item.setOpaque(true);
-                item.setBackground(AZUL_CLARO);
-                item.setForeground(AZUL);
-            }
-
-            menu.add(item);
-        }
-
-        sidebar.add(menu, BorderLayout.CENTER);
-
-        JPanel bottom = new JPanel(new GridLayout(2, 1));
-        bottom.setBackground(Color.WHITE);
-        bottom.setBorder(new EmptyBorder(10, 15, 20, 15));
-
-        bottom.add(new JLabel("Modo claro"));
-        JLabel salir = new JLabel("Salir");
-        salir.setForeground(Color.RED);
-        bottom.add(salir);
-
-        sidebar.add(bottom, BorderLayout.SOUTH);
+        agregarMenu(sidebar, btnSalir);
+        sidebar.add(Box.createVerticalStrut(18));
 
         return sidebar;
     }
 
-    // CONTENIDO
-    private JPanel crearContenido() {
-        JPanel cont = new JPanel(new BorderLayout());
-        cont.setBackground(FONDO);
-        cont.setBorder(new EmptyBorder(20, 20, 20, 20));
+    private JPanel crearHeaderSidebar() {
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.setBackground(SIDEBAR);
+        header.setBorder(new EmptyBorder(16, 16, 16, 14));
+        header.setMaximumSize(new Dimension(220, 78));
 
-        cont.add(crearHeader(), BorderLayout.NORTH);
-        cont.add(crearPanelPrincipal(), BorderLayout.CENTER);
+        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        marca.setOpaque(false);
 
-        return cont;
-    }
+        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
+        logo.setHorizontalAlignment(SwingConstants.CENTER);
+        logo.setOpaque(true);
+        logo.setBackground(AZUL);
+        logo.setPreferredSize(new Dimension(40, 40));
+        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-    // HEADER
-    private JPanel crearHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(FONDO);
+        JPanel textos = new JPanel();
+        textos.setOpaque(false);
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
 
-        JLabel titulo = new JLabel("Configuración de la tienda");
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        JLabel lblPos = new JLabel("Pos");
+        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblPos.setForeground(AZUL);
 
-        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        userPanel.setBackground(FONDO);
+        JLabel lblDesc = new JLabel("Sistema de Caja");
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblDesc.setForeground(TEXTO_SUAVE);
 
-        JLabel hora = new JLabel("<html><b>Hora</b><br>15:07:14</html>");
-        hora.setOpaque(true);
-        hora.setBackground(Color.WHITE);
-        hora.setBorder(new EmptyBorder(8, 12, 8, 12));
+        textos.add(lblPos);
+        textos.add(lblDesc);
 
-        JLabel usuario = new JLabel("<html><b> uwu fernandez</b><br>Cajero</html>");
-        usuario.setOpaque(true);
-        usuario.setBackground(Color.WHITE);
-        usuario.setBorder(new EmptyBorder(8, 12, 8, 12));
+        marca.add(logo);
+        marca.add(textos);
 
-        userPanel.add(hora);
-        userPanel.add(usuario);
-
-        header.add(titulo, BorderLayout.WEST);
-        header.add(userPanel, BorderLayout.EAST);
+        header.add(marca, BorderLayout.CENTER);
 
         return header;
     }
 
-    // PANEL
-    private JPanel crearPanelPrincipal() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDE),
-                new EmptyBorder(20, 20, 20, 20)
-        ));
-
-        panel.add(crearTabs(), BorderLayout.CENTER);
-
-        return panel;
+    private void agregarMenu(JPanel panel, JButton... botones) {
+        for (JButton boton : botones) {
+            panel.add(boton);
+            panel.add(Box.createVerticalStrut(7));
+        }
     }
 
-    // TABS
+    private JPanel crearLinea() {
+        JPanel linea = new JPanel();
+        linea.setMaximumSize(new Dimension(220, 1));
+        linea.setPreferredSize(new Dimension(220, 1));
+        linea.setBackground(new Color(232, 235, 241));
+        return linea;
+    }
+
+    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
+        JButton boton = new JButton(texto);
+        if (iconPath != null && !iconPath.isEmpty()) {
+            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
+            boton.setIconTextGap(13);
+        }
+        boton.setMaximumSize(new Dimension(190, 40));
+        boton.setPreferredSize(new Dimension(190, 40));
+        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        boton.setHorizontalAlignment(SwingConstants.LEFT);
+        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
+        boton.setFocusPainted(false);
+        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
+
+        if (seleccionado) {
+            boton.setBackground(AZUL_CLARO);
+            boton.setForeground(AZUL);
+            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
+        } else {
+            boton.setBackground(SIDEBAR);
+            boton.setForeground(new Color(62, 70, 82));
+            boton.setBorderPainted(false);
+        }
+
+        boton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(new Color(240, 243, 248));
+                }
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(SIDEBAR);
+                }
+            }
+        });
+
+        return boton;
+    }
+
+    private ImageIcon redimensionarIcono(String path, int width, int height) {
+        try {
+            java.net.URL imgURL = getClass().getResource(path);
+            if (imgURL != null) {
+                ImageIcon iconOriginal = new ImageIcon(imgURL);
+                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(img);
+            }
+        } catch (Exception e) {}
+        return null; 
+    }
+
+    // --- MÉTODOS DE CONTENIDO DE CONFIGURACIÓN ---
+
     private JTabbedPane crearTabs() {
         JTabbedPane tabs = new JTabbedPane();
-
-        tabs.add("Perfil de Tienda", crearPerfil());
-        tabs.add("Impuestos y Recibo", crearImpuestos());
-        tabs.add("Usuarios", new JPanel());
-        tabs.add("Datos", new JPanel());
-
+        tabs.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tabs.setBackground(Color.WHITE);
+        
+        tabs.addTab("Perfil de Tienda", crearPerfil());
+        tabs.addTab("Impuestos y Recibo", crearImpuestos());
+        tabs.addTab("Usuarios", crearSeccionUsuarios());
+        tabs.addTab("Datos", crearSeccionDatos());
         return tabs;
     }
 
-    // PERFIL (NO TOCADO)
     private JPanel crearPerfil() {
-
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(Color.WHITE);
-
+        contenedor.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
+        
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(Color.WHITE);
-        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1;
 
         JLabel titulo = new JLabel("Información de la tienda");
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titulo.setForeground(new Color(26, 79, 156));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         panel.add(titulo, gbc);
 
         gbc.gridwidth = 1;
+        gbc.gridy++; panel.add(new JLabel("Nombre de la tienda *"), gbc);
+        gbc.gridy++; 
+        txtNombreTienda = new JTextField(""); 
+        txtNombreTienda.setPreferredSize(new Dimension(0, 35));
+        panel.add(txtNombreTienda, gbc);
 
-        gbc.gridy++;
-        panel.add(new JLabel("Nombre de la tienda *"), gbc);
+        gbc.gridy++; panel.add(new JLabel("Dirección completa *"), gbc);
+        gbc.gridy++; 
+        txtDireccion = new JTextArea(4, 20);
+        txtDireccion.setBorder(BorderFactory.createLineBorder(new Color(200,200,200)));
+        panel.add(new JScrollPane(txtDireccion), gbc);
 
-        gbc.gridy++;
-        panel.add(new JTextField(" "), gbc);
+        gbc.gridy++; gbc.gridx = 0; panel.add(new JLabel("Teléfono *"), gbc);
+        gbc.gridx = 1; panel.add(new JLabel("WhatsApp *"), gbc);
 
-        gbc.gridy++;
-        panel.add(new JLabel("Dirección completa *"), gbc);
+        gbc.gridy++; gbc.gridx = 0; 
+        txtTelefono = new JTextField("+51");
+        txtTelefono.setPreferredSize(new Dimension(0, 35));
+        configurarSoloNumeros(txtTelefono);
+        panel.add(txtTelefono, gbc);
 
-        gbc.gridy++;
-        JTextArea direccion = new JTextArea(3, 20);
-        direccion.setBorder(BorderFactory.createLineBorder(new Color(200,200,200)));
-        panel.add(direccion, gbc);
+        gbc.gridx = 1; 
+        txtWhatsapp = new JTextField("+51");
+        txtWhatsapp.setPreferredSize(new Dimension(0, 35));
+        configurarSoloNumeros(txtWhatsapp);
+        panel.add(txtWhatsapp, gbc);
 
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JLabel("Teléfono *"), gbc);
+        gbc.gridy++; gbc.gridx = 0; gbc.gridwidth = 2; panel.add(new JLabel("RUC (opcional)"), gbc);
+        gbc.gridy++; 
+        txtRuc = new JTextField("");
+        txtRuc.setPreferredSize(new Dimension(0, 35));
+        configurarSoloNumeros(txtRuc);
+        panel.add(txtRuc, gbc);
 
-        gbc.gridx = 1;
-        panel.add(new JLabel("WhatsApp *"), gbc);
-
-        gbc.gridy++;
-        gbc.gridx = 0;
-        panel.add(new JTextField("+51"), gbc);
-
-        gbc.gridx = 1;
-        panel.add(new JTextField("+51"), gbc);
-
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        panel.add(new JLabel("RUC (opcional)"), gbc);
-
-        gbc.gridy++;
-        panel.add(new JTextField(" "), gbc);
-
-        gbc.gridy++;
-        panel.add(new JLabel("Logo (opcional)"), gbc);
-
-        gbc.gridy++;
+        gbc.gridy++; panel.add(new JLabel("Logo (opcional)"), gbc);
+        gbc.gridy++; 
         JButton btnSubir = new JButton("Subir imagen (JPG, PNG, SVG)");
+        btnSubir.setPreferredSize(new Dimension(0, 35));
+        btnSubir.addActionListener(e -> seleccionarImagen());
         panel.add(btnSubir, gbc);
 
-        gbc.gridy++;
+        gbc.gridy++; 
         JButton guardar = new JButton("Guardar cambios");
+        guardar.setBackground(new Color(26, 79, 156));
+        guardar.setForeground(Color.WHITE);
+        guardar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        guardar.setPreferredSize(new Dimension(0, 40));
         panel.add(guardar, gbc);
 
         contenedor.add(panel, BorderLayout.NORTH);
-
         return contenedor;
     }
 
-    // 🔥 IMPUESTOS (COMO TU IMAGEN)
     private JPanel crearImpuestos() {
-
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(Color.WHITE);
-
+        contenedor.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
+        
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(Color.WHITE);
-        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
@@ -258,114 +402,265 @@ public class ConfiguracionFrame extends JFrame {
         gbc.weightx = 1;
 
         int y = 0;
-
-        // IMPUESTOS
         JLabel t1 = new JLabel("Configuración de Impuestos");
-        t1.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        t1.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        t1.setForeground(new Color(26, 79, 156));
         gbc.gridx = 0; gbc.gridy = y++; gbc.gridwidth = 2;
         panel.add(t1, gbc);
 
-        gbc.gridwidth = 1;
-
-        gbc.gridx = 0; gbc.gridy = y;
+        gbc.gridwidth = 1; gbc.gridx = 0; gbc.gridy = y;
         panel.add(new JLabel("IGV 18%"), gbc);
-
-        gbc.gridx = 1;
-        panel.add(new JCheckBox("Activado"), gbc);
-        y++;
-
-        gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2;
+        gbc.gridx = 1; 
+        chkIgv = new JCheckBox("Activado"); 
+        chkIgv.setBackground(Color.WHITE);
+        panel.add(chkIgv, gbc);
+        
+        y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2;
         panel.add(new JLabel("Descuento máximo (%)"), gbc);
+        gbc.gridy = ++y; 
+        txtDescMax = new JTextField("0");
+        txtDescMax.setPreferredSize(new Dimension(0, 35));
+        configurarSoloNumeros(txtDescMax);
+        panel.add(txtDescMax, gbc);
 
-        gbc.gridy = ++y;
-        panel.add(new JTextField(" "), gbc);
+        y++; JLabel nota = new JLabel("Límite máximo de descuento permitido");
+        nota.setForeground(Color.GRAY); panel.add(nota, gbc);
 
-        y++;
-        JLabel nota = new JLabel("Límite máximo de descuento permitido");
-        nota.setForeground(Color.GRAY);
-        panel.add(nota, gbc);
+        y++; gbc.gridy = y; panel.add(new JLabel("Redondeo de precios"), gbc);
+        gbc.gridy = ++y; 
+        cbRedondeo = new JComboBox<>(new String[]{"Sin redondeo", "Redondear arriba", "Redondear abajo"});
+        cbRedondeo.setPreferredSize(new Dimension(0, 35));
+        panel.add(cbRedondeo, gbc);
 
-        y++;
-        gbc.gridy = y;
-        panel.add(new JLabel("Redondeo de precios"), gbc);
-
-        gbc.gridy = ++y;
-        panel.add(new JComboBox<>(new String[]{
-            "Sin redondeo", "Redondear arriba", "Redondear abajo"
-        }), gbc);
-
-        y++;
-        panel.add(new JButton("Guardar configuración"), gbc);
-
-        // NUMERACIÓN
-        y++;
-        gbc.gridy = y++;
+        y++; gbc.gridy = y++; 
         JLabel t2 = new JLabel("Numeración de comprobantes");
-        t2.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        t2.setFont(new Font("Segoe UI", Font.BOLD, 18)); 
+        t2.setForeground(new Color(26, 79, 156));
+        t2.setBorder(new EmptyBorder(20, 0, 0, 0));
         panel.add(t2, gbc);
 
-        gbc.gridy = y;
-        panel.add(new JLabel("Formato de número"), gbc);
+        gbc.gridy = y; panel.add(new JLabel("Formato de número"), gbc);
+        gbc.gridy = ++y; 
+        txtFormatoNum = new JTextField("DD-MM-YYYY"); 
+        txtFormatoNum.setPreferredSize(new Dimension(0, 35));
+        panel.add(txtFormatoNum, gbc);
 
-        gbc.gridy = ++y;
-        panel.add(new JTextField("Ejemplo: DD-MM-YYYY"), gbc);
-
-        y++;
-        JLabel ayuda = new JLabel("(DD=Día, MM=Mes, YYYY=Año)");
-        ayuda.setForeground(Color.GRAY);
-        panel.add(ayuda, gbc);
-
-        y++;
-        gbc.gridy = y;
-        panel.add(new JLabel("Reinicio de numeración"), gbc);
-
-        gbc.gridy = ++y;
-        panel.add(new JComboBox<>(new String[]{
-            "Mensual", "Anual", "Nunca"
-        }), gbc);
-
-        y++;
-        panel.add(new JButton("Guardar numeración"), gbc);
-
-        // IMPRESIÓN
-        y++;
-        gbc.gridy = y++;
-        JLabel t3 = new JLabel("Configuración de impresión");
-        t3.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        panel.add(t3, gbc);
-
-        gbc.gridy = y;
-        panel.add(new JLabel("Tamaño de papel"), gbc);
-
-        gbc.gridy = ++y;
-        panel.add(new JComboBox<>(new String[]{
-            "80 mm", "58 mm"
-        }), gbc);
-
-        y++;
-        gbc.gridy = y;
-        panel.add(new JLabel("Margen (mm)"), gbc);
-
-        gbc.gridy = ++y;
-        panel.add(new JTextField("Ejemplo: 5"), gbc);
-
-        y++;
-        gbc.gridy = y;
-        panel.add(new JLabel("Impresión automática"), gbc);
-
-        gbc.gridy = ++y;
-        panel.add(new JCheckBox("Imprimir automáticamente después de pagar"), gbc);
-
-        y++;
-        JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        botones.setBackground(Color.WHITE);
-        botones.add(new JButton("Guardar impresión"));
-        botones.add(new JButton("Probar impresión"));
-
-        panel.add(botones, gbc);
+        y++; gbc.gridy = y; panel.add(new JLabel("Margen (mm)"), gbc);
+        gbc.gridy = ++y; 
+        txtMargen = new JTextField("5");
+        txtMargen.setPreferredSize(new Dimension(0, 35));
+        configurarSoloNumeros(txtMargen);
+        panel.add(txtMargen, gbc);
 
         contenedor.add(panel, BorderLayout.NORTH);
-
         return contenedor;
+    }
+
+    private JPanel crearSeccionUsuarios() {
+        JPanel main = new JPanel(new BorderLayout(20, 20));
+        main.setBackground(Color.WHITE);
+        main.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(230, 230, 230)),
+            new EmptyBorder(30, 30, 30, 30)
+        ));
+
+        JPanel form = new JPanel(new GridLayout(8, 1, 5, 10));
+        form.setBackground(Color.WHITE);
+        form.setPreferredSize(new Dimension(300, 0));
+        
+        JLabel lblFormTitulo = new JLabel("Registrar Nuevo");
+        lblFormTitulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lblFormTitulo.setForeground(new Color(26, 79, 156));
+        form.add(lblFormTitulo);
+        
+        form.add(new JLabel("Nombre del Usuario"));
+        JTextField txtNuevoUsr = new JTextField();
+        form.add(txtNuevoUsr);
+        
+        form.add(new JLabel("Rol"));
+        JComboBox<String> cbRol = new JComboBox<>(new String[]{"Administrador", "Cajero", "Supervisor"});
+        form.add(cbRol);
+        
+        form.add(new JLabel("Contraseña"));
+        JPasswordField txtPass = new JPasswordField();
+        form.add(txtPass);
+        
+        JButton btnAdd = new JButton("Añadir Usuario");
+        btnAdd.setBackground(new Color(26, 79, 156));
+        btnAdd.setForeground(Color.WHITE);
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        form.add(btnAdd);
+
+        String[] columnas = {"ID", "Usuario", "Rol", "Estado"};
+        Object[][] datos = {
+            {"1", "Manuel Gotera", "Administrador", "Conectado"},
+            {"2", "Ana Lopez", "Cajero", "Ausente"},
+            {"3", "Carlos_99", "Supervisor", "Desconectado"}
+        };
+        
+        DefaultTableModel model = new DefaultTableModel(datos, columnas) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+
+        JTable tabla = new JTable(model);
+        tabla.setRowHeight(35);
+        tabla.setSelectionBackground(new Color(232, 241, 255));
+        
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        for (int i = 0; i < tabla.getColumnCount(); i++) {
+            tabla.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(225, 228, 233)));
+
+        main.add(form, BorderLayout.WEST);
+        main.add(scroll, BorderLayout.CENTER);
+        return main;
+    }
+
+    private JPanel crearSeccionDatos() {
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.setBackground(Color.WHITE);
+        contenedor.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
+        
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new EmptyBorder(30, 30, 30, 30));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1;
+
+        int y = 0;
+        JLabel t1 = new JLabel("Mantenimiento y Respaldo de Datos");
+        t1.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        t1.setForeground(new Color(26, 79, 156));
+        gbc.gridx = 0; gbc.gridy = y++; gbc.gridwidth = 2;
+        panel.add(t1, gbc);
+
+        gbc.gridwidth = 1; gbc.gridy = y++; gbc.gridx = 0;
+        panel.add(new JLabel("Base de Datos Actual"), gbc);
+        gbc.gridx = 1; panel.add(new JLabel("pos_db_principal.db (12.5 MB)"), gbc);
+
+        gbc.gridy = y++; gbc.gridx = 0; gbc.gridwidth = 2;
+        JButton btnBackup = new JButton("Crear copia de seguridad (Backup)");
+        btnBackup.setBackground(new Color(40, 167, 69));
+        btnBackup.setForeground(Color.WHITE);
+        btnBackup.setPreferredSize(new Dimension(0, 40));
+        btnBackup.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnBackup.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, "Iniciando proceso de backup...\nPor favor espere.", "Sistema", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Backup creado exitosamente en:\n/backups/DB_BACKUP_" + System.currentTimeMillis() + ".db", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        });
+        panel.add(btnBackup, gbc);
+
+        gbc.gridy = y++;
+        JButton btnExportar = new JButton("Exportar historial a Excel (.xlsx)");
+        btnExportar.setPreferredSize(new Dimension(0, 40));
+        btnExportar.addActionListener(e -> {
+            JFileChooser save = new JFileChooser();
+            save.setSelectedFile(new File("reporte_ventas.xlsx"));
+            int result = save.showSaveDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                JOptionPane.showMessageDialog(this, "Archivo excel generado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        panel.add(btnExportar, gbc);
+
+        gbc.gridy = y++;
+        JLabel t2 = new JLabel("Zona Peligrosa");
+        t2.setForeground(Color.RED);
+        t2.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        t2.setBorder(new EmptyBorder(20, 0, 0, 0));
+        panel.add(t2, gbc);
+
+        gbc.gridy = y++;
+        JButton btnReset = new JButton("Restablecer sistema de fábrica");
+        btnReset.setForeground(Color.RED);
+        btnReset.setPreferredSize(new Dimension(0, 40));
+        btnReset.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnReset.addActionListener(e -> {
+            int confirmar = JOptionPane.showConfirmDialog(this, 
+                "¿ESTÁ SEGURO? Esta acción borrará todos los productos y ventas.\nEsta acción no se puede deshacer.", 
+                "ADVERTENCIA CRÍTICA", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirmar == JOptionPane.YES_OPTION) {
+                String pass = JOptionPane.showInputDialog(this, "Ingrese contraseña de administrador para confirmar:");
+                if ("admin".equals(pass)) {
+                    JOptionPane.showMessageDialog(this, "Sistema restablecido. El programa se cerrará.");
+                    System.exit(0);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Contraseña incorrecta.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        panel.add(btnReset, gbc);
+
+        contenedor.add(panel, BorderLayout.NORTH);
+        return contenedor;
+    }
+
+    private void configurarSoloNumeros(JTextField campo) {
+        ((AbstractDocument) campo.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+                if (string.matches("[0-9+]*")) super.insertString(fb, offset, string, attr);
+            }
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+                if (text.matches("[0-9+]*")) super.replace(fb, offset, length, text, attrs);
+            }
+        });
+    }
+
+    private void seleccionarImagen() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Imágenes", "jpg", "png", "svg"));
+        int seleccion = fileChooser.showOpenDialog(this);
+        if (seleccion == JFileChooser.APPROVE_OPTION) {
+            File fichero = fileChooser.getSelectedFile();
+            JOptionPane.showMessageDialog(this, "Logo cargado: " + fichero.getName());
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new ConfiguracionFrame().setVisible(true));
+    }
+
+    // ─── CLASE AUXILIAR DE BORDES REDONDEADOS (PARA EL BOTÓN DEL MENÚ) ───
+    private static class RoundedBorder extends AbstractBorder {
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1;
+            insets.right = 1;
+            insets.top = 1;
+            insets.bottom = 1;
+            return insets;
+        }
     }
 }

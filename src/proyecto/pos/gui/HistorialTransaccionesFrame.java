@@ -7,9 +7,12 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
@@ -29,6 +32,7 @@ import javax.swing.JTextField;
 import javax.swing.RowFilter;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
+import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -38,13 +42,16 @@ import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import java.awt.Image;
 
-
 public class HistorialTransaccionesFrame extends JFrame {
 
+    // --- COLORES UNIFICADOS ---
     private static final Color AZUL       = new Color(26, 83, 160);
     private static final Color AZUL_CLARO = new Color(232, 241, 255);
+    private static final Color SIDEBAR    = new Color(250, 251, 253);
     private static final Color FONDO      = new Color(246, 248, 251);
-    private static final Color BORDE      = new Color(225, 228, 233);
+    private static final Color BORDE      = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
+    private static final Color ROJO       = new Color(220, 53, 69);
     private static final Color VERDE_BG   = new Color(225, 245, 238);
     private static final Color VERDE_TEXT = new Color(15, 110, 86);
 
@@ -82,184 +89,174 @@ public class HistorialTransaccionesFrame extends JFrame {
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
+    // ─── SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
 
-    // ─── NUEVO SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
+    private JPanel crearSidebar() {
+        JPanel sidebar = new JPanel();
+        sidebar.setPreferredSize(new Dimension(220, 0));
+        sidebar.setBackground(SIDEBAR);
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
 
-        private JPanel crearSidebar() {
-            JPanel sidebar = new JPanel();
-            sidebar.setPreferredSize(new Dimension(220, 0));
-            sidebar.setBackground(new Color(250, 250, 250));
-            sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(230, 230, 230)));
-            sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.add(crearHeaderSidebar());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(34));
 
-            // Cabecera del Sidebar (Logo y texto)
-            JPanel cabeceraSidebar = new JPanel(new BorderLayout());
-            cabeceraSidebar.setBackground(new Color(250, 250, 250));
-            cabeceraSidebar.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-            cabeceraSidebar.setMaximumSize(new Dimension(220, 75));
+        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
+        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", true); // <--- ACTIVO
+        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", false);
+        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
+        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", false);
 
-            JPanel panelLogoTextos = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-            panelLogoTextos.setBackground(new Color(250, 250, 250));
+        btnCajero.addActionListener(e -> {
+            new Caja_GUI().setVisible(true);
+            dispose();
+        });
+        
+        btnStock.addActionListener(e -> {
+            new ArticulosStockFrame().setVisible(true);
+            this.dispose();
+        });
+        
+        btnReportes.addActionListener(e -> {
+            new ReportesFrame().setVisible(true);
+            this.dispose();
+        });
+        
+        btnConfig.addActionListener(e -> {
+            new ConfiguracionFrame().setVisible(true);
+            this.dispose();
+        });
 
-            JLabel lblIconoPOS = new JLabel(redimensionarIcono("/img/icono_carrito_blanco.png", 20, 20), SwingConstants.CENTER);
-            lblIconoPOS.setPreferredSize(new Dimension(40, 40));
-            lblIconoPOS.setBackground(new Color(26, 79, 156)); 
-            lblIconoPOS.setOpaque(true);
+        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
+        
+        sidebar.add(Box.createVerticalGlue());
+        sidebar.add(crearLinea());
+        sidebar.add(Box.createVerticalStrut(12));
 
-            JPanel textosPOS = new JPanel();
-            textosPOS.setLayout(new BoxLayout(textosPOS, BoxLayout.Y_AXIS));
-            textosPOS.setBackground(new Color(250, 250, 250));
-            JLabel lblPOS = new JLabel("Pos");
-            lblPOS.setFont(new Font("Segoe UI", Font.BOLD, 18));
-            lblPOS.setForeground(new Color(26, 79, 156));
-            JLabel lblDesc = new JLabel("Sistema de Caja");
-            lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            lblDesc.setForeground(Color.GRAY);
+        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
+        btnSalir.setForeground(ROJO);
+        btnSalir.addActionListener(e -> System.exit(0));
 
-            textosPOS.add(lblPOS);
-            textosPOS.add(lblDesc);
+        agregarMenu(sidebar, btnSalir);
+        sidebar.add(Box.createVerticalStrut(18));
 
-            panelLogoTextos.add(lblIconoPOS);
-            panelLogoTextos.add(textosPOS);
+        return sidebar;
+    }
 
-            JButton btnColapsar = new JButton("≪");
-            btnColapsar.setFocusPainted(false);
-            btnColapsar.setBorderPainted(false);
-            btnColapsar.setBackground(new Color(235, 235, 235));
-            btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btnColapsar.setPreferredSize(new Dimension(35, 35));
+    private void agregarMenu(JPanel panel, JButton... botones) {
+        for (JButton boton : botones) {
+            panel.add(boton);
+            panel.add(Box.createVerticalStrut(7));
+        }
+    }
 
-            cabeceraSidebar.add(panelLogoTextos, BorderLayout.CENTER);
-            cabeceraSidebar.add(btnColapsar, BorderLayout.EAST);
+    private JPanel crearHeaderSidebar() {
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.setBackground(SIDEBAR);
+        header.setBorder(new EmptyBorder(16, 16, 16, 14));
+        header.setMaximumSize(new Dimension(220, 78));
 
-            JPanel divisorTop = new JPanel();
-            divisorTop.setMaximumSize(new Dimension(220, 1));
-            divisorTop.setBackground(new Color(230, 230, 230));
+        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        marca.setOpaque(false);
 
-            sidebar.add(cabeceraSidebar);
-            sidebar.add(divisorTop);
+        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
+        logo.setHorizontalAlignment(SwingConstants.CENTER);
+        logo.setOpaque(true);
+        logo.setBackground(AZUL);
+        logo.setPreferredSize(new Dimension(40, 40));
+        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-            // Agregamos los botones de navegación
-            actualizarNavegacionSidebar(sidebar); 
+        JPanel textos = new JPanel();
+        textos.setOpaque(false);
+        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
 
-            return sidebar;
+        JLabel lblPos = new JLabel("Pos");
+        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblPos.setForeground(AZUL);
+
+        JLabel lblDesc = new JLabel("Sistema de Caja");
+        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblDesc.setForeground(TEXTO_SUAVE);
+
+        textos.add(lblPos);
+        textos.add(lblDesc);
+
+        marca.add(logo);
+        marca.add(textos);
+
+        header.add(marca, BorderLayout.CENTER);
+
+        return header;
+    }
+
+    private JPanel crearLinea() {
+        JPanel linea = new JPanel();
+        linea.setMaximumSize(new Dimension(220, 1));
+        linea.setPreferredSize(new Dimension(220, 1));
+        linea.setBackground(new Color(232, 235, 241));
+        return linea;
+    }
+
+    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
+        JButton boton = new JButton(texto);
+        if (iconPath != null && !iconPath.isEmpty()) {
+            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
+            boton.setIconTextGap(13);
+        }
+        boton.setMaximumSize(new Dimension(190, 40));
+        boton.setPreferredSize(new Dimension(190, 40));
+        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        boton.setHorizontalAlignment(SwingConstants.LEFT);
+        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
+        boton.setFocusPainted(false);
+        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
+
+        if (seleccionado) {
+            boton.setBackground(AZUL_CLARO);
+            boton.setForeground(AZUL);
+            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
+        } else {
+            boton.setBackground(SIDEBAR);
+            boton.setForeground(new Color(62, 70, 82));
+            boton.setBorderPainted(false);
         }
 
-        private void actualizarNavegacionSidebar(JPanel sidebar) {
-            sidebar.add(Box.createVerticalStrut(180)); // Tu espaciado superior
-
-            // ¡ATENCIÓN AQUÍ! "Historial de Trans." está en TRUE, los demás en FALSE
-            JButton btnCajero = crearBotonMenu("Cajero", false, "/img/icon_cart.png");
-            JButton btnStock = crearBotonMenu("Artículos y Stock", false, "/img/icon_box.png");
-            JButton btnHistorial = crearBotonMenu("Historial de Trans.", true, "/img/icon_history.png"); 
-            JButton btnReportes = crearBotonMenu("Reportes", false, "/img/icon_chart.png");
-            JButton btnGastos = crearBotonMenu("Gastos", false, "/img/icon_wallet.png");
-            JButton btnConfig = crearBotonMenu("Configuración", false, "/img/icon_settings.png");
-
-            // ACCIONES DE NAVEGACIÓN
-            btnCajero.addActionListener(e -> {
-                new Caja_GUI().setVisible(true);
-                this.dispose(); 
-            });
-
-            btnStock.addActionListener(e -> {
-                new ArticulosStockFrame().setVisible(true);
-                this.dispose(); 
-            });
-
-            // Nota: btnHistorial no lleva ActionListener porque ya estamos en esta ventana.
-
-            sidebar.add(btnCajero);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnStock);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnHistorial);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnReportes);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnGastos);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnConfig);
-
-            sidebar.add(Box.createVerticalGlue()); // Empuja lo demás hacia abajo
-
-            // SECCIÓN INFERIOR
-            JPanel divisorBottom = new JPanel();
-            divisorBottom.setMaximumSize(new Dimension(220, 1));
-            divisorBottom.setBackground(new Color(230, 230, 230));
-            sidebar.add(divisorBottom);
-            sidebar.add(Box.createVerticalStrut(10));
-
-            JButton btnModo = crearBotonMenu("Mode Tampilan", false, "/img/icon_bell.png");
-            JButton btnSalir = crearBotonMenu("Salir", false, "/img/icon_logout.png");
-            btnSalir.setForeground(new Color(220, 53, 69)); 
-
-            btnSalir.addActionListener(e -> System.exit(0));
-
-            sidebar.add(btnModo);
-            sidebar.add(Box.createVerticalStrut(5));
-            sidebar.add(btnSalir);
-            sidebar.add(Box.createVerticalStrut(20));
-
-            sidebar.revalidate();
-            sidebar.repaint();
-        }
-
-        private JButton crearBotonMenu(String texto, boolean seleccionado, String iconPath) {
-            JButton btn = new JButton(texto);
-
-            if (iconPath != null && !iconPath.isEmpty()) {
-                btn.setIcon(redimensionarIcono(iconPath, 20, 20));
-                btn.setIconTextGap(15);
+        boton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(new Color(240, 243, 248));
+                }
             }
 
-            btn.setMaximumSize(new Dimension(190, 45));
-            btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-            btn.setHorizontalAlignment(SwingConstants.LEFT); 
-            btn.setBorder(new EmptyBorder(0, 15, 0, 0));
-
-            btn.setFocusPainted(false);
-            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-            if (seleccionado) {
-                btn.setBackground(new Color(235, 240, 255));
-                btn.setForeground(new Color(26, 79, 156));
-                btn.setFont(new Font("Segoe UI", Font.BOLD, 17)); // Tu nuevo tamaño de fuente
-                btn.putClientProperty("JButton.buttonType", "roundRect"); 
-            } else {
-                btn.setBackground(new Color(250, 250, 250));
-                btn.setForeground(new Color(80, 80, 80));
-                btn.setFont(new Font("Segoe UI", Font.PLAIN, 17)); // Tu nuevo tamaño de fuente
-                btn.setBorderPainted(false);
+            public void mouseExited(MouseEvent e) {
+                if (!seleccionado) {
+                    boton.setBackground(SIDEBAR);
+                }
             }
+        });
 
-            btn.addMouseListener(new java.awt.event.MouseAdapter() {
-                public void mouseEntered(java.awt.event.MouseEvent evt) {
-                    if (!seleccionado) btn.setBackground(new Color(242, 242, 242));
-                }
-                public void mouseExited(java.awt.event.MouseEvent evt) {
-                    if (!seleccionado) btn.setBackground(new Color(250, 250, 250));
-                }
-            });
+        return boton;
+    }
 
-            return btn;
-        }
-
-        private ImageIcon redimensionarIcono(String path, int width, int height) {
-            try {
-                java.net.URL imgURL = getClass().getResource(path);
-                if (imgURL != null) {
-                    ImageIcon iconOriginal = new ImageIcon(imgURL);
-                    Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                    return new ImageIcon(img);
-                }
-            } catch (Exception e) {
-                System.err.println("No se encontró el icono: " + path);
+    private ImageIcon redimensionarIcono(String path, int width, int height) {
+        try {
+            java.net.URL imgURL = getClass().getResource(path);
+            if (imgURL != null) {
+                ImageIcon iconOriginal = new ImageIcon(imgURL);
+                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(img);
             }
-            return null; 
+        } catch (Exception e) {
+            System.err.println("No se encontró el icono: " + path);
         }
+        return null; 
+    }
 
-    // CONTENIDO 
+    // ─── CONTENIDO PRINCIPAL ────────────────────────────────────────────────────────
+
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(FONDO);
@@ -960,6 +957,40 @@ public class HistorialTransaccionesFrame extends JFrame {
             gbc.gridx = 0; panel.add(btnVer, gbc);
             gbc.gridx = 1; panel.add(btnImp, gbc);
             return panel;
+        }
+    }
+    
+    // ─── CLASE AUXILIAR DE BORDES REDONDEADOS (PARA EL BOTÓN DEL MENÚ) ───
+    private static class RoundedBorder extends AbstractBorder {
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1;
+            insets.right = 1;
+            insets.top = 1;
+            insets.bottom = 1;
+            return insets;
         }
     }
 }
