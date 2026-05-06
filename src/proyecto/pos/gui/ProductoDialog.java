@@ -16,6 +16,8 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -26,6 +28,7 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
@@ -49,7 +52,14 @@ public class ProductoDialog extends JDialog {
     private JTextField txtPrecio;
     private JTextField txtStock;
     private JTextField txtStockMinimo;
+    private JTextField txtProveedor;
+    private JTextField txtFechaVencimiento;
+    private JTextField txtMerma;
+
     private JComboBox<String> cboCategoria;
+    private JComboBox<String> cboUnidadMedida;
+    private JComboBox<String> cboMotivoMerma;
+
     private ToggleSwitch swActivo;
 
     private boolean confirmado = false;
@@ -69,8 +79,8 @@ public class ProductoDialog extends JDialog {
     private void construirInterfaz(boolean editar) {
         setUndecorated(true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(560, 690);
-        setMinimumSize(new Dimension(560, 650));
+        setSize(610, 780);
+        setMinimumSize(new Dimension(610, 720));
         setLocationRelativeTo(getOwner());
 
         JPanel root = new JPanel(new BorderLayout());
@@ -80,8 +90,13 @@ public class ProductoDialog extends JDialog {
                 new EmptyBorder(0, 0, 0, 0)
         ));
 
+        JScrollPane scrollFormulario = new JScrollPane(crearFormulario(editar));
+        scrollFormulario.setBorder(null);
+        scrollFormulario.getViewport().setBackground(Color.WHITE);
+        scrollFormulario.getVerticalScrollBar().setUnitIncrement(16);
+
         root.add(crearHeader(), BorderLayout.NORTH);
-        root.add(crearFormulario(editar), BorderLayout.CENTER);
+        root.add(scrollFormulario, BorderLayout.CENTER);
         root.add(crearBotones(), BorderLayout.SOUTH);
 
         setContentPane(root);
@@ -136,10 +151,10 @@ public class ProductoDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 12, 0);
         panel.add(descripcion, gbc);
 
-        txtNombre = crearCampo("Ejemplo: Producto A");
-        agregarCampoCompleto(panel, gbc, 1, "Nombre producto", true, txtNombre);
+        txtNombre = crearCampo("Ejemplo: Arroz, Pollo, Gaseosa");
+        agregarCampoCompleto(panel, gbc, 1, "Nombre producto / insumo", true, txtNombre);
 
-        txtCodigo = crearCampo("Ejemplo: BRG-001");
+        txtCodigo = crearCampo("Ejemplo: INS-001");
         txtBarcode = crearCampo("Ejemplo: 00000000");
         agregarDosCampos(panel, gbc, 3,
                 "Código del producto", true, txtCodigo,
@@ -158,28 +173,75 @@ public class ProductoDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 12, 10);
         panel.add(imagenBox, gbc);
 
-        cboCategoria = new JComboBox<>(new String[]{"Seleccionar categoría", "Comida", "Bebida"});
+        cboCategoria = new JComboBox<>(new String[]{
+                "Seleccionar tipo de stock",
+                "Consumo crudo",
+                "Preparado",
+                "Bebida"
+        });
         cboCategoria.setPreferredSize(new Dimension(210, 38));
         cboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboCategoria.setBackground(Color.WHITE);
         cboCategoria.setBorder(new RoundedBorder(BORDE, 10));
-        agregarCampoCompleto(panel, gbc, 7, "Categoría", true, cboCategoria);
+
+        cboUnidadMedida = new JComboBox<>(new String[]{
+                "Seleccionar unidad",
+                "kg",
+                "g",
+                "L",
+                "ml",
+                "unidad",
+                "paquete"
+        });
+        cboUnidadMedida.setPreferredSize(new Dimension(210, 38));
+        cboUnidadMedida.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cboUnidadMedida.setBackground(Color.WHITE);
+        cboUnidadMedida.setBorder(new RoundedBorder(BORDE, 10));
+
+        agregarDosCampos(panel, gbc, 7,
+                "Tipo de stock", true, cboCategoria,
+                "Unidad de medida", true, cboUnidadMedida);
+
+        txtProveedor = crearCampo("Ejemplo: Proveedor San José");
+        txtFechaVencimiento = crearCampo("yyyy-MM-dd");
+        agregarDosCampos(panel, gbc, 9,
+                "Proveedor", false, txtProveedor,
+                "Fecha vencimiento", false, txtFechaVencimiento);
 
         txtCosto = crearCampo("0.00");
         txtPrecio = crearCampo("0.00");
-        agregarDosCampos(panel, gbc, 9,
+        agregarDosCampos(panel, gbc, 11,
                 "Costo", true, txtCosto,
                 "Precio venta", true, txtPrecio);
 
         txtStock = crearCampo("0");
         txtStockMinimo = crearCampo("0");
-        agregarDosCampos(panel, gbc, 11,
-                "Stock inicial", true, txtStock,
+        agregarDosCampos(panel, gbc, 13,
+                "Stock actual", true, txtStock,
                 "Stock mínimo", true, txtStockMinimo);
+
+        txtMerma = crearCampo("0");
+
+        cboMotivoMerma = new JComboBox<>(new String[]{
+                "Sin merma",
+                "Vencimiento",
+                "Producto dañado",
+                "Desperdicio",
+                "Error de preparación",
+                "Otro"
+        });
+        cboMotivoMerma.setPreferredSize(new Dimension(210, 38));
+        cboMotivoMerma.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cboMotivoMerma.setBackground(Color.WHITE);
+        cboMotivoMerma.setBorder(new RoundedBorder(BORDE, 10));
+
+        agregarDosCampos(panel, gbc, 15,
+                "Cantidad de merma", false, txtMerma,
+                "Motivo de merma", false, cboMotivoMerma);
 
         JPanel estadoPanel = crearEstadoPanel();
         gbc.gridx = 0;
-        gbc.gridy = 13;
+        gbc.gridy = 17;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(5, 0, 0, 0);
         panel.add(estadoPanel, gbc);
@@ -391,12 +453,28 @@ public class ProductoDialog extends JDialog {
         txtStock.setText(String.valueOf(data.stock));
         txtStockMinimo.setText(String.valueOf(data.stockMinimo));
         swActivo.setSelected(data.activo);
+
+        cboUnidadMedida.setSelectedItem(data.unidadMedida == null || data.unidadMedida.isEmpty()
+                ? "Seleccionar unidad"
+                : data.unidadMedida);
+
+        txtProveedor.setText(data.proveedor == null ? "" : data.proveedor);
+        txtFechaVencimiento.setText(data.fechaVencimiento == null ? "" : data.fechaVencimiento);
+        txtMerma.setText(String.valueOf(data.merma));
+
+        cboMotivoMerma.setSelectedItem(data.motivoMerma == null || data.motivoMerma.isEmpty()
+                ? "Sin merma"
+                : data.motivoMerma);
     }
 
     private void guardar() {
         String nombre = txtNombre.getText().trim();
         String codigo = txtCodigo.getText().trim();
         String categoria = String.valueOf(cboCategoria.getSelectedItem());
+        String unidadMedida = String.valueOf(cboUnidadMedida.getSelectedItem());
+        String proveedor = txtProveedor.getText().trim();
+        String fechaVencimiento = txtFechaVencimiento.getText().trim();
+        String motivoMerma = String.valueOf(cboMotivoMerma.getSelectedItem());
 
         if (nombre.isEmpty()) {
             mostrarError("El nombre del producto es obligatorio.", txtNombre);
@@ -408,14 +486,26 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
-        if (categoria.equals("Seleccionar categoría")) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar una categoría.", "Validación", JOptionPane.WARNING_MESSAGE);
+        if (categoria.equals("Seleccionar tipo de stock")) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar el tipo de stock.", "Validación", JOptionPane.WARNING_MESSAGE);
             cboCategoria.requestFocus();
+            return;
+        }
+
+        if (unidadMedida.equals("Seleccionar unidad")) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar la unidad de medida.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboUnidadMedida.requestFocus();
+            return;
+        }
+
+        if (!fechaVencimiento.isEmpty() && !fechaValida(fechaVencimiento)) {
+            mostrarError("La fecha de vencimiento debe tener el formato yyyy-MM-dd. Ejemplo: 2025-12-31", txtFechaVencimiento);
             return;
         }
 
         double costo;
         double precio;
+        double merma;
         int stock;
         int stockMinimo;
 
@@ -468,6 +558,28 @@ public class ProductoDialog extends JDialog {
             return;
         }
 
+        try {
+            merma = Double.parseDouble(txtMerma.getText().trim());
+            if (merma < 0) {
+                mostrarError("La merma no puede ser negativa.", txtMerma);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            mostrarError("La merma debe ser un número válido. Ejemplo: 2.5", txtMerma);
+            return;
+        }
+
+        if (merma > stock) {
+            mostrarError("La merma no puede ser mayor que el stock actual.", txtMerma);
+            return;
+        }
+
+        if (merma > 0 && motivoMerma.equals("Sin merma")) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un motivo de merma.", "Validación", JOptionPane.WARNING_MESSAGE);
+            cboMotivoMerma.requestFocus();
+            return;
+        }
+
         productoData = new ProductoFormData(
                 codigo,
                 nombre,
@@ -476,11 +588,28 @@ public class ProductoDialog extends JDialog {
                 precio,
                 stock,
                 stockMinimo,
-                swActivo.isSelected()
+                swActivo.isSelected(),
+                unidadMedida,
+                proveedor,
+                fechaVencimiento,
+                merma,
+                motivoMerma
         );
 
         confirmado = true;
         dispose();
+    }
+
+    private boolean fechaValida(String fecha) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setLenient(false);
+
+        try {
+            sdf.parse(fecha);
+            return true;
+        } catch (ParseException e) {
+            return false;
+        }
     }
 
     private void mostrarError(String mensaje, Component campo) {
@@ -584,8 +713,35 @@ public class ProductoDialog extends JDialog {
         public int stockMinimo;
         public boolean activo;
 
+        public String unidadMedida;
+        public String proveedor;
+        public String fechaVencimiento;
+        public double merma;
+        public String motivoMerma;
+
         public ProductoFormData(String codigo, String nombre, String categoria, double costo,
                                 double precio, int stock, int stockMinimo, boolean activo) {
+            this(
+                    codigo,
+                    nombre,
+                    categoria,
+                    costo,
+                    precio,
+                    stock,
+                    stockMinimo,
+                    activo,
+                    "unidad",
+                    "",
+                    "",
+                    0,
+                    "Sin merma"
+            );
+        }
+
+        public ProductoFormData(String codigo, String nombre, String categoria, double costo,
+                                double precio, int stock, int stockMinimo, boolean activo,
+                                String unidadMedida, String proveedor, String fechaVencimiento,
+                                double merma, String motivoMerma) {
             this.codigo = codigo;
             this.nombre = nombre;
             this.categoria = categoria;
@@ -594,6 +750,11 @@ public class ProductoDialog extends JDialog {
             this.stock = stock;
             this.stockMinimo = stockMinimo;
             this.activo = activo;
+            this.unidadMedida = unidadMedida;
+            this.proveedor = proveedor;
+            this.fechaVencimiento = fechaVencimiento;
+            this.merma = merma;
+            this.motivoMerma = motivoMerma;
         }
     }
 }

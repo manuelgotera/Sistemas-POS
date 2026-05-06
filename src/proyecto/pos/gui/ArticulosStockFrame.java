@@ -3,6 +3,8 @@ package proyecto.pos.gui;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.regex.Pattern;
 import javax.swing.*;
@@ -21,9 +23,27 @@ public class ArticulosStockFrame extends JFrame {
     private static final Color TEXTO = new Color(30, 37, 48);
     private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
     private static final Color ROJO = new Color(220, 53, 69);
+    private static final Color VERDE = new Color(40, 167, 69);
+    private static final Color NARANJA = new Color(255, 145, 77);
+    private static final Color GRIS = new Color(150, 157, 168);
     private static final Color AMARILLO_FONDO = new Color(255, 249, 219);
     private static final Color AMARILLO_BORDE = new Color(245, 213, 93);
     private static final Color AMARILLO_TEXTO = new Color(128, 89, 0);
+
+    private static final int COL_CODIGO = 0;
+    private static final int COL_NOMBRE = 1;
+    private static final int COL_CATEGORIA = 2;
+    private static final int COL_UNIDAD = 3;
+    private static final int COL_PROVEEDOR = 4;
+    private static final int COL_COSTO = 5;
+    private static final int COL_PRECIO = 6;
+    private static final int COL_STOCK = 7;
+    private static final int COL_STOCK_MIN = 8;
+    private static final int COL_MERMA = 9;
+    private static final int COL_VENCIMIENTO = 10;
+    private static final int COL_ALERTA = 11;
+    private static final int COL_STATUS = 12;
+    private static final int COL_ACCIONES = 13;
 
     private JTable tablaProductos;
     private DefaultTableModel modeloTabla;
@@ -37,14 +57,15 @@ public class ArticulosStockFrame extends JFrame {
         configurarVentana();
         construirInterfaz();
         cargarDatosDemo();
+        recalcularAlertas();
         actualizarAlertaStock();
         actualizarFooter();
     }
 
     private void configurarVentana() {
         setTitle("Artículos y Stock");
-        setSize(1180, 720);
-        setMinimumSize(new Dimension(1000, 620));
+        setSize(1280, 740);
+        setMinimumSize(new Dimension(1100, 640));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -79,15 +100,15 @@ public class ArticulosStockFrame extends JFrame {
             new Caja_GUI().setVisible(true);
             dispose();
         });
-        
+
         btnReportes.addActionListener(e -> {
             new ReportesFrame().setVisible(true);
-            this.dispose();
+            dispose();
         });
-        
+
         btnConfig.addActionListener(e -> {
             new ConfiguracionFrame().setVisible(true);
-            this.dispose();
+            dispose();
         });
 
         btnHistorial.addActionListener(e -> {
@@ -100,7 +121,6 @@ public class ArticulosStockFrame extends JFrame {
         sidebar.add(crearLinea());
         sidebar.add(Box.createVerticalStrut(12));
 
-        // Se eliminó el botón de Modo Tampilan
         JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
         btnSalir.setForeground(ROJO);
         btnSalir.addActionListener(e -> System.exit(0));
@@ -152,9 +172,7 @@ public class ArticulosStockFrame extends JFrame {
         marca.add(logo);
         marca.add(textos);
 
-        // Se eliminó el botón btnColapsar de aquí
         header.add(marca, BorderLayout.CENTER);
-
         return header;
     }
 
@@ -224,11 +242,11 @@ public class ArticulosStockFrame extends JFrame {
         titulos.setOpaque(false);
         titulos.setLayout(new BoxLayout(titulos, BoxLayout.Y_AXIS));
 
-        JLabel titulo = new JLabel("Lista de Productos");
+        JLabel titulo = new JLabel("Lista de Productos e Insumos");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         titulo.setForeground(Color.BLACK);
 
-        JLabel subtitulo = new JLabel("Gestionar datos de productos e inventario");
+        JLabel subtitulo = new JLabel("Gestionar stock, proveedores, vencimientos y mermas");
         subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitulo.setForeground(TEXTO_SUAVE);
 
@@ -238,7 +256,6 @@ public class ArticulosStockFrame extends JFrame {
 
         JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         derecha.setOpaque(false);
-        // Se eliminó crearBotonIcono("/img/ojo.png") de aquí
         derecha.add(crearTarjetaHora());
         derecha.add(crearTarjetaUsuario());
 
@@ -248,7 +265,6 @@ public class ArticulosStockFrame extends JFrame {
         return header;
     }
 
-    // El resto del código se mantiene igual...
     private JPanel crearTarjetaHora() {
         JPanel tarjeta = crearTarjetaHeader(110);
         JLabel lblTitulo = new JLabel("Hora");
@@ -259,9 +275,7 @@ public class ArticulosStockFrame extends JFrame {
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblHora.setForeground(TEXTO_SUAVE);
 
-        new Timer(1000, e -> {
-            lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()));
-        }).start();
+        new Timer(1000, e -> lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()))).start();
 
         tarjeta.add(lblTitulo);
         tarjeta.add(lblHora);
@@ -351,7 +365,7 @@ public class ArticulosStockFrame extends JFrame {
         botones.add(btnExportar);
         botones.add(btnAgregar);
 
-        lblAlerta = new JLabel("1 producto tiene existencias por debajo del mínimo");
+        lblAlerta = new JLabel("Sin alertas de stock");
         lblAlerta.setIcon(redimensionarIcono("/img/stock.png", 17, 17));
         lblAlerta.setIconTextGap(8);
         lblAlerta.setOpaque(true);
@@ -367,7 +381,12 @@ public class ArticulosStockFrame extends JFrame {
         filtros.setOpaque(false);
         filtros.setBorder(new EmptyBorder(14, 0, 0, 0));
 
-        cboCategoria = new JComboBox<>(new String[]{"Todas las categorías", "Comida", "Bebida"});
+        cboCategoria = new JComboBox<>(new String[]{
+                "Todas las categorías",
+                "Consumo crudo",
+                "Preparado",
+                "Bebida"
+        });
         cboCategoria.setPreferredSize(new Dimension(190, 36));
         cboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboCategoria.setBackground(Color.WHITE);
@@ -391,7 +410,7 @@ public class ArticulosStockFrame extends JFrame {
     private JPanel crearBuscador() {
         JPanel panel = new JPanel(new BorderLayout(8, 0));
         panel.setBackground(Color.WHITE);
-        panel.setPreferredSize(new Dimension(280, 36));
+        panel.setPreferredSize(new Dimension(300, 36));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 new RoundedBorder(BORDE, 10),
                 new EmptyBorder(0, 10, 0, 10)
@@ -403,11 +422,19 @@ public class ArticulosStockFrame extends JFrame {
         txtBuscar.setBorder(null);
         txtBuscar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         txtBuscar.setForeground(TEXTO);
-        txtBuscar.putClientProperty("JTextField.placeholderText", "name or code product");
+        txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar por código, nombre o proveedor");
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { aplicarFiltros(); }
-            public void removeUpdate(DocumentEvent e) { aplicarFiltros(); }
-            public void changedUpdate(DocumentEvent e) { aplicarFiltros(); }
+            public void insertUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                aplicarFiltros();
+            }
         });
 
         panel.add(icono, BorderLayout.WEST);
@@ -417,13 +444,31 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private JScrollPane crearTabla() {
-        String[] columnas = { "Código", "Nombre", "Categoría", "Costo", "Precio", "Stock", "Min. stock", "Status", "Acciones" };
+        String[] columnas = {
+                "Código",
+                "Nombre",
+                "Tipo",
+                "Unidad",
+                "Proveedor",
+                "Costo",
+                "Precio",
+                "Stock",
+                "Min.",
+                "Merma",
+                "Vencimiento",
+                "Alerta",
+                "Status",
+                "Acciones"
+        };
+
         modeloTabla = new DefaultTableModel(columnas, 0) {
-            public boolean isCellEditable(int row, int column) { return false; }
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
 
         tablaProductos = new JTable(modeloTabla);
-        tablaProductos.setRowHeight(38);
+        tablaProductos.setRowHeight(40);
         tablaProductos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tablaProductos.setShowVerticalLines(false);
         tablaProductos.setShowHorizontalLines(true);
@@ -432,6 +477,7 @@ public class ArticulosStockFrame extends JFrame {
         tablaProductos.setSelectionForeground(TEXTO);
         tablaProductos.setFillsViewportHeight(true);
         tablaProductos.setIntercellSpacing(new Dimension(0, 0));
+        tablaProductos.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
         JTableHeader header = tablaProductos.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -455,22 +501,28 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private void ajustarColumnas() {
-        int[] anchos = {85, 175, 110, 85, 85, 75, 95, 95, 115};
+        int[] anchos = {85, 165, 125, 80, 150, 80, 80, 70, 70, 75, 110, 125, 95, 100};
+
         for (int i = 0; i < anchos.length; i++) {
             tablaProductos.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
         }
     }
 
     private void aplicarRenderers() {
-        tablaProductos.getColumnModel().getColumn(0).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
-        tablaProductos.getColumnModel().getColumn(1).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
-        tablaProductos.getColumnModel().getColumn(2).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
-        tablaProductos.getColumnModel().getColumn(3).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
-        tablaProductos.getColumnModel().getColumn(4).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
-        tablaProductos.getColumnModel().getColumn(5).setCellRenderer(new StockRenderer());
-        tablaProductos.getColumnModel().getColumn(6).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
-        tablaProductos.getColumnModel().getColumn(7).setCellRenderer(new StatusRenderer());
-        tablaProductos.getColumnModel().getColumn(8).setCellRenderer(new AccionesRenderer());
+        tablaProductos.getColumnModel().getColumn(COL_CODIGO).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(COL_NOMBRE).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(COL_CATEGORIA).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(COL_UNIDAD).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(COL_PROVEEDOR).setCellRenderer(new TextoRenderer(SwingConstants.LEFT));
+        tablaProductos.getColumnModel().getColumn(COL_COSTO).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(COL_PRECIO).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(COL_STOCK).setCellRenderer(new StockRenderer());
+        tablaProductos.getColumnModel().getColumn(COL_STOCK_MIN).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(COL_MERMA).setCellRenderer(new MermaRenderer());
+        tablaProductos.getColumnModel().getColumn(COL_VENCIMIENTO).setCellRenderer(new TextoRenderer(SwingConstants.CENTER));
+        tablaProductos.getColumnModel().getColumn(COL_ALERTA).setCellRenderer(new AlertaRenderer());
+        tablaProductos.getColumnModel().getColumn(COL_STATUS).setCellRenderer(new StatusRenderer());
+        tablaProductos.getColumnModel().getColumn(COL_ACCIONES).setCellRenderer(new AccionesRenderer());
     }
 
     private void agregarAccionesTabla() {
@@ -478,8 +530,14 @@ public class ArticulosStockFrame extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 int filaVista = tablaProductos.rowAtPoint(e.getPoint());
                 int columnaVista = tablaProductos.columnAtPoint(e.getPoint());
-                if (filaVista < 0 || columnaVista < 0) return;
-                if (tablaProductos.convertColumnIndexToModel(columnaVista) != 8) return;
+
+                if (filaVista < 0 || columnaVista < 0) {
+                    return;
+                }
+
+                if (tablaProductos.convertColumnIndexToModel(columnaVista) != COL_ACCIONES) {
+                    return;
+                }
 
                 int filaModelo = tablaProductos.convertRowIndexToModel(filaVista);
                 int xRelativo = e.getX() - tablaProductos.getCellRect(filaVista, columnaVista, true).x;
@@ -511,8 +569,13 @@ public class ArticulosStockFrame extends JFrame {
         boton.setForeground(Color.WHITE);
         boton.setBorder(new RoundedBorder(AZUL, 10));
         boton.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { boton.setBackground(AZUL_HOVER); }
-            public void mouseExited(MouseEvent e) { boton.setBackground(AZUL); }
+            public void mouseEntered(MouseEvent e) {
+                boton.setBackground(AZUL_HOVER);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                boton.setBackground(AZUL);
+            }
         });
         return boton;
     }
@@ -537,30 +600,72 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private void cargarDatosDemo() {
-        agregarFila("BRG-001", "Inka kola", "Bebida", 3.00, 5.00, 120, 20, true);
-        agregarFila("BRG-002", "Chicha morada", "Bebida", 4.00, 8.00, 81, 20, true);
-        agregarFila("BRG-003", "Pisco sour", "Bebida", 4.00, 14.00, 32, 20, true);
-        agregarFila("BRG-0B3", "Ceviche", "Comida", 4.00, 12.00, 32, 20, true);
-        agregarFila("BRG-0A1", "Lomo saltado", "Comida", 4.00, 18.00, 3, 20, true);
-        agregarFila("BRG-0S1", "Anticucho Corazon", "Comida", 4.00, 15.00, 120, 20, true);
-        agregarFila("BRG-0S2", "Aji de Gallina", "Comida", 4.00, 15.00, 33, 20, true);
+        agregarFila("INS-001", "Pollo", "Consumo crudo", "kg", "Avícola San José", 8.50, 0, 12, 10, 0, fechaEnDias(12), true);
+        agregarFila("INS-002", "Arroz", "Consumo crudo", "kg", "Mayorista Norte", 3.40, 0, 4, 15, 0, fechaEnDias(60), true);
+        agregarFila("INS-003", "Chicha morada", "Preparado", "L", "Producción interna", 2.20, 8.00, 18, 8, 1.5, fechaEnDias(3), true);
+        agregarFila("INS-004", "Inka Kola", "Bebida", "unidad", "Distribuidora Lindley", 3.00, 5.00, 120, 20, 0, fechaEnDias(120), true);
+        agregarFila("INS-005", "Pescado", "Consumo crudo", "kg", "Mercado Modelo", 13.00, 0, 8, 6, 0, fechaEnDias(1), true);
+        agregarFila("INS-006", "Salsa criolla", "Preparado", "kg", "Producción interna", 4.00, 0, 2, 5, 0.5, fechaEnDias(-1), true);
+        agregarFila("INS-007", "Gaseosa personal", "Bebida", "unidad", "Distribuidora Centro", 2.50, 4.50, 30, 20, 0, "", true);
     }
 
-    private void agregarFila(String codigo, String nombre, String categoria, double costo, double precio, int stock, int stockMin, boolean activo) {
-        modeloTabla.addRow(new Object[]{ codigo, nombre, categoria, formatoMoneda(costo), formatoMoneda(precio), stock, stockMin, activo ? "activo" : "inactivo", "Editar   Eliminar" });
+    private String fechaEnDias(int dias) {
+        return LocalDate.now().plusDays(dias).toString();
+    }
+
+    private void agregarFila(String codigo, String nombre, String categoria, String unidad,
+                             String proveedor, double costo, double precio, int stock,
+                             int stockMin, double merma, String fechaVencimiento, boolean activo) {
+
+        String alerta = calcularAlerta(stock, stockMin, merma, fechaVencimiento);
+
+        modeloTabla.addRow(new Object[]{
+                codigo,
+                nombre,
+                categoria,
+                unidad,
+                proveedor,
+                formatoMoneda(costo),
+                formatoMoneda(precio),
+                stock,
+                stockMin,
+                merma,
+                fechaVencimiento == null || fechaVencimiento.trim().isEmpty() ? "Sin fecha" : fechaVencimiento,
+                alerta,
+                activo ? "activo" : "inactivo",
+                "Editar   Eliminar"
+        });
     }
 
     private void abrirDialogoAgregar() {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner);
         dialog.setVisible(true);
+
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
+
             if (codigoExiste(data.codigo)) {
                 JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            agregarFila(data.codigo, data.nombre, data.categoria, data.costo, data.precio, data.stock, data.stockMinimo, data.activo);
+
+            agregarFila(
+                    data.codigo,
+                    data.nombre,
+                    data.categoria,
+                    data.unidadMedida,
+                    data.proveedor,
+                    data.costo,
+                    data.precio,
+                    data.stock,
+                    data.stockMinimo,
+                    data.merma,
+                    data.fechaVencimiento,
+                    data.activo
+            );
+
+            recalcularAlertas();
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Datos agregados con éxito");
@@ -572,20 +677,31 @@ public class ArticulosStockFrame extends JFrame {
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner, actual);
         dialog.setVisible(true);
+
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
+
             if (!data.codigo.equalsIgnoreCase(actual.codigo) && codigoExiste(data.codigo)) {
                 JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            modeloTabla.setValueAt(data.codigo, filaModelo, 0);
-            modeloTabla.setValueAt(data.nombre, filaModelo, 1);
-            modeloTabla.setValueAt(data.categoria, filaModelo, 2);
-            modeloTabla.setValueAt(formatoMoneda(data.costo), filaModelo, 3);
-            modeloTabla.setValueAt(formatoMoneda(data.precio), filaModelo, 4);
-            modeloTabla.setValueAt(data.stock, filaModelo, 5);
-            modeloTabla.setValueAt(data.stockMinimo, filaModelo, 6);
-            modeloTabla.setValueAt(data.activo ? "activo" : "inactivo", filaModelo, 7);
+
+            modeloTabla.setValueAt(data.codigo, filaModelo, COL_CODIGO);
+            modeloTabla.setValueAt(data.nombre, filaModelo, COL_NOMBRE);
+            modeloTabla.setValueAt(data.categoria, filaModelo, COL_CATEGORIA);
+            modeloTabla.setValueAt(data.unidadMedida, filaModelo, COL_UNIDAD);
+            modeloTabla.setValueAt(data.proveedor, filaModelo, COL_PROVEEDOR);
+            modeloTabla.setValueAt(formatoMoneda(data.costo), filaModelo, COL_COSTO);
+            modeloTabla.setValueAt(formatoMoneda(data.precio), filaModelo, COL_PRECIO);
+            modeloTabla.setValueAt(data.stock, filaModelo, COL_STOCK);
+            modeloTabla.setValueAt(data.stockMinimo, filaModelo, COL_STOCK_MIN);
+            modeloTabla.setValueAt(data.merma, filaModelo, COL_MERMA);
+            modeloTabla.setValueAt(data.fechaVencimiento == null || data.fechaVencimiento.trim().isEmpty()
+                    ? "Sin fecha"
+                    : data.fechaVencimiento, filaModelo, COL_VENCIMIENTO);
+            modeloTabla.setValueAt(data.activo ? "activo" : "inactivo", filaModelo, COL_STATUS);
+
+            recalcularAlertas();
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Datos actualizados con éxito");
@@ -593,10 +709,18 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private void eliminarProducto(int filaModelo) {
-        String nombre = String.valueOf(modeloTabla.getValueAt(filaModelo, 1));
-        int opcion = JOptionPane.showConfirmDialog(this, "¿Desea eliminar \"" + nombre + "\"?", "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        String nombre = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_NOMBRE));
+        int opcion = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea eliminar \"" + nombre + "\"?",
+                "Confirmar eliminación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
         if (opcion == JOptionPane.YES_OPTION) {
             modeloTabla.removeRow(filaModelo);
+            recalcularAlertas();
             actualizarAlertaStock();
             aplicarFiltros();
             mostrarToast("Producto eliminado correctamente");
@@ -604,55 +728,171 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private ProductoDialog.ProductoFormData obtenerDataDesdeFila(int fila) {
-        String codigo = String.valueOf(modeloTabla.getValueAt(fila, 0));
-        String nombre = String.valueOf(modeloTabla.getValueAt(fila, 1));
-        String categoria = String.valueOf(modeloTabla.getValueAt(fila, 2));
-        double costo = limpiarMoneda(String.valueOf(modeloTabla.getValueAt(fila, 3)));
-        double precio = limpiarMoneda(String.valueOf(modeloTabla.getValueAt(fila, 4)));
-        int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, 5)));
-        int stockMin = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, 6)));
-        boolean activo = String.valueOf(modeloTabla.getValueAt(fila, 7)).equalsIgnoreCase("activo");
-        return new ProductoDialog.ProductoFormData(codigo, nombre, categoria, costo, precio, stock, stockMin, activo);
+        String codigo = String.valueOf(modeloTabla.getValueAt(fila, COL_CODIGO));
+        String nombre = String.valueOf(modeloTabla.getValueAt(fila, COL_NOMBRE));
+        String categoria = String.valueOf(modeloTabla.getValueAt(fila, COL_CATEGORIA));
+        String unidad = String.valueOf(modeloTabla.getValueAt(fila, COL_UNIDAD));
+        String proveedor = String.valueOf(modeloTabla.getValueAt(fila, COL_PROVEEDOR));
+        double costo = limpiarMoneda(String.valueOf(modeloTabla.getValueAt(fila, COL_COSTO)));
+        double precio = limpiarMoneda(String.valueOf(modeloTabla.getValueAt(fila, COL_PRECIO)));
+        int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, COL_STOCK)));
+        int stockMin = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(fila, COL_STOCK_MIN)));
+        double merma = Double.parseDouble(String.valueOf(modeloTabla.getValueAt(fila, COL_MERMA)));
+        String fecha = String.valueOf(modeloTabla.getValueAt(fila, COL_VENCIMIENTO));
+        boolean activo = String.valueOf(modeloTabla.getValueAt(fila, COL_STATUS)).equalsIgnoreCase("activo");
+
+        if (fecha.equalsIgnoreCase("Sin fecha")) {
+            fecha = "";
+        }
+
+        String motivoMerma = merma > 0 ? "Otro" : "Sin merma";
+
+        return new ProductoDialog.ProductoFormData(
+                codigo,
+                nombre,
+                categoria,
+                costo,
+                precio,
+                stock,
+                stockMin,
+                activo,
+                unidad,
+                proveedor,
+                fecha,
+                merma,
+                motivoMerma
+        );
     }
 
     private boolean codigoExiste(String codigo) {
         for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-            if (String.valueOf(modeloTabla.getValueAt(i, 0)).equalsIgnoreCase(codigo)) return true;
+            if (String.valueOf(modeloTabla.getValueAt(i, COL_CODIGO)).equalsIgnoreCase(codigo)) {
+                return true;
+            }
         }
         return false;
     }
 
     private void aplicarFiltros() {
-        if (sorter == null || txtBuscar == null || cboCategoria == null) return;
+        if (sorter == null || txtBuscar == null || cboCategoria == null) {
+            return;
+        }
+
         String texto = txtBuscar.getText().trim();
         String categoria = String.valueOf(cboCategoria.getSelectedItem());
-        RowFilter<DefaultTableModel, Object> filtroTexto = texto.isEmpty() ? null : RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1);
-        RowFilter<DefaultTableModel, Object> filtroCategoria = categoria.equals("Todas las categorías") ? null : RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", 2);
 
-        if (filtroTexto != null && filtroCategoria != null) sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));
-        else if (filtroTexto != null) sorter.setRowFilter(filtroTexto);
-        else if (filtroCategoria != null) sorter.setRowFilter(filtroCategoria);
-        else sorter.setRowFilter(null);
+        RowFilter<DefaultTableModel, Object> filtroTexto = texto.isEmpty()
+                ? null
+                : RowFilter.regexFilter("(?i)" + Pattern.quote(texto), COL_CODIGO, COL_NOMBRE, COL_PROVEEDOR);
+
+        RowFilter<DefaultTableModel, Object> filtroCategoria = categoria.equals("Todas las categorías")
+                ? null
+                : RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", COL_CATEGORIA);
+
+        if (filtroTexto != null && filtroCategoria != null) {
+            sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));
+        } else if (filtroTexto != null) {
+            sorter.setRowFilter(filtroTexto);
+        } else if (filtroCategoria != null) {
+            sorter.setRowFilter(filtroCategoria);
+        } else {
+            sorter.setRowFilter(null);
+        }
+
         actualizarFooter();
     }
 
-    private void actualizarAlertaStock() {
-        int bajoMinimo = 0;
+    private void recalcularAlertas() {
         for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-            int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, 5)));
-            int min = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, 6)));
-            if (stock < min) bajoMinimo++;
+            int stock = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, COL_STOCK)));
+            int stockMin = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, COL_STOCK_MIN)));
+            double merma = Double.parseDouble(String.valueOf(modeloTabla.getValueAt(i, COL_MERMA)));
+            String fecha = String.valueOf(modeloTabla.getValueAt(i, COL_VENCIMIENTO));
+
+            modeloTabla.setValueAt(calcularAlerta(stock, stockMin, merma, fecha), i, COL_ALERTA);
         }
-        if (bajoMinimo > 0) {
+    }
+
+    private String calcularAlerta(int stock, int stockMin, double merma, String fechaVencimiento) {
+        if (fechaVencimiento != null
+                && !fechaVencimiento.trim().isEmpty()
+                && !fechaVencimiento.equalsIgnoreCase("Sin fecha")) {
+
+            try {
+                LocalDate fecha = LocalDate.parse(fechaVencimiento);
+                long dias = ChronoUnit.DAYS.between(LocalDate.now(), fecha);
+
+                if (dias < 0) {
+                    return "Vencido";
+                }
+
+                if (dias <= 7) {
+                    return "Vence pronto";
+                }
+            } catch (Exception e) {
+                return "Fecha inválida";
+            }
+        }
+
+        if (stock <= 0) {
+            return "Agotado";
+        }
+
+        if (stock < stockMin) {
+            return "Stock bajo";
+        }
+
+        if (merma > 0) {
+            return "Con merma";
+        }
+
+        return "OK";
+    }
+
+    private void actualizarAlertaStock() {
+        int stockBajo = 0;
+        int vencidos = 0;
+        int porVencer = 0;
+        int conMerma = 0;
+        int agotados = 0;
+
+        for (int i = 0; i < modeloTabla.getRowCount(); i++) {
+            String alerta = String.valueOf(modeloTabla.getValueAt(i, COL_ALERTA));
+
+            if (alerta.equalsIgnoreCase("Stock bajo")) {
+                stockBajo++;
+            } else if (alerta.equalsIgnoreCase("Vencido")) {
+                vencidos++;
+            } else if (alerta.equalsIgnoreCase("Vence pronto")) {
+                porVencer++;
+            } else if (alerta.equalsIgnoreCase("Con merma")) {
+                conMerma++;
+            } else if (alerta.equalsIgnoreCase("Agotado")) {
+                agotados++;
+            }
+        }
+
+        int totalAlertas = stockBajo + vencidos + porVencer + conMerma + agotados;
+
+        if (totalAlertas > 0) {
             lblAlerta.setVisible(true);
-            lblAlerta.setText(bajoMinimo == 1 ? "1 producto tiene existencias por debajo del mínimo" : bajoMinimo + " productos tienen existencias por debajo del mínimo");
-        } else lblAlerta.setVisible(false);
+            lblAlerta.setText(
+                    "Alertas: "
+                            + stockBajo + " stock bajo, "
+                            + agotados + " agotados, "
+                            + porVencer + " por vencer, "
+                            + vencidos + " vencidos, "
+                            + conMerma + " con merma"
+            );
+        } else {
+            lblAlerta.setVisible(false);
+        }
     }
 
     private void actualizarFooter() {
         int visibles = tablaProductos == null ? 0 : tablaProductos.getRowCount();
         int total = modeloTabla == null ? 0 : modeloTabla.getRowCount();
-        lblFooter.setText("Mostrando " + visibles + " - " + total + " de " + total + " datos");
+        lblFooter.setText("Mostrando " + visibles + " de " + total + " datos");
     }
 
     private void mostrarToast(String mensaje) {
@@ -661,20 +901,30 @@ public class ArticulosStockFrame extends JFrame {
         toast.setBackground(new Color(235, 244, 255));
         toast.setForeground(AZUL);
         toast.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        toast.setBorder(BorderFactory.createCompoundBorder(new RoundedBorder(new Color(174, 204, 252), 10), new EmptyBorder(10, 14, 10, 14)));
+        toast.setBorder(BorderFactory.createCompoundBorder(
+                new RoundedBorder(new Color(174, 204, 252), 10),
+                new EmptyBorder(10, 14, 10, 14)
+        ));
+
         JDialog dialog = new JDialog(this, false);
         dialog.setUndecorated(true);
         dialog.add(toast);
         dialog.pack();
         dialog.setLocation(getX() + getWidth() - dialog.getWidth() - 40, getY() + 70);
         dialog.setVisible(true);
+
         Timer timer = new Timer(1800, e -> dialog.dispose());
         timer.setRepeats(false);
         timer.start();
     }
 
-    private String formatoMoneda(double valor) { return String.format("S/ %.2f", valor); }
-    private double limpiarMoneda(String texto) { return Double.parseDouble(texto.replace("S/", "").trim()); }
+    private String formatoMoneda(double valor) {
+        return String.format("S/ %.2f", valor);
+    }
+
+    private double limpiarMoneda(String texto) {
+        return Double.parseDouble(texto.replace("S/", "").trim());
+    }
 
     private ImageIcon redimensionarIcono(String path, int width, int height) {
         try {
@@ -684,14 +934,19 @@ public class ArticulosStockFrame extends JFrame {
                 Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
                 return new ImageIcon(img);
             }
-        } catch (Exception e) { System.err.println("No se encontró el icono: " + path); }
+        } catch (Exception e) {
+            System.err.println("No se encontró el icono: " + path);
+        }
         return null;
     }
 
-    // --- Renderers y Clases Auxiliares ---
     private static class TextoRenderer extends DefaultTableCellRenderer {
         private final int alineacion;
-        public TextoRenderer(int alineacion) { this.alineacion = alineacion; }
+
+        public TextoRenderer(int alineacion) {
+            this.alineacion = alineacion;
+        }
+
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setHorizontalAlignment(alineacion);
@@ -706,65 +961,149 @@ public class ArticulosStockFrame extends JFrame {
     private static class StockRenderer extends DefaultTableCellRenderer {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
             int stock = Integer.parseInt(String.valueOf(value));
-            int stockMin = Integer.parseInt(String.valueOf(table.getValueAt(row, 6)));
+            int stockMin = Integer.parseInt(String.valueOf(table.getValueAt(row, COL_STOCK_MIN)));
+
+            boolean agotado = stock <= 0;
             boolean bajo = stock < stockMin;
+
             label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setForeground(bajo ? ROJO : TEXTO);
-            label.setFont(new Font("Segoe UI", bajo ? Font.BOLD : Font.PLAIN, 12));
+            label.setForeground(agotado || bajo ? ROJO : TEXTO);
+            label.setFont(new Font("Segoe UI", agotado || bajo ? Font.BOLD : Font.PLAIN, 12));
             label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
             return label;
         }
     }
 
-    private static class StatusRenderer extends JPanel implements TableCellRenderer {
-        public StatusRenderer() { setLayout(new GridBagLayout()); setOpaque(true); }
+    private static class MermaRenderer extends DefaultTableCellRenderer {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            double merma = Double.parseDouble(String.valueOf(value));
+
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setForeground(merma > 0 ? NARANJA : TEXTO);
+            label.setFont(new Font("Segoe UI", merma > 0 ? Font.BOLD : Font.PLAIN, 12));
+            label.setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
+            return label;
+        }
+    }
+
+    private static class AlertaRenderer extends JPanel implements TableCellRenderer {
+        public AlertaRenderer() {
+            setLayout(new GridBagLayout());
+            setOpaque(true);
+        }
+
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             removeAll();
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
+            String alerta = String.valueOf(value);
+            Color color;
+
+            if (alerta.equalsIgnoreCase("OK")) {
+                color = VERDE;
+            } else if (alerta.equalsIgnoreCase("Stock bajo") || alerta.equalsIgnoreCase("Vence pronto") || alerta.equalsIgnoreCase("Con merma")) {
+                color = NARANJA;
+            } else if (alerta.equalsIgnoreCase("Vencido") || alerta.equalsIgnoreCase("Agotado") || alerta.equalsIgnoreCase("Fecha inválida")) {
+                color = ROJO;
+            } else {
+                color = GRIS;
+            }
+
+            add(new PillLabel(alerta, color), new GridBagConstraints());
+            return this;
+        }
+    }
+
+    private static class StatusRenderer extends JPanel implements TableCellRenderer {
+        public StatusRenderer() {
+            setLayout(new GridBagLayout());
+            setOpaque(true);
+        }
+
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            removeAll();
+            setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
+
             String estado = String.valueOf(value);
-            Color color = estado.equalsIgnoreCase("activo") ? new Color(83, 137, 174) : new Color(150, 157, 168);
+            Color color = estado.equalsIgnoreCase("activo") ? new Color(83, 137, 174) : GRIS;
+
             add(new PillLabel(estado, color), new GridBagConstraints());
             return this;
         }
     }
 
     private static class AccionesRenderer extends JPanel implements TableCellRenderer {
-        public AccionesRenderer() { setLayout(new FlowLayout(FlowLayout.CENTER, 10, 7)); setOpaque(true); }
+        public AccionesRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 10, 7));
+            setOpaque(true);
+        }
+
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             removeAll();
             setBackground(isSelected ? table.getSelectionBackground() : Color.WHITE);
-            JLabel editar = new JLabel("✎"); editar.setFont(new Font("Segoe UI", Font.BOLD, 14)); editar.setForeground(AZUL);
-            JLabel eliminar = new JLabel("⌫"); eliminar.setFont(new Font("Segoe UI", Font.BOLD, 14)); eliminar.setForeground(ROJO);
-            add(editar); add(eliminar);
+
+            JLabel editar = new JLabel("✎");
+            editar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            editar.setForeground(AZUL);
+
+            JLabel eliminar = new JLabel("⌫");
+            eliminar.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            eliminar.setForeground(ROJO);
+
+            add(editar);
+            add(eliminar);
+
             return this;
         }
     }
 
     private static class PillLabel extends JLabel {
         private final Color colorFondo;
+
         public PillLabel(String texto, Color colorFondo) {
-            super(texto, SwingConstants.CENTER); this.colorFondo = colorFondo;
-            setForeground(Color.WHITE); setFont(new Font("Segoe UI", Font.BOLD, 11));
-            setBorder(new EmptyBorder(4, 13, 4, 13)); setOpaque(false);
+            super(texto, SwingConstants.CENTER);
+            this.colorFondo = colorFondo;
+            setForeground(Color.WHITE);
+            setFont(new Font("Segoe UI", Font.BOLD, 11));
+            setBorder(new EmptyBorder(4, 13, 4, 13));
+            setOpaque(false);
         }
+
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(colorFondo); g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-            g2.dispose(); super.paintComponent(g);
+            g2.setColor(colorFondo);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+            g2.dispose();
+            super.paintComponent(g);
         }
     }
 
     private static class RoundedBorder extends AbstractBorder {
-        private final Color color; private final int arc;
-        public RoundedBorder(Color color, int arc) { this.color = color; this.arc = arc; }
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color); g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
             g2.dispose();
         }
-        public Insets getBorderInsets(Component c) { return new Insets(1, 1, 1, 1); }
+
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
     }
 }
