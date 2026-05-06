@@ -16,6 +16,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.dao.impl.PlatoDAOImpl;
+import proyecto.pos.dao.interfaces.PlatoDAO;
+import java.sql.*;
+import proyecto.pos.dao.impl.ClienteDAOImpl;
+import proyecto.pos.dao.interfaces.ClienteDAO;
+import proyecto.pos.model.Cliente;
+import proyecto.pos.model.Plato;
 
 public class Caja_GUI extends JFrame {
 
@@ -27,16 +35,29 @@ public class Caja_GUI extends JFrame {
     private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
     private static final Color ROJO = new Color(220, 53, 69);
     private static final Color VERDE = new Color(40, 167, 69);
+    private static Connection conexion;
+    
+    private static void conectar(){
+        DatabaseConnection db = new DatabaseConnection();
+        conexion = db.conectar();
+    }
 
+    
+    private ArrayList<Plato> obtenerPlatosBD(){
+        PlatoDAO plato_dao = new PlatoDAOImpl(conexion);
+        ArrayList<Plato> platos = (ArrayList<Plato>) plato_dao.listar();
+        return platos;
+    }
+    
     // --- BASE DE DATOS SIMULADA ---
-    private String[][] platosPrincipales = {
+    /*private String[][] platosPrincipales = {
         {"Ceviche", "12.00", "Disponible", "/img/Ceviche.png"},
         {"Lomo Saltado", "18.00", "No disponible", "/img/LomoSaltado.png"},
         {"Aji de Gallina", "15.00", "Disponible", "/img/AjiDeGallina.png"},
         {"Anticucho", "12.00", "Disponible", "/img/Anticucho.png"},
         {"Papa a la Huancaina", "10.00", "No disponible", "/img/Ceviche.png"}
-    };
-
+    };*/
+    
     private String[][] bebidas = {
         {"Pisco Sour", "14.00", "Disponible", "/img/PiscoSour.png"},
         {"Inka Kola", "8.00", "Disponible", "/img/InkaKola.png"},
@@ -291,13 +312,20 @@ public class Caja_GUI extends JFrame {
                     txtCliente.requestFocus();
                     return; 
                 }
-
+                
+                Cliente cliente  = buscarClienteDNI(dni);
+                if(cliente == null){
+                    JOptionPane.showMessageDialog(this, "El DNI ingresado no pertenece a ningún cliente", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
+                    txtCliente.requestFocus();
+                    return; 
+                }
+                
                 if (mesa.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "Debe asignar un número de mesa para proceder con el pago.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
                     txtMesa.requestFocus();
                     return;
                 }
-
+                
                 String clienteFinal = "DNI " + dni;
                 String mesaFinal = "Mesa " + mesa;
                 
@@ -321,13 +349,29 @@ public class Caja_GUI extends JFrame {
     }
 
     // --- SISTEMA DE BÚSQUEDA Y RENDERIZADO ---
+    private Cliente buscarClienteDNI(String dni){
+        ClienteDAO cliente_dao = new ClienteDAOImpl(conexion);
+        Cliente cliente = cliente_dao.obtenerPorDni(dni);
+        return cliente;
+    }
+    
     
     private void filtrarProductos() {
         String textoBuscado = txtBuscar.getText().toLowerCase().trim();
         contenedorPrincipal.removeAll();
 
+        
+        ArrayList<Plato> platos = obtenerPlatosBD();
+        for (Plato p : platos){
+            if (!platos.isEmpty()) {
+                agregarSeccion(contenedorPrincipal, "Platos Principales", platos);
+            }
+        }
+        
+        
         // Filtrar Platos
-        List<String[]> platosFiltrados = new ArrayList<>();
+        
+        /*List<String[]> platosFiltrados = new ArrayList<>();
         for (String[] p : platosPrincipales) {
             if (p[0].toLowerCase().contains(textoBuscado)) {
                 platosFiltrados.add(p);
@@ -335,7 +379,7 @@ public class Caja_GUI extends JFrame {
         }
         if (!platosFiltrados.isEmpty()) {
             agregarSeccion(contenedorPrincipal, "Platos Principales", platosFiltrados.toArray(new String[0][0]));
-        }
+        }*/
 
         // Filtrar Bebidas
         List<String[]> bebidasFiltradas = new ArrayList<>();
@@ -345,21 +389,60 @@ public class Caja_GUI extends JFrame {
             }
         }
         if (!bebidasFiltradas.isEmpty()) {
-            agregarSeccion(contenedorPrincipal, "Bebidas", bebidasFiltradas.toArray(new String[0][0]));
+            agregarSeccion(contenedorPrincipal, "Bebidas", platos);
         }
-
-        if (platosFiltrados.isEmpty() && bebidasFiltradas.isEmpty()) {
+        
+        if (platos.isEmpty() && bebidasFiltradas.isEmpty()) {
             JLabel lblVacio = new JLabel("No se encontraron productos.");
             lblVacio.setBorder(new EmptyBorder(20, 20, 20, 20));
             lblVacio.setForeground(Color.GRAY);
             contenedorPrincipal.add(lblVacio);
         }
+        
+        /*if (platosFiltrados.isEmpty() && bebidasFiltradas.isEmpty()) {
+            JLabel lblVacio = new JLabel("No se encontraron productos.");
+            lblVacio.setBorder(new EmptyBorder(20, 20, 20, 20));
+            lblVacio.setForeground(Color.GRAY);
+            contenedorPrincipal.add(lblVacio);
+        }*/
 
         contenedorPrincipal.revalidate();
         contenedorPrincipal.repaint();
     }
 
-    private void agregarSeccion(JPanel contenedor, String titulo, String[][] productos) {
+    private void agregarSeccion(JPanel contenedor, String titulo, ArrayList<Plato> platos) {
+        String disponibilidad;
+        JLabel lbl = new JLabel(titulo);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lbl.setBorder(new EmptyBorder(15, 0, 10, 0)); 
+        contenedor.add(lbl);
+
+        // MANTENEMOS LA GRILLA DE 4 COLUMNAS COMO SOLICITASTE
+        JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
+        grid.setBackground(Color.WHITE);
+        
+        for (Plato p : platos) {
+            JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            cardWrapper.setBackground(Color.WHITE);
+            // Formato array: Nombre, Precio, Estado, Imagen
+            if(p.getDisponible() == 1){
+                disponibilidad = "DISPONIBLE";
+            }
+            else{
+                disponibilidad = "AGOTADO";
+            }
+            cardWrapper.add(crearCard(p)); 
+            grid.add(cardWrapper);
+        }
+        
+        JPanel gridWrapper = new JPanel(new BorderLayout());
+        gridWrapper.setBackground(Color.WHITE);
+        gridWrapper.add(grid, BorderLayout.NORTH);
+        
+        contenedor.add(gridWrapper);
+    }
+    
+    private void agregarSeccion1(JPanel contenedor, String titulo, String[][] productos) {
         JLabel lbl = new JLabel(titulo);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lbl.setBorder(new EmptyBorder(15, 0, 10, 0)); 
@@ -373,7 +456,7 @@ public class Caja_GUI extends JFrame {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             cardWrapper.setBackground(Color.WHITE);
             // Formato array: Nombre, Precio, Estado, Imagen
-            cardWrapper.add(crearCard(p[0], p[1], p[2], p[3])); 
+            /*cardWrapper.add(crearCard(p[0], p[1], p[2], p[3])); */
             grid.add(cardWrapper);
         }
         
@@ -384,7 +467,84 @@ public class Caja_GUI extends JFrame {
         contenedor.add(gridWrapper);
     }
 
-    private JPanel crearCard(String nombre, String precio, String estado, String imgPath) {
+    private JPanel crearCard(Plato plato) {
+        String disponibilidad;
+        JPanel card = new JPanel(new BorderLayout());
+        // NUEVO: Dimensiones ajustadas para evitar desbordamiento horizontal y mantener las 4 columnas (de 165 a 150)
+        Dimension fixedSize = new Dimension(150, 240);
+        card.setPreferredSize(fixedSize);
+        card.setMinimumSize(fixedSize);
+        card.setMaximumSize(fixedSize);
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
+
+        JLabel lblImg = new JLabel("", SwingConstants.CENTER);
+        // NUEVO: Se ajusta el área de la imagen en base a los nuevos tamaños de la tarjeta
+        lblImg.setPreferredSize(new Dimension(150, 120));
+        lblImg.setOpaque(true);
+        lblImg.setBackground(new Color(245, 245, 245)); 
+
+        try {
+            java.net.URL imgURL = getClass().getResource("");
+            if (imgURL != null) {
+                ImageIcon iconOriginal = new ImageIcon(imgURL);
+                // NUEVO: Se ajusta la escala de la imagen para que encaje
+                Image imagenEscalada = iconOriginal.getImage().getScaledInstance(140, 115, Image.SCALE_SMOOTH);
+                lblImg.setIcon(new ImageIcon(imagenEscalada));
+            } else {
+                lblImg.setText("No image");
+                lblImg.setForeground(Color.GRAY);
+            }
+        } catch (Exception e) {}
+
+        JPanel info = new JPanel();
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        info.setBorder(new EmptyBorder(8, 10, 8, 10));
+        info.setBackground(Color.WHITE);
+
+        JLabel n = new JLabel(plato.getNombre());
+        n.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        
+        JLabel p = new JLabel(plato.getPrecio() + " so");
+        p.setForeground(AZUL);
+        p.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
+        if(plato.getDisponible() == 1){disponibilidad = "DISPONIBLE";}else{disponibilidad = "AGOTADO";}
+        
+        JLabel s = new JLabel(disponibilidad);
+        s.setFont(new Font("Segoe UI", Font.BOLD, 11));
+
+        JButton btnAdd = new JButton("+");
+        btnAdd.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // --- LÓGICA DE ESTADO (DISPONIBILIDAD) ---
+        if (disponibilidad.equalsIgnoreCase("Disponible")) {
+            s.setForeground(VERDE);
+            btnAdd.setBackground(AZUL);
+            btnAdd.setForeground(Color.WHITE);
+            btnAdd.setEnabled(true);
+        } else {
+            s.setForeground(ROJO);
+            btnAdd.setBackground(Color.LIGHT_GRAY);
+            btnAdd.setForeground(Color.DARK_GRAY);
+            btnAdd.setEnabled(false); // Bloqueamos el botón
+        }
+
+        info.add(n);
+        info.add(Box.createVerticalStrut(3));
+        info.add(p);
+        info.add(Box.createVerticalStrut(3));
+        info.add(s);
+
+        btnAdd.addActionListener(e -> agregarAlCarrito(plato.getNombre(), plato.getPrecio()));
+
+        card.add(lblImg, BorderLayout.NORTH);
+        card.add(info, BorderLayout.CENTER);
+        card.add(btnAdd, BorderLayout.SOUTH);
+        return card;
+    }
+    
+    private JPanel crearCard1(String nombre, String precio, String estado, String imgPath) {
         JPanel card = new JPanel(new BorderLayout());
         // NUEVO: Dimensiones ajustadas para evitar desbordamiento horizontal y mantener las 4 columnas (de 165 a 150)
         Dimension fixedSize = new Dimension(150, 240);
@@ -726,6 +886,7 @@ public class Caja_GUI extends JFrame {
     }
 
     public static void main(String[] args) {
+        conectar();
         SwingUtilities.invokeLater(() -> new Caja_GUI().setVisible(true));
     }
 }
