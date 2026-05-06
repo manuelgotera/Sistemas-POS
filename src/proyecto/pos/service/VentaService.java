@@ -4,6 +4,7 @@
  */
 package proyecto.pos.service;
 
+import java.util.Date;
 import java.util.List;
 import proyecto.pos.dao.interfaces.VentaDAO;
 import proyecto.pos.model.ComprobantePago;
@@ -57,6 +58,15 @@ public class VentaService {
         }
     }
 
+    public List<Venta> listarVentasPorFecha(Date inicio, Date fin) {
+        try {
+            return ventaDAO.listarPorRangoFecha(inicio, fin);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al listar ventas", e);
+        }
+    }
+    
+    
     public Venta obtenerVenta(int ventaId) {
 
         if (ventaId <= 0) {

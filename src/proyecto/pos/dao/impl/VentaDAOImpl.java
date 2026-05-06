@@ -388,7 +388,7 @@ public class VentaDAOImpl implements VentaDAO {
         return ventas;
     }
     
-    public List<Venta> listarPorRangoFecha(Date inicio, Date fin) {
+    public List<Venta> listarPorRangoFecha(java.util.Date inicio, java.util.Date fin) {
         List<Venta> ventas = new ArrayList<>();
 
         String sql = """
