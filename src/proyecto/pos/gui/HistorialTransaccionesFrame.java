@@ -748,5 +748,6 @@ public class HistorialTransaccionesFrame extends JFrame {
             gbc.gridx = 1; panel.add(btnImp, gbc);
             return panel;
         }
+        
     }
 }

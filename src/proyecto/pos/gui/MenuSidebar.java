@@ -7,19 +7,19 @@ import javax.swing.border.*;
 
 public class MenuSidebar extends JPanel {
 
-    private static final Color AZUL = new Color(26, 83, 160);
+    private static final Color AZUL       = new Color(26, 83, 160);
     private static final Color AZUL_CLARO = new Color(232, 241, 255);
-    private static final Color SIDEBAR = new Color(250, 251, 253);
-    private static final Color BORDE = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
-    private static final Color ROJO = new Color(220, 53, 69);
+    private static final Color SIDEBAR    = new Color(250, 251, 253);
+    private static final Color BORDE      = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE= new Color(105, 113, 128);
+    private static final Color ROJO       = new Color(220, 53, 69);
 
     private JFrame parentFrame;
     private String ventanaActiva;
 
     public MenuSidebar(JFrame parentFrame, String ventanaActiva) {
-        this.parentFrame = parentFrame;
-        this.ventanaActiva = ventanaActiva;
+        this.parentFrame    = parentFrame;
+        this.ventanaActiva  = ventanaActiva;
         initComponents();
     }
 
@@ -33,22 +33,27 @@ public class MenuSidebar extends JPanel {
         add(crearLinea());
         add(Box.createVerticalStrut(34));
 
-        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", ventanaActiva.equals("Cajero"));
-        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", ventanaActiva.equals("Stock"));
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", ventanaActiva.equals("Historial"));
-        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", ventanaActiva.equals("Reportes"));
-        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", ventanaActiva.equals("Gastos"));
-        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
+        JButton btnCajero    = crearBotonMenu("Cajero",             "/img/carrito.png",       ventanaActiva.equals("Cajero"));
+        JButton btnStock     = crearBotonMenu("Artículos y Stock",  "/img/stock.png",         ventanaActiva.equals("Stock"));
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.","/img/Historial.png",     ventanaActiva.equals("Historial"));
+        JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/billetera.png",     ventanaActiva.equals("Gastos"));
+        JButton btnClientes  = crearBotonMenu("Clientes",           "/img/clientes.png",      ventanaActiva.equals("Clientes"));
+        JButton btnEmpleados = crearBotonMenu("Empleados",          "/img/empleados.png",     ventanaActiva.equals("Empleados"));
+        JButton btnConfig    = crearBotonMenu("Configuración",      "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
 
-        btnCajero.addActionListener(e -> navegar(new Caja_GUI()));
-        btnStock.addActionListener(e -> navegar(new ArticulosStockFrame()));
+        btnCajero   .addActionListener(e -> navegar(new Caja_GUI()));
+        btnStock    .addActionListener(e -> navegar(new ArticulosStockFrame()));
         btnHistorial.addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
-        btnReportes.addActionListener(e -> navegar(new ReportesFrame()));
-        btnConfig.addActionListener(e -> navegar(new ConfiguracionFrame()));
-        btnGastos.addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
+        btnReportes .addActionListener(e -> navegar(new ReportesFrame()));
+        btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
+        btnClientes .addActionListener(e -> navegar(new ClientesFrame()));
+        btnEmpleados.addActionListener(e -> navegar(new EmpleadosFrame()));
+        btnConfig   .addActionListener(e -> navegar(new ConfiguracionFrame()));
 
-        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
-        
+        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes,
+                    btnGastos, btnClientes, btnEmpleados, btnConfig);
+
         add(Box.createVerticalGlue());
         add(crearLinea());
         add(Box.createVerticalStrut(12));
@@ -139,7 +144,7 @@ public class MenuSidebar extends JPanel {
 
         boton.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) { if (!seleccionado) boton.setBackground(new Color(240, 243, 248)); }
-            public void mouseExited(MouseEvent e) { if (!seleccionado) boton.setBackground(SIDEBAR); }
+            public void mouseExited (MouseEvent e) { if (!seleccionado) boton.setBackground(SIDEBAR); }
         });
 
         return boton;
@@ -160,12 +165,12 @@ public class MenuSidebar extends JPanel {
                 return new ImageIcon(img);
             }
         } catch (Exception e) {}
-        return null; 
+        return null;
     }
 
     public static class RoundedBorder extends AbstractBorder {
         private final Color color;
-        private final int arc;
+        private final int   arc;
         public RoundedBorder(Color color, int arc) { this.color = color; this.arc = arc; }
         @Override public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
