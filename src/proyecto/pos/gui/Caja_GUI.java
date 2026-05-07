@@ -1,34 +1,22 @@
 package proyecto.pos.gui;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.border.AbstractBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
+import java.text.*;
+import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.event.*;
+import javax.swing.text.*;
 
 public class Caja_GUI extends JFrame {
 
-    // --- COLORES DEL SIDEBAR ---
     private static final Color AZUL = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO = new Color(232, 241, 255);
-    private static final Color SIDEBAR = new Color(250, 251, 253);
     private static final Color BORDE = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
     private static final Color ROJO = new Color(220, 53, 69);
     private static final Color VERDE = new Color(40, 167, 69);
 
-    // --- BASE DE DATOS SIMULADA ---
     private String[][] platosPrincipales = {
         {"Ceviche", "12.00", "Disponible", "/img/Ceviche.png"},
         {"Lomo Saltado", "18.00", "No disponible", "/img/LomoSaltado.png"},
@@ -44,11 +32,9 @@ public class Caja_GUI extends JFrame {
         {"Limonada", "8.00", "Disponible", "/img/InkaKola.png"}
     };
 
-    // --- VARIABLES GLOBALES ---
-    private JPanel panelCarritoContenedor; // Nuevo contenedor interactivo para el carrito
-    private JPanel contenedorPrincipal;    // Contenedor del grid de productos
+    private JPanel panelCarritoContenedor; 
+    private JPanel contenedorPrincipal;    
     private JTextField txtBuscar;
-
     private JTextField txtCliente, txtMesa; 
     private JButton btnPagar, btnVaciar;
     private JLabel lblTotalPagar;
@@ -57,14 +43,12 @@ public class Caja_GUI extends JFrame {
     public Caja_GUI() {
         configurarVentana();
         initComponents();
-        filtrarProductos(); // Carga inicial de todos los productos
+        filtrarProductos(); 
     }
 
     private void configurarVentana() { 
-        FlatLightLaf.setup();
         setTitle("Sistema de Caja - POS");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        
         setSize(1180, 720); 
         setMinimumSize(new Dimension(1000, 620)); 
         setLocationRelativeTo(null);
@@ -75,7 +59,7 @@ public class Caja_GUI extends JFrame {
         setLayout(new BorderLayout());
 
         // --- 1. SIDEBAR ---
-        add(crearSidebar(), BorderLayout.WEST);
+        add(new MenuSidebar(this, "Cajero"), BorderLayout.WEST);
 
         // --- 2. ÁREA CENTRAL (BUSCADOR + GRID) ---
         JPanel areaCentro = new JPanel(new BorderLayout());
@@ -84,7 +68,6 @@ public class Caja_GUI extends JFrame {
         JPanel cabeceraCompleta = new JPanel();
         cabeceraCompleta.setLayout(new BoxLayout(cabeceraCompleta, BoxLayout.Y_AXIS));
         cabeceraCompleta.setBackground(Color.WHITE);
-        // NUEVO: Línea divisoria debajo de la barra de búsqueda para separar el contenido central
         cabeceraCompleta.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDE));
 
         JPanel topBar = new JPanel(new BorderLayout());
@@ -112,7 +95,7 @@ public class Caja_GUI extends JFrame {
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        Timer timerReloj = new Timer(1000, e -> {
+        javax.swing.Timer timerReloj = new javax.swing.Timer(1000, e -> {
             String horaActual = sdf.format(new Date());
             lblHora.setText("<html><b>Hora</b><br><font color='gray'>" + horaActual + "</font></html>");
         });
@@ -124,8 +107,16 @@ public class Caja_GUI extends JFrame {
 
         JLabel lblAvatar = new JLabel();
         lblAvatar.setPreferredSize(new Dimension(40, 40));
-        lblAvatar.setBackground(Color.LIGHT_GRAY);
-        lblAvatar.setOpaque(true);
+        
+        ImageIcon fotoPerfil = MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 40, 40);
+        if (fotoPerfil != null) {
+            lblAvatar.setIcon(fotoPerfil);
+        } else {
+            lblAvatar.setBackground(Color.LIGHT_GRAY);
+            lblAvatar.setOpaque(true);
+            lblAvatar.setText("ID"); 
+            lblAvatar.setHorizontalAlignment(SwingConstants.CENTER);
+        }
 
         panelPerfil.add(lblHora);
         panelPerfil.add(lblUsuario);
@@ -140,7 +131,6 @@ public class Caja_GUI extends JFrame {
         txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar producto (F2)...");
         txtBuscar.putClientProperty("JComponent.roundRect", true); 
         
-        // --- BUSCADOR EN TIEMPO REAL ---
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { filtrarProductos(); }
             public void removeUpdate(DocumentEvent e) { filtrarProductos(); }
@@ -153,7 +143,6 @@ public class Caja_GUI extends JFrame {
         cabeceraCompleta.add(panelBuscador);
         areaCentro.add(cabeceraCompleta, BorderLayout.NORTH);
 
-        // CONTENEDOR DE PRODUCTOS
         contenedorPrincipal = new JPanel();
         contenedorPrincipal.setLayout(new BoxLayout(contenedorPrincipal, BoxLayout.Y_AXIS));
         contenedorPrincipal.setBackground(Color.WHITE);
@@ -162,7 +151,6 @@ public class Caja_GUI extends JFrame {
         JScrollPane scroll = new JScrollPane(contenedorPrincipal);
         scroll.setBorder(null);
         scroll.getVerticalScrollBar().setUnitIncrement(16); 
-        // NUEVO: Bloquear desplazamiento de izquierda a derecha (scroll horizontal desactivado)
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         
         areaCentro.add(scroll, BorderLayout.CENTER);
@@ -170,14 +158,13 @@ public class Caja_GUI extends JFrame {
 
         // --- 3. RESUMEN DE PAGO (DERECHA) ---
         JPanel panelResumen = new JPanel(new BorderLayout());
-        panelResumen.setPreferredSize(new Dimension(280, 0)); // Un poco más ancho para el botón X
+        panelResumen.setPreferredSize(new Dimension(280, 0)); 
         panelResumen.setBackground(Color.WHITE);
         panelResumen.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, new Color(230, 230, 230)));
 
         JPanel superiorResumen = new JPanel(new BorderLayout());
         superiorResumen.setBackground(Color.WHITE);
         
-        // --- SECCIÓN CLIENTE Y MESA ---
         JPanel panelDatos = new JPanel(new GridLayout(4, 1, 0, 2));
         panelDatos.setBackground(Color.WHITE);
         panelDatos.setBorder(new EmptyBorder(10, 10, 5, 10));
@@ -187,7 +174,6 @@ public class Caja_GUI extends JFrame {
         txtCliente = new JTextField();
         txtCliente.putClientProperty("JTextField.placeholderText", "Ingrese DNI (8 dígitos)...");
         
-        // VALIDACIÓN: DNI SOLO NÚMEROS Y MÁXIMO 8 DÍGITOS
         ((AbstractDocument) txtCliente.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -210,7 +196,6 @@ public class Caja_GUI extends JFrame {
         txtMesa = new JTextField();
         txtMesa.putClientProperty("JTextField.placeholderText", "Número de mesa...");
 
-        // VALIDACIÓN: MESA SOLO NÚMEROS
         ((AbstractDocument) txtMesa.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -236,7 +221,6 @@ public class Caja_GUI extends JFrame {
         headerResumen.add(panelDatos, BorderLayout.NORTH);
         headerResumen.add(titleRes, BorderLayout.SOUTH);
 
-        // --- CARRITO INTERACTIVO (NUEVO) ---
         panelCarritoContenedor = new JPanel();
         panelCarritoContenedor.setLayout(new BoxLayout(panelCarritoContenedor, BoxLayout.Y_AXIS));
         panelCarritoContenedor.setBackground(new Color(248, 249, 251));
@@ -260,20 +244,6 @@ public class Caja_GUI extends JFrame {
         btnPagar.setEnabled(false); 
         btnPagar.setPreferredSize(new Dimension(0, 45)); 
         btnPagar.setFont(new Font("Segoe UI", Font.BOLD, 14)); 
-        
-        
-        lblAvatar.setPreferredSize(new Dimension(40, 40));
-
-        // Intentar cargar una imagen real
-        ImageIcon fotoPerfil = redimensionarIcono("/img/perfilPedro.jpg", 40, 40);
-        if (fotoPerfil != null) {
-            lblAvatar.setIcon(fotoPerfil);
-        } else {
-            lblAvatar.setBackground(Color.LIGHT_GRAY);
-            lblAvatar.setOpaque(true);
-            lblAvatar.setText("ID"); // Texto opcional si no hay foto
-            lblAvatar.setHorizontalAlignment(SwingConstants.CENTER);
-}
         
         btnPagar.addActionListener(e -> {
             if (totalAcumulado > 0) {
@@ -301,6 +271,7 @@ public class Caja_GUI extends JFrame {
                 String clienteFinal = "DNI " + dni;
                 String mesaFinal = "Mesa " + mesa;
                 
+                // Asegúrate de que esta clase exista en tu proyecto.
                 Pago_GUI pago = new Pago_GUI(this, totalAcumulado, clienteFinal + " - " + mesaFinal);
                 pago.setVisible(true);
             }
@@ -320,29 +291,21 @@ public class Caja_GUI extends JFrame {
         add(panelResumen, BorderLayout.EAST);
     }
 
-    // --- SISTEMA DE BÚSQUEDA Y RENDERIZADO ---
-    
     private void filtrarProductos() {
         String textoBuscado = txtBuscar.getText().toLowerCase().trim();
         contenedorPrincipal.removeAll();
 
-        // Filtrar Platos
         List<String[]> platosFiltrados = new ArrayList<>();
         for (String[] p : platosPrincipales) {
-            if (p[0].toLowerCase().contains(textoBuscado)) {
-                platosFiltrados.add(p);
-            }
+            if (p[0].toLowerCase().contains(textoBuscado)) platosFiltrados.add(p);
         }
         if (!platosFiltrados.isEmpty()) {
             agregarSeccion(contenedorPrincipal, "Platos Principales", platosFiltrados.toArray(new String[0][0]));
         }
 
-        // Filtrar Bebidas
         List<String[]> bebidasFiltradas = new ArrayList<>();
         for (String[] b : bebidas) {
-            if (b[0].toLowerCase().contains(textoBuscado)) {
-                bebidasFiltradas.add(b);
-            }
+            if (b[0].toLowerCase().contains(textoBuscado)) bebidasFiltradas.add(b);
         }
         if (!bebidasFiltradas.isEmpty()) {
             agregarSeccion(contenedorPrincipal, "Bebidas", bebidasFiltradas.toArray(new String[0][0]));
@@ -365,14 +328,12 @@ public class Caja_GUI extends JFrame {
         lbl.setBorder(new EmptyBorder(15, 0, 10, 0)); 
         contenedor.add(lbl);
 
-        // MANTENEMOS LA GRILLA DE 4 COLUMNAS COMO SOLICITASTE
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
         
         for (String[] p : productos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             cardWrapper.setBackground(Color.WHITE);
-            // Formato array: Nombre, Precio, Estado, Imagen
             cardWrapper.add(crearCard(p[0], p[1], p[2], p[3])); 
             grid.add(cardWrapper);
         }
@@ -386,7 +347,6 @@ public class Caja_GUI extends JFrame {
 
     private JPanel crearCard(String nombre, String precio, String estado, String imgPath) {
         JPanel card = new JPanel(new BorderLayout());
-        // NUEVO: Dimensiones ajustadas para evitar desbordamiento horizontal y mantener las 4 columnas (de 165 a 150)
         Dimension fixedSize = new Dimension(150, 240);
         card.setPreferredSize(fixedSize);
         card.setMinimumSize(fixedSize);
@@ -395,7 +355,6 @@ public class Caja_GUI extends JFrame {
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
 
         JLabel lblImg = new JLabel("", SwingConstants.CENTER);
-        // NUEVO: Se ajusta el área de la imagen en base a los nuevos tamaños de la tarjeta
         lblImg.setPreferredSize(new Dimension(150, 120));
         lblImg.setOpaque(true);
         lblImg.setBackground(new Color(245, 245, 245)); 
@@ -404,7 +363,6 @@ public class Caja_GUI extends JFrame {
             java.net.URL imgURL = getClass().getResource(imgPath);
             if (imgURL != null) {
                 ImageIcon iconOriginal = new ImageIcon(imgURL);
-                // NUEVO: Se ajusta la escala de la imagen para que encaje
                 Image imagenEscalada = iconOriginal.getImage().getScaledInstance(140, 115, Image.SCALE_SMOOTH);
                 lblImg.setIcon(new ImageIcon(imagenEscalada));
             } else {
@@ -431,7 +389,6 @@ public class Caja_GUI extends JFrame {
         JButton btnAdd = new JButton("+");
         btnAdd.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // --- LÓGICA DE ESTADO (DISPONIBILIDAD) ---
         if (estado.equalsIgnoreCase("Disponible")) {
             s.setForeground(VERDE);
             btnAdd.setBackground(AZUL);
@@ -441,7 +398,7 @@ public class Caja_GUI extends JFrame {
             s.setForeground(ROJO);
             btnAdd.setBackground(Color.LIGHT_GRAY);
             btnAdd.setForeground(Color.DARK_GRAY);
-            btnAdd.setEnabled(false); // Bloqueamos el botón
+            btnAdd.setEnabled(false);
         }
 
         info.add(n);
@@ -458,10 +415,7 @@ public class Caja_GUI extends JFrame {
         return card;
     }
 
-    // --- LÓGICA DEL CARRITO INTERACTIVO ---
-
     private void agregarAlCarrito(String nombre, double precio) {
-        // Creamos una pequeña tarjeta (panel) para cada item en el carrito
         JPanel itemPanel = new JPanel(new BorderLayout());
         itemPanel.setBackground(Color.WHITE);
         itemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
@@ -473,7 +427,6 @@ public class Caja_GUI extends JFrame {
         JLabel lblNombre = new JLabel("<html><b>" + nombre + "</b><br><font color='#1A53A0'>S/ " + String.format("%.2f", precio) + "</font></html>");
         lblNombre.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         
-        // Botón Eliminar Individual (X)
         JButton btnRemove = new JButton("X");
         btnRemove.setForeground(ROJO);
         btnRemove.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -502,7 +455,7 @@ public class Caja_GUI extends JFrame {
     }
 
     private void actualizarTotal() {
-        if (totalAcumulado < 0.01) totalAcumulado = 0.0; // Evitar el "-0.00" por fallos de decimales
+        if (totalAcumulado < 0.01) totalAcumulado = 0.0; 
         
         lblTotalPagar.setText("Total: " + String.format("%.2f", totalAcumulado) + " so");
         
@@ -527,205 +480,5 @@ public class Caja_GUI extends JFrame {
         txtMesa.setText("");
         panelCarritoContenedor.revalidate();
         panelCarritoContenedor.repaint();
-    }
-
-    // --- MÉTODOS DEL SIDEBAR ---
-
-    private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setPreferredSize(new Dimension(220, 0));
-        sidebar.setBackground(SIDEBAR);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-
-        sidebar.add(crearHeaderSidebar());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(34));
-
-        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", true);
-        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
-        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", false);
-        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
-        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", false);
-
-        btnStock.addActionListener(e -> {
-            new ArticulosStockFrame().setVisible(true);
-            dispose();
-        });
-        
-        btnReportes.addActionListener(e -> {
-            new ReportesFrame().setVisible(true);
-            this.dispose();
-        });
-        
-        btnConfig.addActionListener(e -> {
-            new ConfiguracionFrame().setVisible(true);
-            this.dispose();
-        });
-                
-        btnHistorial.addActionListener(e -> {
-            new HistorialTransaccionesFrame().setVisible(true);
-            dispose();
-        });
-
-        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
-        sidebar.add(Box.createVerticalGlue());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(12));
-
-        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
-        btnSalir.setForeground(ROJO);
-        btnSalir.addActionListener(e -> System.exit(0));
-
-        agregarMenu(sidebar, btnSalir);
-        sidebar.add(Box.createVerticalStrut(18));
-
-        return sidebar;
-    }
-
-    private void agregarMenu(JPanel panel, JButton... botones) {
-        for (JButton boton : botones) {
-            panel.add(boton);
-            panel.add(Box.createVerticalStrut(7));
-        }
-    }
-
-    private JPanel crearHeaderSidebar() {
-        JPanel header = new JPanel(new BorderLayout(8, 0));
-        header.setBackground(SIDEBAR);
-        header.setBorder(new EmptyBorder(16, 16, 16, 14));
-        header.setMaximumSize(new Dimension(220, 78));
-
-        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        marca.setOpaque(false);
-
-        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
-        logo.setHorizontalAlignment(SwingConstants.CENTER);
-        logo.setOpaque(true);
-        logo.setBackground(AZUL);
-        logo.setPreferredSize(new Dimension(40, 40));
-        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
-
-        JPanel textos = new JPanel();
-        textos.setOpaque(false);
-        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-
-        JLabel lblPos = new JLabel("Pos");
-        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblPos.setForeground(AZUL);
-
-        JLabel lblDesc = new JLabel("Sistema de Caja");
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblDesc.setForeground(TEXTO_SUAVE);
-
-        textos.add(lblPos);
-        textos.add(lblDesc);
-
-        marca.add(logo);
-        marca.add(textos);
-
-        header.add(marca, BorderLayout.CENTER);
-
-        return header;
-    }
-
-    private JPanel crearLinea() {
-        JPanel linea = new JPanel();
-        linea.setMaximumSize(new Dimension(220, 1));
-        linea.setPreferredSize(new Dimension(220, 1));
-        linea.setBackground(new Color(232, 235, 241));
-        return linea;
-    }
-
-    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
-        JButton boton = new JButton(texto);
-        if (iconPath != null && !iconPath.isEmpty()) {
-            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
-            boton.setIconTextGap(13);
-        }
-        boton.setMaximumSize(new Dimension(190, 40));
-        boton.setPreferredSize(new Dimension(190, 40));
-        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        boton.setHorizontalAlignment(SwingConstants.LEFT);
-        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
-        boton.setFocusPainted(false);
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
-
-        if (seleccionado) {
-            boton.setBackground(AZUL_CLARO);
-            boton.setForeground(AZUL);
-            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
-        } else {
-            boton.setBackground(SIDEBAR);
-            boton.setForeground(new Color(62, 70, 82));
-            boton.setBorderPainted(false);
-        }
-
-        boton.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(new Color(240, 243, 248));
-                }
-            }
-
-            public void mouseExited(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(SIDEBAR);
-                }
-            }
-        });
-
-        return boton;
-    }
-
-    private ImageIcon redimensionarIcono(String path, int width, int height) {
-        try {
-            java.net.URL imgURL = getClass().getResource(path);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
-            }
-        } catch (Exception e) {}
-        return null; 
-    }
-
-    private static class RoundedBorder extends AbstractBorder {
-        private final Color color;
-        private final int arc;
-
-        public RoundedBorder(Color color, int arc) {
-            this.color = color;
-            this.arc = arc;
-        }
-
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
-            g2.dispose();
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return new Insets(1, 1, 1, 1);
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 1;
-            insets.right = 1;
-            insets.top = 1;
-            insets.bottom = 1;
-            return insets;
-        }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Caja_GUI().setVisible(true));
     }
 }

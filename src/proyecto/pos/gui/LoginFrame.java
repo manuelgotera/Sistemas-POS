@@ -103,7 +103,7 @@ public class LoginFrame extends JFrame {
         }
 
         if (usuario.equals("admin") && password.equals("1234")) {
-            new HistorialTransaccionesFrame().setVisible(true);
+            new Caja_GUI().setVisible(true);
             this.dispose();
         } else {
             JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos");

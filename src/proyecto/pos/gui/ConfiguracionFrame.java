@@ -1,38 +1,20 @@
 package proyecto.pos.gui;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
-import javax.swing.border.AbstractBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
+import javax.swing.border.*;
+import javax.swing.filechooser.*;
+import javax.swing.table.*;
+import javax.swing.text.*;
 
 public class ConfiguracionFrame extends JFrame {
 
-    // --- COLORES UNIFICADOS DEL SIDEBAR ---
-    private static final Color AZUL = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO = new Color(232, 241, 255);
-    private static final Color SIDEBAR = new Color(250, 251, 253);
-    private static final Color BORDE = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
-    private static final Color ROJO = new Color(220, 53, 69);
-
-    // Componentes Perfil
     private JTextField txtNombreTienda, txtTelefono, txtWhatsapp, txtRuc;
     private JTextArea txtDireccion;
-    
-    // Componentes Impuestos/Recibo
     private JCheckBox chkIgv;
     private JTextField txtDescMax, txtFormatoNum, txtMargen;
     private JComboBox<String> cbRedondeo;
@@ -43,10 +25,8 @@ public class ConfiguracionFrame extends JFrame {
     }
 
     private void configurarVentana() {
-        FlatLightLaf.setup();
         setTitle("Sistema de Caja - Configuración");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        
         setSize(1180, 720); 
         setMinimumSize(new Dimension(1000, 620)); 
         setLocationRelativeTo(null);
@@ -56,14 +36,13 @@ public class ConfiguracionFrame extends JFrame {
     private void initComponents() {
         setLayout(new BorderLayout());
 
-        // --- 1. SIDEBAR (IZQUIERDA) ---
-        add(crearSidebar(), BorderLayout.WEST);
+        // --- 1. SIDEBAR ---
+        add(new MenuSidebar(this, "Configuracion"), BorderLayout.WEST);
 
         // --- 2. ÁREA CENTRAL ---
         JPanel areaCentro = new JPanel(new BorderLayout());
         areaCentro.setBackground(Color.WHITE);
 
-        // CABECERA CENTRAL (Con el reloj)
         JPanel cabeceraCompleta = new JPanel();
         cabeceraCompleta.setLayout(new BoxLayout(cabeceraCompleta, BoxLayout.Y_AXIS));
         cabeceraCompleta.setBackground(Color.WHITE);
@@ -89,7 +68,6 @@ public class ConfiguracionFrame extends JFrame {
         JPanel panelPerfil = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         panelPerfil.setBackground(Color.WHITE);
 
-        // Reloj en tiempo real
         JLabel lblHora = new JLabel();
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
@@ -102,7 +80,7 @@ public class ConfiguracionFrame extends JFrame {
         JLabel lblUsuario = new JLabel("<html><b>Manuel Gotera</b><br><font color='gray'>Administrador</font></html>");
         lblUsuario.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
-        JLabel lblAvatar = new JLabel(redimensionarIcono("/img/perfilPedro.jpg", 40, 40));
+        JLabel lblAvatar = new JLabel(MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 40, 40));
         lblAvatar.setPreferredSize(new Dimension(40, 40));
         lblAvatar.setBackground(Color.LIGHT_GRAY);
         lblAvatar.setOpaque(true);
@@ -121,7 +99,6 @@ public class ConfiguracionFrame extends JFrame {
 
         areaCentro.add(cabeceraCompleta, BorderLayout.NORTH);
 
-        // CONTENIDO PRINCIPAL DE CONFIGURACIÓN (TABS)
         JPanel panelContenido = new JPanel(new BorderLayout());
         panelContenido.setBackground(new Color(248, 249, 251));
         panelContenido.setBorder(new EmptyBorder(20, 30, 20, 30));
@@ -131,175 +108,6 @@ public class ConfiguracionFrame extends JFrame {
         areaCentro.add(panelContenido, BorderLayout.CENTER);
         add(areaCentro, BorderLayout.CENTER);
     }
-
-    // ─── SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
-
-    private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setPreferredSize(new Dimension(220, 0));
-        sidebar.setBackground(SIDEBAR);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-
-        sidebar.add(crearHeaderSidebar());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(34));
-
-        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
-        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
-        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", false);
-        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
-        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", true); // <--- ACTIVO
-
-        btnCajero.addActionListener(e -> {
-            new Caja_GUI().setVisible(true);
-            dispose();
-        });
-        
-        btnStock.addActionListener(e -> {
-            new ArticulosStockFrame().setVisible(true);
-            this.dispose();
-        });
-        
-        btnHistorial.addActionListener(e -> {
-            new HistorialTransaccionesFrame().setVisible(true);
-            this.dispose();
-        });
-        
-        btnReportes.addActionListener(e -> {
-            new ReportesFrame().setVisible(true);
-            this.dispose();
-        });
-
-        btnGastos.addActionListener(e -> JOptionPane.showMessageDialog(this, "Módulo de gastos pendiente de conectar."));
-
-        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
-        
-        sidebar.add(Box.createVerticalGlue());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(12));
-
-        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
-        btnSalir.setForeground(ROJO);
-        btnSalir.addActionListener(e -> System.exit(0));
-
-        agregarMenu(sidebar, btnSalir);
-        sidebar.add(Box.createVerticalStrut(18));
-
-        return sidebar;
-    }
-
-    private JPanel crearHeaderSidebar() {
-        JPanel header = new JPanel(new BorderLayout(8, 0));
-        header.setBackground(SIDEBAR);
-        header.setBorder(new EmptyBorder(16, 16, 16, 14));
-        header.setMaximumSize(new Dimension(220, 78));
-
-        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        marca.setOpaque(false);
-
-        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
-        logo.setHorizontalAlignment(SwingConstants.CENTER);
-        logo.setOpaque(true);
-        logo.setBackground(AZUL);
-        logo.setPreferredSize(new Dimension(40, 40));
-        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
-
-        JPanel textos = new JPanel();
-        textos.setOpaque(false);
-        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-
-        JLabel lblPos = new JLabel("Pos");
-        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblPos.setForeground(AZUL);
-
-        JLabel lblDesc = new JLabel("Sistema de Caja");
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblDesc.setForeground(TEXTO_SUAVE);
-
-        textos.add(lblPos);
-        textos.add(lblDesc);
-
-        marca.add(logo);
-        marca.add(textos);
-
-        header.add(marca, BorderLayout.CENTER);
-
-        return header;
-    }
-
-    private void agregarMenu(JPanel panel, JButton... botones) {
-        for (JButton boton : botones) {
-            panel.add(boton);
-            panel.add(Box.createVerticalStrut(7));
-        }
-    }
-
-    private JPanel crearLinea() {
-        JPanel linea = new JPanel();
-        linea.setMaximumSize(new Dimension(220, 1));
-        linea.setPreferredSize(new Dimension(220, 1));
-        linea.setBackground(new Color(232, 235, 241));
-        return linea;
-    }
-
-    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
-        JButton boton = new JButton(texto);
-        if (iconPath != null && !iconPath.isEmpty()) {
-            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
-            boton.setIconTextGap(13);
-        }
-        boton.setMaximumSize(new Dimension(190, 40));
-        boton.setPreferredSize(new Dimension(190, 40));
-        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        boton.setHorizontalAlignment(SwingConstants.LEFT);
-        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
-        boton.setFocusPainted(false);
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
-
-        if (seleccionado) {
-            boton.setBackground(AZUL_CLARO);
-            boton.setForeground(AZUL);
-            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
-        } else {
-            boton.setBackground(SIDEBAR);
-            boton.setForeground(new Color(62, 70, 82));
-            boton.setBorderPainted(false);
-        }
-
-        boton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(new Color(240, 243, 248));
-                }
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(SIDEBAR);
-                }
-            }
-        });
-
-        return boton;
-    }
-
-    private ImageIcon redimensionarIcono(String path, int width, int height) {
-        try {
-            java.net.URL imgURL = getClass().getResource(path);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
-            }
-        } catch (Exception e) {}
-        return null; 
-    }
-
-    // --- MÉTODOS DE CONTENIDO DE CONFIGURACIÓN ---
 
     private JTabbedPane crearTabs() {
         JTabbedPane tabs = new JTabbedPane();
@@ -623,44 +431,6 @@ public class ConfiguracionFrame extends JFrame {
         if (seleccion == JFileChooser.APPROVE_OPTION) {
             File fichero = fileChooser.getSelectedFile();
             JOptionPane.showMessageDialog(this, "Logo cargado: " + fichero.getName());
-        }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new ConfiguracionFrame().setVisible(true));
-    }
-
-    // ─── CLASE AUXILIAR DE BORDES REDONDEADOS (PARA EL BOTÓN DEL MENÚ) ───
-    private static class RoundedBorder extends AbstractBorder {
-        private final Color color;
-        private final int arc;
-
-        public RoundedBorder(Color color, int arc) {
-            this.color = color;
-            this.arc = arc;
-        }
-
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
-            g2.dispose();
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return new Insets(1, 1, 1, 1);
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 1;
-            insets.right = 1;
-            insets.top = 1;
-            insets.bottom = 1;
-            return insets;
         }
     }
 }

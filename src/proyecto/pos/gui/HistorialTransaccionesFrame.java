@@ -1,57 +1,20 @@
 package proyecto.pos.gui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.RenderingHints;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.regex.Pattern;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.RowFilter;
-import javax.swing.SwingConstants;
-import javax.swing.Timer;
-import javax.swing.border.AbstractBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import java.awt.Image;
+import java.awt.*;
+import java.awt.event.*;
+import java.text.*;
+import java.util.*;
+import java.util.regex.*;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
 
 public class HistorialTransaccionesFrame extends JFrame {
 
-    // --- COLORES UNIFICADOS ---
     private static final Color AZUL        = new Color(26, 83, 160);
     private static final Color AZUL_CLARO  = new Color(232, 241, 255);
-    private static final Color SIDEBAR     = new Color(250, 251, 253);
     private static final Color FONDO       = new Color(246, 248, 251);
     private static final Color BORDE       = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
-    private static final Color ROJO        = new Color(220, 53, 69);
     private static final Color VERDE_BG    = new Color(225, 245, 238);
     private static final Color VERDE_TEXT  = new Color(15, 110, 86);
 
@@ -60,14 +23,8 @@ public class HistorialTransaccionesFrame extends JFrame {
     private TableRowSorter<DefaultTableModel> sorter;
     private JTextField txtBuscar;
     private JComboBox<String> cboPeriodo;
-    private JLabel lblTotalTrx;
-    private JLabel lblVentaTotales;
-    private JLabel lblBruto;
-    private JLabel lblFooter;
-    private JLabel lblHora;
-
-    // Timer guardado para poder detenerlo al cerrar
-    private Timer relojTimer;
+    private JLabel lblTotalTrx, lblVentaTotales, lblBruto, lblFooter, lblHora;
+    private javax.swing.Timer relojTimer;
 
     public HistorialTransaccionesFrame() {
         configurarVentana();
@@ -96,172 +53,9 @@ public class HistorialTransaccionesFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        root.add(crearSidebar(), BorderLayout.WEST);
+        root.add(new MenuSidebar(this, "Historial"), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
-
-    // ─── SIDEBAR ────────────────────────────────────────────────────────────────
-
-    private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setPreferredSize(new Dimension(220, 0));
-        sidebar.setBackground(SIDEBAR);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-
-        sidebar.add(crearHeaderSidebar());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(34));
-
-        JButton btnCajero    = crearBotonMenu("Cajero",              "/img/carrito.png",       false);
-        JButton btnStock     = crearBotonMenu("Artículos y Stock",   "/img/stock.png",         false);
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.",  "/img/Historial.png",    true);
-        JButton btnReportes  = crearBotonMenu("Reportes",            "/img/Reporte.png",       false);
-        JButton btnGastos    = crearBotonMenu("Gastos",              "/img/billetera.png",     false);
-        JButton btnConfig    = crearBotonMenu("Configuración",       "/img/configuracion.png", false);
-
-        // Navegación funcional entre pantallas
-        btnCajero.addActionListener(e -> {
-            new Caja_GUI().setVisible(true);
-            dispose();
-        });
-        btnStock.addActionListener(e -> {
-            new ArticulosStockFrame().setVisible(true);
-            dispose();
-        });
-        btnReportes.addActionListener(e -> {
-            new ReportesFrame().setVisible(true);
-            dispose();
-        });
-        btnConfig.addActionListener(e -> {
-            new ConfiguracionFrame().setVisible(true);
-            dispose();
-        });
-
-        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
-
-        sidebar.add(Box.createVerticalGlue());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(12));
-
-        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
-        btnSalir.setForeground(ROJO);
-        btnSalir.addActionListener(e -> {
-            if (relojTimer != null && relojTimer.isRunning()) relojTimer.stop();
-            System.exit(0);
-        });
-
-        agregarMenu(sidebar, btnSalir);
-        sidebar.add(Box.createVerticalStrut(18));
-
-        return sidebar;
-    }
-
-    private void agregarMenu(JPanel panel, JButton... botones) {
-        for (JButton boton : botones) {
-            panel.add(boton);
-            panel.add(Box.createVerticalStrut(7));
-        }
-    }
-
-    private JPanel crearHeaderSidebar() {
-        JPanel header = new JPanel(new BorderLayout(8, 0));
-        header.setBackground(SIDEBAR);
-        header.setBorder(new EmptyBorder(16, 16, 16, 14));
-        header.setMaximumSize(new Dimension(220, 78));
-
-        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        marca.setOpaque(false);
-
-        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
-        logo.setHorizontalAlignment(SwingConstants.CENTER);
-        logo.setOpaque(true);
-        logo.setBackground(AZUL);
-        logo.setPreferredSize(new Dimension(40, 40));
-        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
-
-        JPanel textos = new JPanel();
-        textos.setOpaque(false);
-        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-
-        JLabel lblPos = new JLabel("Pos");
-        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblPos.setForeground(AZUL);
-
-        JLabel lblDesc = new JLabel("Sistema de Caja");
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblDesc.setForeground(TEXTO_SUAVE);
-
-        textos.add(lblPos);
-        textos.add(lblDesc);
-
-        marca.add(logo);
-        marca.add(textos);
-
-        header.add(marca, BorderLayout.CENTER);
-        return header;
-    }
-
-    private JPanel crearLinea() {
-        JPanel linea = new JPanel();
-        linea.setMaximumSize(new Dimension(220, 1));
-        linea.setPreferredSize(new Dimension(220, 1));
-        linea.setBackground(new Color(232, 235, 241));
-        return linea;
-    }
-
-    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
-        JButton boton = new JButton(texto);
-        if (iconPath != null && !iconPath.isEmpty()) {
-            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
-            boton.setIconTextGap(13);
-        }
-        boton.setMaximumSize(new Dimension(190, 40));
-        boton.setPreferredSize(new Dimension(190, 40));
-        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        boton.setHorizontalAlignment(SwingConstants.LEFT);
-        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
-        boton.setFocusPainted(false);
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
-
-        if (seleccionado) {
-            boton.setBackground(AZUL_CLARO);
-            boton.setForeground(AZUL);
-            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
-        } else {
-            boton.setBackground(SIDEBAR);
-            boton.setForeground(new Color(62, 70, 82));
-            boton.setBorderPainted(false);
-        }
-
-        boton.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                if (!seleccionado) boton.setBackground(new Color(240, 243, 248));
-            }
-            public void mouseExited(MouseEvent e) {
-                if (!seleccionado) boton.setBackground(SIDEBAR);
-            }
-        });
-
-        return boton;
-    }
-
-    private ImageIcon redimensionarIcono(String path, int width, int height) {
-        try {
-            java.net.URL imgURL = getClass().getResource(path);
-            if (imgURL != null) {
-                Image img = new ImageIcon(imgURL).getImage()
-                        .getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
-            }
-        } catch (Exception e) {
-            System.err.println("No se encontró el icono: " + path);
-        }
-        return null;
-    }
-
-    // ─── CONTENIDO PRINCIPAL ────────────────────────────────────────────────────
 
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
@@ -318,8 +112,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         circulo.setHorizontalAlignment(SwingConstants.CENTER);
         circulo.setBorder(BorderFactory.createLineBorder(AZUL, 4));
 
-        JLabel nombrePerfil = new JLabel(
-                "<html><b>uwu fernandez</b><br><font color='gray'>Cajero</font></html>");
+        JLabel nombrePerfil = new JLabel("<html><b>uwu fernandez</b><br><font color='gray'>Cajero</font></html>");
         nombrePerfil.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
         perfilPanel.add(circulo, BorderLayout.WEST);
@@ -348,8 +141,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         return panel;
     }
 
-    // ─── STATS + FILTROS ─────────────────────────────────────────────────────────
-
     private JPanel crearStatsYFiltros() {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(Color.WHITE);
@@ -363,33 +154,27 @@ public class HistorialTransaccionesFrame extends JFrame {
         gbc.weightx = 1;
 
         gbc.gridx = 0; gbc.insets = new Insets(0, 0, 0, 14);
-        JPanel cardTrx = crearStatCard("Total Transacciones", "3",
-                new Color(238, 237, 254), new Color(100, 90, 210));
+        JPanel cardTrx = crearStatCard("Total Transacciones", "3", new Color(238, 237, 254), new Color(100, 90, 210));
         lblTotalTrx = obtenerLabelValor(cardTrx);
         stats.add(cardTrx, gbc);
 
         gbc.gridx = 1;
-        JPanel cardVenta = crearStatCard("Ventas Totales", "S/. 31.00",
-                new Color(230, 241, 251), new Color(26, 83, 160));
+        JPanel cardVenta = crearStatCard("Ventas Totales", "S/. 31.00", new Color(230, 241, 251), new Color(26, 83, 160));
         lblVentaTotales = obtenerLabelValor(cardVenta);
         stats.add(cardVenta, gbc);
 
         gbc.gridx = 2; gbc.insets = new Insets(0, 0, 0, 0);
-        JPanel cardBruto = crearStatCard("Bruto", "S/. 14.00",
-                new Color(234, 243, 222), new Color(50, 140, 80));
+        JPanel cardBruto = crearStatCard("Bruto", "S/. 14.00", new Color(234, 243, 222), new Color(50, 140, 80));
         lblBruto = obtenerLabelValor(cardBruto);
         stats.add(cardBruto, gbc);
 
         wrapper.add(stats, BorderLayout.NORTH);
 
-        // Filtros
         JPanel filtros = new JPanel(new BorderLayout(12, 0));
         filtros.setBackground(Color.WHITE);
         filtros.setBorder(new EmptyBorder(0, 0, 14, 0));
 
-        cboPeriodo = new JComboBox<>(new String[]{
-            "  Filtrar periodo", "Hoy", "Esta semana", "Este mes"
-        });
+        cboPeriodo = new JComboBox<>(new String[]{"  Filtrar periodo", "Hoy", "Esta semana", "Este mes"});
         cboPeriodo.setPreferredSize(new Dimension(190, 36));
         cboPeriodo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboPeriodo.addActionListener(e -> aplicarFiltros());
@@ -408,8 +193,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         txtBuscar = new JTextField();
         txtBuscar.setBorder(BorderFactory.createEmptyBorder());
         txtBuscar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtBuscar.putClientProperty("JTextField.placeholderText",
-                "Buscar por nombre o codigo del producto");
+        txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar por nombre o codigo");
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) { aplicarFiltros(); }
@@ -468,13 +252,8 @@ public class HistorialTransaccionesFrame extends JFrame {
         return (JLabel) texto.getComponent(1);
     }
 
-    // ─── TABLA ───────────────────────────────────────────────────────────────────
-
     private JScrollPane crearTabla() {
-        String[] columnas = {
-            "No. Transaccion", "Fecha / hora", "Cajero",
-            "Total item", "Monto total", "Metodo de pago", "Estado", "Acciones"
-        };
+        String[] columnas = { "No. Transaccion", "Fecha / hora", "Cajero", "Total item", "Monto total", "Metodo de pago", "Estado", "Acciones" };
 
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
@@ -551,8 +330,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         return footer;
     }
 
-    // ─── DATOS DEMO ──────────────────────────────────────────────────────────────
-
     private void cargarDatosDemo() {
         agregarFila("TRX-2025-001", "22/12/2025 12:00", "Uwu fernandez", 2, "S/. 5.00",  "Tarjeta", "Completada");
         agregarFila("TRX-2025-002", "22/12/2025 14:00", "Uwu fernandez", 1, "S/. 8.00",  "Tarjeta", "Completada");
@@ -560,8 +337,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         actualizarFooter();
     }
 
-    private void agregarFila(String num, String fecha, String cajero,
-                              int items, String monto, String metodo, String estado) {
+    private void agregarFila(String num, String fecha, String cajero, int items, String monto, String metodo, String estado) {
         if (num    == null || num.trim().isEmpty())    num    = "S/N";
         if (fecha  == null || fecha.trim().isEmpty())  fecha  = "-";
         if (cajero == null || cajero.trim().isEmpty()) cajero = "Desconocido";
@@ -570,8 +346,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         if (estado == null || estado.trim().isEmpty()) estado = "Pendiente";
         modeloTabla.addRow(new Object[]{num, fecha, cajero, items, monto, metodo, estado, ""});
     }
-
-    // ─── MODAL DETALLE ───────────────────────────────────────────────────────────
 
     private void abrirDetalleTransaccion(int filaModelo) {
         String numTrx = obtenerCeldaSegura(filaModelo, 0, "SIN-NUMERO");
@@ -588,7 +362,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         contenido.setBackground(Color.WHITE);
         contenido.setBorder(BorderFactory.createLineBorder(BORDE, 1));
 
-        // Encabezado
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setBackground(Color.WHITE);
         encabezado.setBorder(new EmptyBorder(18, 20, 14, 20));
@@ -608,7 +381,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         encabezado.add(lblTitulo, BorderLayout.WEST);
         encabezado.add(btnCerrarX, BorderLayout.EAST);
 
-        // Cuerpo
         JPanel cuerpo = new JPanel(new GridBagLayout());
         cuerpo.setBackground(Color.WHITE);
         cuerpo.setBorder(new EmptyBorder(0, 20, 16, 20));
@@ -620,7 +392,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         g.insets = new Insets(0, 0, 0, 0);
         int fila = 0;
 
-        // Bloque azul claro con info principal
         JPanel bloqueInfo = new JPanel(new GridBagLayout());
         bloqueInfo.setBackground(AZUL_CLARO);
         bloqueInfo.setBorder(new EmptyBorder(14, 14, 14, 14));
@@ -631,20 +402,16 @@ public class HistorialTransaccionesFrame extends JFrame {
         gi.insets = new Insets(2, 0, 2, 0);
 
         gi.gridx = 0; gi.gridy = 0; gi.anchor = GridBagConstraints.WEST;
-        addLabel(bloqueInfo, "No. Transaccion", new Font("Segoe UI", Font.PLAIN, 10),
-                new Color(120, 120, 120), gi);
+        addLabel(bloqueInfo, "No. Transaccion", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, "Fecha / hora", new Font("Segoe UI", Font.PLAIN, 10),
-                new Color(120, 120, 120), gi);
+        addLabel(bloqueInfo, "Fecha / hora", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
 
         gi.gridx = 0; gi.gridy = 1;
-        addLabel(bloqueInfo, numTrx, new Font("Segoe UI", Font.BOLD, 13),
-                new Color(25, 25, 25), gi);
+        addLabel(bloqueInfo, numTrx, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, fecha, new Font("Segoe UI", Font.BOLD, 13),
-                new Color(25, 25, 25), gi);
+        addLabel(bloqueInfo, fecha, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
 
         gi.gridx = 0; gi.gridy = 2; gi.gridwidth = 2;
         gi.insets = new Insets(8, 0, 8, 0);
@@ -654,16 +421,13 @@ public class HistorialTransaccionesFrame extends JFrame {
         gi.gridwidth = 1;
 
         gi.gridx = 0; gi.gridy = 3;
-        addLabel(bloqueInfo, "Cajero", new Font("Segoe UI", Font.PLAIN, 10),
-                new Color(120, 120, 120), gi);
+        addLabel(bloqueInfo, "Cajero", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, "Estado", new Font("Segoe UI", Font.PLAIN, 10),
-                new Color(120, 120, 120), gi);
+        addLabel(bloqueInfo, "Estado", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
 
         gi.gridx = 0; gi.gridy = 4;
-        addLabel(bloqueInfo, cajero, new Font("Segoe UI", Font.BOLD, 13),
-                new Color(25, 25, 25), gi);
+        addLabel(bloqueInfo, cajero, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
 
         gi.gridx = 1;
         JLabel lEstBadge = new JLabel(estado);
@@ -677,7 +441,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         g.gridy = fila++;
         cuerpo.add(bloqueInfo, g);
 
-        // Título productos
         g.gridy = fila++;
         g.insets = new Insets(14, 0, 8, 0);
         JLabel lblProductos = new JLabel("Productos de la transaccion");
@@ -685,20 +448,17 @@ public class HistorialTransaccionesFrame extends JFrame {
         cuerpo.add(lblProductos, g);
         g.insets = new Insets(0, 0, 0, 0);
 
-        // Productos según transacción
         String[][] productos = obtenerProductosPorTransaccion(numTrx);
         for (String[] prod : productos) {
             g.gridy = fila++;
             cuerpo.add(crearFilaProducto(prod[0], prod[1], prod[2]), g);
         }
 
-        // Separador
         g.gridy = fila++;
         g.insets = new Insets(10, 0, 10, 0);
         cuerpo.add(new JSeparator(), g);
         g.insets = new Insets(3, 0, 3, 0);
 
-        // Subtotal e IGV en soles
         double[] montos = calcularMontos(productos);
         String subtotalStr = String.format("S/. %.2f", montos[0]);
         String igvStr      = String.format("S/. %.2f", montos[1]);
@@ -723,7 +483,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         cuerpo.add(new JSeparator(), g);
         g.insets = new Insets(3, 0, 3, 0);
 
-        // Sección pago
         g.gridy = fila++;
         g.insets = new Insets(6, 0, 4, 0);
         JLabel lblPago = new JLabel("Detalle de pago");
@@ -731,7 +490,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         cuerpo.add(lblPago, g);
         g.insets = new Insets(3, 0, 3, 0);
 
-        // Monto efectivo entregado (ejemplo: redondeo al billete más cercano)
         double efectivo = Math.ceil(montos[2] / 10.0) * 10;
         double vuelto   = efectivo - montos[2];
 
@@ -744,7 +502,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         ((JLabel) filaVuelto.getComponent(1)).setForeground(AZUL);
         cuerpo.add(filaVuelto, g);
 
-        // Botones del modal
         JPanel botones = new JPanel(new GridBagLayout());
         botones.setBackground(Color.WHITE);
         botones.setBorder(new EmptyBorder(14, 20, 18, 20));
@@ -795,23 +552,18 @@ public class HistorialTransaccionesFrame extends JFrame {
         dialog.setVisible(true);
     }
 
-    /** Agrega un JLabel al panel con los parámetros dados (reduce duplicación). */
-    private void addLabel(JPanel panel, String texto, Font font, Color color,
-                          GridBagConstraints gbc) {
+    private void addLabel(JPanel panel, String texto, Font font, Color color, GridBagConstraints gbc) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(font);
         lbl.setForeground(color);
         panel.add(lbl, gbc);
     }
 
-    /** Devuelve {subtotal, igv, total} calculados desde los productos. */
     private double[] calcularMontos(String[][] productos) {
         double subtotal = 0;
         for (String[] p : productos) {
             try {
-                // El total por fila está en p[2] con formato "S/. X.XX"
-                String raw = p[2].replace("S/.", "").replace("s/", "")
-                                 .replace(",", ".").trim();
+                String raw = p[2].replace("S/.", "").replace("s/", "").replace(",", ".").trim();
                 subtotal += Double.parseDouble(raw);
             } catch (NumberFormatException ignored) { }
         }
@@ -820,7 +572,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         return new double[]{subtotal, igv, total};
     }
 
-    /** Devuelve los productos de demo de cada transacción con precios en S/. */
     private String[][] obtenerProductosPorTransaccion(String numTrx) {
         if (numTrx == null) return new String[][]{{"Sin productos", "-", "S/. 0.00"}};
         switch (numTrx) {
@@ -918,22 +669,14 @@ public class HistorialTransaccionesFrame extends JFrame {
         return fila;
     }
 
-    // ─── ACCIONES ────────────────────────────────────────────────────────────────
-
     private void imprimirTransaccion(int fila) {
         if (fila < 0 || fila >= modeloTabla.getRowCount()) {
-            javax.swing.JOptionPane.showMessageDialog(this,
-                "No se pudo identificar la transacción.",
-                "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudo identificar la transacción.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
         String num = obtenerCeldaSegura(fila, 0, "SIN-NUMERO");
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Enviando a impresora: " + num,
-            "Imprimir", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, "Enviando a impresora: " + num, "Imprimir", JOptionPane.INFORMATION_MESSAGE);
     }
-
-    // ─── FILTROS ─────────────────────────────────────────────────────────────────
 
     private void aplicarFiltros() {
         if (txtBuscar == null || sorter == null) return;
@@ -959,21 +702,15 @@ public class HistorialTransaccionesFrame extends JFrame {
 
     private void iniciarReloj() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        relojTimer = new Timer(1000, e ->
-            lblHora.setText("<html><b>Hora</b>&nbsp;&nbsp;" + sdf.format(new Date()) + "</html>")
-        );
+        relojTimer = new javax.swing.Timer(1000, e -> lblHora.setText("<html><b>Hora</b>&nbsp;&nbsp;" + sdf.format(new Date()) + "</html>"));
         relojTimer.start();
         lblHora.setText("<html><b>Hora</b>&nbsp;&nbsp;" + sdf.format(new Date()) + "</html>");
     }
 
-    // ─── RENDERIZADORES ──────────────────────────────────────────────────────────
-
     private static class EstadoRenderer extends DefaultTableCellRenderer {
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                boolean isSelected, boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(
-                    table, value, isSelected, hasFocus, row, column);
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             label.setHorizontalAlignment(SwingConstants.CENTER);
             label.setFont(new Font("Segoe UI", Font.BOLD, 11));
             if (!isSelected) {
@@ -986,8 +723,7 @@ public class HistorialTransaccionesFrame extends JFrame {
 
     private static class AccionesRenderer extends DefaultTableCellRenderer {
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                boolean isSelected, boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JPanel panel = new JPanel(new GridBagLayout());
             panel.setBackground(isSelected ? new Color(232, 241, 255) : Color.WHITE);
 
@@ -1011,35 +747,6 @@ public class HistorialTransaccionesFrame extends JFrame {
             gbc.gridx = 0; panel.add(btnVer, gbc);
             gbc.gridx = 1; panel.add(btnImp, gbc);
             return panel;
-        }
-    }
-
-    // ─── BORDE REDONDEADO (para botón activo del sidebar) ────────────────────────
-
-    private static class RoundedBorder extends AbstractBorder {
-        private final Color color;
-        private final int arc;
-
-        public RoundedBorder(Color color, int arc) {
-            this.color = color;
-            this.arc = arc;
-        }
-
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
-            g2.dispose();
-        }
-
-        @Override public Insets getBorderInsets(Component c) { return new Insets(1, 1, 1, 1); }
-
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 1; insets.right = 1; insets.top = 1; insets.bottom = 1;
-            return insets;
         }
     }
 }
