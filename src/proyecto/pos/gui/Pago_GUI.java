@@ -285,6 +285,33 @@ public class Pago_GUI extends JDialog {
         }
     }
 
+    private String obtenerTipoComprobante() {
+        String seleccionado = String.valueOf(cbComprobante.getSelectedItem());
+        if (seleccionado.toLowerCase().contains("factura")) {
+            return "Factura";
+        }
+        if (seleccionado.toLowerCase().contains("dni")) {
+            return "Boleta con DNI";
+        }
+        return "Boleta Simple";
+    }
+
+    private String obtenerMetodoPagoUsado() {
+        double efectivo = txtEfectivo.getText().isEmpty() ? 0 : Double.parseDouble(txtEfectivo.getText());
+        double tarjeta = txtTarjeta.getText().isEmpty() ? 0 : Double.parseDouble(txtTarjeta.getText());
+        double yape = txtYape.getText().isEmpty() ? 0 : Double.parseDouble(txtYape.getText());
+
+        java.util.List<String> metodos = new java.util.ArrayList<>();
+        if (efectivo > 0) metodos.add("Efectivo");
+        if (tarjeta > 0) metodos.add("Tarjeta");
+        if (yape > 0) metodos.add("Yape/Plin");
+
+        if (metodos.isEmpty()) {
+            return "Sin metodo";
+        }
+        return String.join(" + ", metodos);
+    }
+
     private void procesarVenta(String mensaje) {
         int tipoComprobante = cbComprobante.getSelectedIndex();
         String doc = txtDocumento.getText().trim();
@@ -299,10 +326,23 @@ public class Pago_GUI extends JDialog {
             return;
         }
 
-        // Aquí iría el envío al Backend...
+        String tipoComprobanteTexto = obtenerTipoComprobante();
+        String metodoPago = obtenerMetodoPagoUsado();
 
-        JOptionPane.showMessageDialog(this, "¡Venta realizada con éxito!\n" + mensaje);
+        String numeroTransaccion = HistorialTransaccionesFrame.registrarVentaDesdeCaja(
+                cajaPadre.obtenerCajeroActual(),
+                metodoPago,
+                tipoComprobanteTexto,
+                cajaPadre.obtenerProductosParaHistorial(),
+                total
+        );
+
+        JOptionPane.showMessageDialog(this, "¡Venta realizada con éxito!\n"
+                + mensaje + "\n"
+                + "Transacción: " + numeroTransaccion + "\n"
+                + "Comprobante: " + tipoComprobanteTexto);
         cajaPadre.vaciarTodo(); 
         this.dispose(); 
     }
+
 }

@@ -40,6 +40,20 @@ public class Caja_GUI extends JFrame {
     private JLabel lblTotalPagar;
     private double totalAcumulado = 0.0;
 
+    // Carrito temporal usado para enviar la venta al historial durante la ejecucion.
+    // No usa base de datos y no modifica el stock ni otros modulos.
+    private final java.util.List<ItemCarrito> itemsCarrito = new ArrayList<>();
+
+    private static class ItemCarrito {
+        String nombre;
+        double precio;
+
+        ItemCarrito(String nombre, double precio) {
+            this.nombre = nombre;
+            this.precio = precio;
+        }
+    }
+
     public Caja_GUI() {
         configurarVentana();
         initComponents();
@@ -345,6 +359,34 @@ public class Caja_GUI extends JFrame {
         contenedor.add(gridWrapper);
     }
 
+
+    private ImageIcon cargarImagenEscalada(String imgPath, int width, int height) {
+        try {
+            java.net.URL imgURL = getClass().getResource(imgPath);
+
+            if (imgURL == null && imgPath != null) {
+                String rutaSinBarra = imgPath.startsWith("/") ? imgPath.substring(1) : imgPath;
+                java.io.File archivo = new java.io.File("src", rutaSinBarra);
+
+                if (!archivo.exists()) {
+                    archivo = new java.io.File(rutaSinBarra);
+                }
+
+                if (archivo.exists()) {
+                    imgURL = archivo.toURI().toURL();
+                }
+            }
+
+            if (imgURL != null) {
+                Image imagen = new ImageIcon(imgURL).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(imagen);
+            }
+        } catch (Exception e) {
+            System.out.println("No se pudo cargar imagen: " + imgPath + " -> " + e.getMessage());
+        }
+        return null;
+    }
+
     private JPanel crearCard(String nombre, String precio, String estado, String imgPath) {
         JPanel card = new JPanel(new BorderLayout());
         Dimension fixedSize = new Dimension(150, 240);
@@ -359,17 +401,13 @@ public class Caja_GUI extends JFrame {
         lblImg.setOpaque(true);
         lblImg.setBackground(new Color(245, 245, 245)); 
 
-        try {
-            java.net.URL imgURL = getClass().getResource(imgPath);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                Image imagenEscalada = iconOriginal.getImage().getScaledInstance(140, 115, Image.SCALE_SMOOTH);
-                lblImg.setIcon(new ImageIcon(imagenEscalada));
-            } else {
-                lblImg.setText("No image");
-                lblImg.setForeground(Color.GRAY);
-            }
-        } catch (Exception e) {}
+        ImageIcon iconoProducto = cargarImagenEscalada(imgPath, 140, 115);
+        if (iconoProducto != null) {
+            lblImg.setIcon(iconoProducto);
+        } else {
+            lblImg.setText("No image");
+            lblImg.setForeground(Color.GRAY);
+        }
 
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
@@ -416,6 +454,9 @@ public class Caja_GUI extends JFrame {
     }
 
     private void agregarAlCarrito(String nombre, double precio) {
+        ItemCarrito itemCarrito = new ItemCarrito(nombre, precio);
+        itemsCarrito.add(itemCarrito);
+
         JPanel itemPanel = new JPanel(new BorderLayout());
         itemPanel.setBackground(Color.WHITE);
         itemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
@@ -437,6 +478,7 @@ public class Caja_GUI extends JFrame {
         
         btnRemove.addActionListener(e -> {
             panelCarritoContenedor.remove(itemPanel);
+            itemsCarrito.remove(itemCarrito);
             totalAcumulado -= precio;
             actualizarTotal();
             panelCarritoContenedor.revalidate();
@@ -472,8 +514,29 @@ public class Caja_GUI extends JFrame {
         }
     }
 
+    public java.util.List<String> obtenerProductosParaHistorial() {
+        java.util.List<String> productos = new ArrayList<>();
+        for (ItemCarrito item : itemsCarrito) {
+            productos.add(item.nombre + " - S/ " + String.format("%.2f", item.precio));
+        }
+        return productos;
+    }
+
+    public String obtenerDniCliente() {
+        return txtCliente.getText().trim();
+    }
+
+    public String obtenerMesa() {
+        return txtMesa.getText().trim();
+    }
+
+    public String obtenerCajeroActual() {
+        return "Manuel Gotera";
+    }
+
     public void vaciarTodo() {
         panelCarritoContenedor.removeAll();
+        itemsCarrito.clear();
         totalAcumulado = 0.0;
         actualizarTotal();
         txtCliente.setText("");

@@ -1,30 +1,132 @@
 package proyecto.pos.gui;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.text.*;
-import java.util.*;
-import java.util.regex.*;
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.table.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.RowFilter;
+import javax.swing.SwingConstants;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import java.awt.Image;
+
 
 public class HistorialTransaccionesFrame extends JFrame {
 
-    private static final Color AZUL        = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO  = new Color(232, 241, 255);
-    private static final Color FONDO       = new Color(246, 248, 251);
-    private static final Color BORDE       = new Color(225, 229, 236);
-    private static final Color VERDE_BG    = new Color(225, 245, 238);
-    private static final Color VERDE_TEXT  = new Color(15, 110, 86);
+    private static final Color AZUL       = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO = new Color(232, 241, 255);
+    private static final Color FONDO      = new Color(246, 248, 251);
+    private static final Color BORDE      = new Color(225, 228, 233);
+    private static final Color VERDE_BG   = new Color(225, 245, 238);
+    private static final Color VERDE_TEXT = new Color(15, 110, 86);
+
+    // Ventas registradas durante la ejecucion del programa.
+    // No usa base de datos; se pierde al cerrar completamente la aplicacion.
+    private static final Map<String, VentaEnEjecucion> ventasEnEjecucion = new LinkedHashMap<>();
+    private static int contadorTransacciones = 1;
+    private static int contadorBoletas = 1;
+    private static int contadorFacturas = 1;
+
+    public static String registrarVentaDesdeCaja(String cajero, String metodoPago,
+            String tipoComprobante, List<String> productos, double total) {
+
+        String numeroTransaccion = String.format("TRX-RUN-%03d", contadorTransacciones++);
+        String numeroComprobante;
+
+        if ("Factura".equalsIgnoreCase(tipoComprobante)) {
+            numeroComprobante = String.format("F001-%06d", contadorFacturas++);
+        } else {
+            numeroComprobante = String.format("B001-%06d", contadorBoletas++);
+        }
+
+        VentaEnEjecucion venta = new VentaEnEjecucion(
+                numeroTransaccion,
+                new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()),
+                cajero,
+                metodoPago,
+                tipoComprobante,
+                numeroComprobante,
+                new ArrayList<>(productos),
+                total,
+                "Completada"
+        );
+
+        ventasEnEjecucion.put(numeroTransaccion, venta);
+        return numeroTransaccion;
+    }
+
+    private static class VentaEnEjecucion {
+        String numeroTransaccion;
+        String fechaHora;
+        String cajero;
+        String metodoPago;
+        String tipoComprobante;
+        String numeroComprobante;
+        List<String> productos;
+        double total;
+        String estado;
+
+        VentaEnEjecucion(String numeroTransaccion, String fechaHora, String cajero,
+                String metodoPago, String tipoComprobante, String numeroComprobante,
+                List<String> productos, double total, String estado) {
+            this.numeroTransaccion = numeroTransaccion;
+            this.fechaHora = fechaHora;
+            this.cajero = cajero;
+            this.metodoPago = metodoPago;
+            this.tipoComprobante = tipoComprobante;
+            this.numeroComprobante = numeroComprobante;
+            this.productos = productos;
+            this.total = total;
+            this.estado = estado;
+        }
+
+        String comprobanteCompleto() {
+            return tipoComprobante + " " + numeroComprobante;
+        }
+    }
 
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private TableRowSorter<DefaultTableModel> sorter;
     private JTextField txtBuscar;
     private JComboBox<String> cboPeriodo;
-    private JLabel lblTotalTrx, lblVentaTotales, lblBruto, lblFooter, lblHora;
-    private javax.swing.Timer relojTimer;
+    private JLabel lblTotalTrx;
+    private JLabel lblVentaTotales;
+    private JLabel lblBruto;
+    private JLabel lblFooter;
+    private JLabel lblHora;
 
     public HistorialTransaccionesFrame() {
         configurarVentana();
@@ -38,25 +140,195 @@ public class HistorialTransaccionesFrame extends JFrame {
         setSize(1180, 720);
         setMinimumSize(new Dimension(1000, 620));
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                if (relojTimer != null && relojTimer.isRunning()) relojTimer.stop();
-                dispose();
-                System.exit(0);
-            }
-        });
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
     private void construirInterfaz() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        root.add(new MenuSidebar(this, "Historial"), BorderLayout.WEST);
+        root.add(crearSidebar(), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
+
+    // ─── NUEVO SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
+
+        private JPanel crearSidebar() {
+            JPanel sidebar = new JPanel();
+            sidebar.setPreferredSize(new Dimension(220, 0));
+            sidebar.setBackground(new Color(250, 250, 250));
+            sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(230, 230, 230)));
+            sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+
+            // Cabecera del Sidebar (Logo y texto)
+            JPanel cabeceraSidebar = new JPanel(new BorderLayout());
+            cabeceraSidebar.setBackground(new Color(250, 250, 250));
+            cabeceraSidebar.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+            cabeceraSidebar.setMaximumSize(new Dimension(220, 75));
+
+            JPanel panelLogoTextos = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            panelLogoTextos.setBackground(new Color(250, 250, 250));
+
+            JLabel lblIconoPOS = new JLabel(redimensionarIcono("/img/icono_carrito_blanco.png", 20, 20), SwingConstants.CENTER);
+            lblIconoPOS.setPreferredSize(new Dimension(40, 40));
+            lblIconoPOS.setBackground(new Color(26, 79, 156)); 
+            lblIconoPOS.setOpaque(true);
+
+            JPanel textosPOS = new JPanel();
+            textosPOS.setLayout(new BoxLayout(textosPOS, BoxLayout.Y_AXIS));
+            textosPOS.setBackground(new Color(250, 250, 250));
+            JLabel lblPOS = new JLabel("Pos");
+            lblPOS.setFont(new Font("Segoe UI", Font.BOLD, 18));
+            lblPOS.setForeground(new Color(26, 79, 156));
+            JLabel lblDesc = new JLabel("Sistema de Caja");
+            lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblDesc.setForeground(Color.GRAY);
+
+            textosPOS.add(lblPOS);
+            textosPOS.add(lblDesc);
+
+            panelLogoTextos.add(lblIconoPOS);
+            panelLogoTextos.add(textosPOS);
+
+            JButton btnColapsar = new JButton("≪");
+            btnColapsar.setFocusPainted(false);
+            btnColapsar.setBorderPainted(false);
+            btnColapsar.setBackground(new Color(235, 235, 235));
+            btnColapsar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btnColapsar.setPreferredSize(new Dimension(35, 35));
+
+            cabeceraSidebar.add(panelLogoTextos, BorderLayout.CENTER);
+            cabeceraSidebar.add(btnColapsar, BorderLayout.EAST);
+
+            JPanel divisorTop = new JPanel();
+            divisorTop.setMaximumSize(new Dimension(220, 1));
+            divisorTop.setBackground(new Color(230, 230, 230));
+
+            sidebar.add(cabeceraSidebar);
+            sidebar.add(divisorTop);
+
+            // Agregamos los botones de navegación
+            actualizarNavegacionSidebar(sidebar); 
+
+            return sidebar;
+        }
+
+        private void actualizarNavegacionSidebar(JPanel sidebar) {
+            sidebar.add(Box.createVerticalStrut(180)); // Tu espaciado superior
+
+            // ¡ATENCIÓN AQUÍ! "Historial de Trans." está en TRUE, los demás en FALSE
+            JButton btnCajero = crearBotonMenu("Cajero", false, "/img/icon_cart.png");
+            JButton btnStock = crearBotonMenu("Artículos y Stock", false, "/img/icon_box.png");
+            JButton btnHistorial = crearBotonMenu("Historial de Trans.", true, "/img/icon_history.png"); 
+            JButton btnReportes = crearBotonMenu("Reportes", false, "/img/icon_chart.png");
+            JButton btnGastos = crearBotonMenu("Gastos", false, "/img/icon_wallet.png");
+            JButton btnConfig = crearBotonMenu("Configuración", false, "/img/icon_settings.png");
+
+            // ACCIONES DE NAVEGACIÓN
+            btnCajero.addActionListener(e -> {
+                new Caja_GUI().setVisible(true);
+                this.dispose(); 
+            });
+
+            btnStock.addActionListener(e -> {
+                new ArticulosStockFrame().setVisible(true);
+                this.dispose(); 
+            });
+
+            // Nota: btnHistorial no lleva ActionListener porque ya estamos en esta ventana.
+
+            sidebar.add(btnCajero);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnStock);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnHistorial);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnReportes);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnGastos);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnConfig);
+
+            sidebar.add(Box.createVerticalGlue()); // Empuja lo demás hacia abajo
+
+            // SECCIÓN INFERIOR
+            JPanel divisorBottom = new JPanel();
+            divisorBottom.setMaximumSize(new Dimension(220, 1));
+            divisorBottom.setBackground(new Color(230, 230, 230));
+            sidebar.add(divisorBottom);
+            sidebar.add(Box.createVerticalStrut(10));
+
+            JButton btnModo = crearBotonMenu("Mode Tampilan", false, "/img/icon_bell.png");
+            JButton btnSalir = crearBotonMenu("Salir", false, "/img/icon_logout.png");
+            btnSalir.setForeground(new Color(220, 53, 69)); 
+
+            btnSalir.addActionListener(e -> System.exit(0));
+
+            sidebar.add(btnModo);
+            sidebar.add(Box.createVerticalStrut(5));
+            sidebar.add(btnSalir);
+            sidebar.add(Box.createVerticalStrut(20));
+
+            sidebar.revalidate();
+            sidebar.repaint();
+        }
+
+        private JButton crearBotonMenu(String texto, boolean seleccionado, String iconPath) {
+            JButton btn = new JButton(texto);
+
+            if (iconPath != null && !iconPath.isEmpty()) {
+                btn.setIcon(redimensionarIcono(iconPath, 20, 20));
+                btn.setIconTextGap(15);
+            }
+
+            btn.setMaximumSize(new Dimension(190, 45));
+            btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            btn.setHorizontalAlignment(SwingConstants.LEFT); 
+            btn.setBorder(new EmptyBorder(0, 15, 0, 0));
+
+            btn.setFocusPainted(false);
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            if (seleccionado) {
+                btn.setBackground(new Color(235, 240, 255));
+                btn.setForeground(new Color(26, 79, 156));
+                btn.setFont(new Font("Segoe UI", Font.BOLD, 17)); // Tu nuevo tamaño de fuente
+                btn.putClientProperty("JButton.buttonType", "roundRect"); 
+            } else {
+                btn.setBackground(new Color(250, 250, 250));
+                btn.setForeground(new Color(80, 80, 80));
+                btn.setFont(new Font("Segoe UI", Font.PLAIN, 17)); // Tu nuevo tamaño de fuente
+                btn.setBorderPainted(false);
+            }
+
+            btn.addMouseListener(new java.awt.event.MouseAdapter() {
+                public void mouseEntered(java.awt.event.MouseEvent evt) {
+                    if (!seleccionado) btn.setBackground(new Color(242, 242, 242));
+                }
+                public void mouseExited(java.awt.event.MouseEvent evt) {
+                    if (!seleccionado) btn.setBackground(new Color(250, 250, 250));
+                }
+            });
+
+            return btn;
+        }
+
+        private ImageIcon redimensionarIcono(String path, int width, int height) {
+            try {
+                java.net.URL imgURL = getClass().getResource(path);
+                if (imgURL != null) {
+                    ImageIcon iconOriginal = new ImageIcon(imgURL);
+                    Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                    return new ImageIcon(img);
+                }
+            } catch (Exception e) {
+                System.err.println("No se encontró el icono: " + path);
+            }
+            return null; 
+        }
+
+    // CONTENIDO 
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(FONDO);
@@ -77,7 +349,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         JLabel titulo = new JLabel("Historial de transacciones");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
 
-        JLabel subtitulo = new JLabel("Gestionar y revisar todas las transacciones realizadas");
+        JLabel subtitulo = new JLabel("Gestionar datos de productos e inventario");
         subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitulo.setForeground(Color.GRAY);
 
@@ -86,6 +358,11 @@ public class HistorialTransaccionesFrame extends JFrame {
 
         JPanel derecho = new JPanel(new GridBagLayout());
         derecho.setBackground(FONDO);
+        derecho.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        JLabel campana = new JLabel("");
+        campana.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        campana.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         lblHora = new JLabel();
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
@@ -120,8 +397,9 @@ public class HistorialTransaccionesFrame extends JFrame {
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(0, 6, 0, 6);
-        gbc.gridx = 0; derecho.add(lblHora, gbc);
-        gbc.gridx = 1; derecho.add(perfilPanel, gbc);
+        gbc.gridx = 0; derecho.add(campana, gbc);
+        gbc.gridx = 1; derecho.add(lblHora, gbc);
+        gbc.gridx = 2; derecho.add(perfilPanel, gbc);
 
         header.add(titulos, BorderLayout.WEST);
         header.add(derecho, BorderLayout.EAST);
@@ -154,31 +432,38 @@ public class HistorialTransaccionesFrame extends JFrame {
         gbc.weightx = 1;
 
         gbc.gridx = 0; gbc.insets = new Insets(0, 0, 0, 14);
-        JPanel cardTrx = crearStatCard("Total Transacciones", "3", new Color(238, 237, 254), new Color(100, 90, 210));
+        JPanel cardTrx = crearStatCard("Total Transacciones", "3",
+                new Color(238, 237, 254), "", new Color(100, 90, 210));
         lblTotalTrx = obtenerLabelValor(cardTrx);
         stats.add(cardTrx, gbc);
 
         gbc.gridx = 1;
-        JPanel cardVenta = crearStatCard("Ventas Totales", "S/. 31.00", new Color(230, 241, 251), new Color(26, 83, 160));
+        JPanel cardVenta = crearStatCard("Venta Totales", "Rp 31.000",
+                new Color(230, 241, 251), "", new Color(26, 83, 160));
         lblVentaTotales = obtenerLabelValor(cardVenta);
         stats.add(cardVenta, gbc);
 
         gbc.gridx = 2; gbc.insets = new Insets(0, 0, 0, 0);
-        JPanel cardBruto = crearStatCard("Bruto", "S/. 14.00", new Color(234, 243, 222), new Color(50, 140, 80));
+        JPanel cardBruto = crearStatCard("Bruto", "Rp 14.000",
+                new Color(234, 243, 222), "", new Color(50, 140, 80));
         lblBruto = obtenerLabelValor(cardBruto);
         stats.add(cardBruto, gbc);
 
         wrapper.add(stats, BorderLayout.NORTH);
 
+        // Filtros
         JPanel filtros = new JPanel(new BorderLayout(12, 0));
         filtros.setBackground(Color.WHITE);
         filtros.setBorder(new EmptyBorder(0, 0, 14, 0));
 
-        cboPeriodo = new JComboBox<>(new String[]{"  Filtrar periodo", "Hoy", "Esta semana", "Este mes"});
+        cboPeriodo = new JComboBox<>(new String[]{
+            "  Filtrar periodo", "Hoy", "Esta semana", "Este mes"
+        });
         cboPeriodo.setPreferredSize(new Dimension(190, 36));
         cboPeriodo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboPeriodo.addActionListener(e -> aplicarFiltros());
 
+        // Buscador con ícono texto
         JPanel buscarWrap = new JPanel(new BorderLayout(4, 0));
         buscarWrap.setBackground(Color.WHITE);
         buscarWrap.setBorder(BorderFactory.createCompoundBorder(
@@ -193,10 +478,13 @@ public class HistorialTransaccionesFrame extends JFrame {
         txtBuscar = new JTextField();
         txtBuscar.setBorder(BorderFactory.createEmptyBorder());
         txtBuscar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar por nombre o codigo");
+        txtBuscar.putClientProperty("JTextField.placeholderText",
+                "Buscar por nombre o codigo del producto");
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
-            public void keyReleased(java.awt.event.KeyEvent e) { aplicarFiltros(); }
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                aplicarFiltros();
+            }
         });
 
         buscarWrap.add(lupaLabel, BorderLayout.WEST);
@@ -209,7 +497,8 @@ public class HistorialTransaccionesFrame extends JFrame {
         return wrapper;
     }
 
-    private JPanel crearStatCard(String etiqueta, String valor, Color colorFondo, Color colorBorde) {
+    private JPanel crearStatCard(String etiqueta, String valor,
+                                  Color colorFondo, String emoji, Color colorEmoji) {
         JPanel card = new JPanel(new BorderLayout(12, 0));
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -217,7 +506,8 @@ public class HistorialTransaccionesFrame extends JFrame {
                 new EmptyBorder(14, 16, 14, 16)
         ));
 
-        JLabel iconLabel = new JLabel();
+        JLabel iconLabel = new JLabel(emoji);
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
         iconLabel.setOpaque(true);
         iconLabel.setBackground(colorFondo);
         iconLabel.setPreferredSize(new Dimension(46, 46));
@@ -253,7 +543,10 @@ public class HistorialTransaccionesFrame extends JFrame {
     }
 
     private JScrollPane crearTabla() {
-        String[] columnas = { "No. Transaccion", "Fecha / hora", "Cajero", "Total item", "Monto total", "Metodo de pago", "Estado", "Acciones" };
+        String[] columnas = {
+            "No. Transaccion", "Fecha / hora", "Cajero",
+            "Total item", "Monto total", "Metodo de pago", "Estado", "Comprobante", "Acciones"
+        };
 
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
@@ -283,10 +576,11 @@ public class HistorialTransaccionesFrame extends JFrame {
         tabla.getColumnModel().getColumn(4).setPreferredWidth(90);
         tabla.getColumnModel().getColumn(5).setPreferredWidth(110);
         tabla.getColumnModel().getColumn(6).setPreferredWidth(100);
-        tabla.getColumnModel().getColumn(7).setPreferredWidth(120);
+        tabla.getColumnModel().getColumn(7).setPreferredWidth(130);
+        tabla.getColumnModel().getColumn(8).setPreferredWidth(120);
 
         tabla.getColumnModel().getColumn(6).setCellRenderer(new EstadoRenderer());
-        tabla.getColumnModel().getColumn(7).setCellRenderer(new AccionesRenderer());
+        tabla.getColumnModel().getColumn(8).setCellRenderer(new AccionesRenderer());
 
         DefaultTableCellRenderer centro = new DefaultTableCellRenderer();
         centro.setHorizontalAlignment(SwingConstants.CENTER);
@@ -298,17 +592,15 @@ public class HistorialTransaccionesFrame extends JFrame {
             public void mouseClicked(MouseEvent e) {
                 int fila = tabla.rowAtPoint(e.getPoint());
                 int col  = tabla.columnAtPoint(e.getPoint());
-                if (fila < 0 || col < 0 || col != 7) return;
-
-                int filaModelo = tabla.convertRowIndexToModel(fila);
-                if (filaModelo < 0 || filaModelo >= modeloTabla.getRowCount()) return;
-
-                int xRel  = e.getX() - tabla.getCellRect(fila, col, true).x;
-                int ancho = tabla.getColumnModel().getColumn(col).getWidth();
-                if (xRel < ancho / 2) {
-                    abrirDetalleTransaccion(filaModelo);
-                } else {
-                    imprimirTransaccion(filaModelo);
+                if (fila >= 0 && col == 8) {
+                    int filaModelo = tabla.convertRowIndexToModel(fila);
+                    int xRel  = e.getX() - tabla.getCellRect(fila, col, true).x;
+                    int ancho = tabla.getColumnModel().getColumn(col).getWidth();
+                    if (xRel < ancho / 2) {
+                        abrirDetalleTransaccion(filaModelo);
+                    } else {
+                        imprimirTransaccion(filaModelo);
+                    }
                 }
             }
         });
@@ -330,31 +622,41 @@ public class HistorialTransaccionesFrame extends JFrame {
         return footer;
     }
 
+    // ─── DATOS DEMO ──────────────────────────────────────────────────────────────
+
     private void cargarDatosDemo() {
-        agregarFila("TRX-2025-001", "22/12/2025 12:00", "Uwu fernandez", 2, "S/. 5.00",  "Tarjeta", "Completada");
-        agregarFila("TRX-2025-002", "22/12/2025 14:00", "Uwu fernandez", 1, "S/. 8.00",  "Tarjeta", "Completada");
-        agregarFila("TRX-2025-003", "22/12/2025 14:55", "Uwu fernandez", 2, "S/. 18.00", "Efectivo", "Completada");
+        agregarFila("TRX-2025-001", "22/12/2025 12:00", "Uwu fernandez", 20, "s/ 5.00",  "Tarjeta", "Completada", "Demo");
+        agregarFila("TRX-2025-002", "22/12/2025 14:00", "Uwu fernandez", 20, "s/ 8.00",  "Tarjeta", "Completada", "Demo");
+        agregarFila("TRX-2025-003", "22/12/2025 14:55", "Uwu fernandez", 20, "s/ 18.00", "Cash",    "Completada", "Demo");
+        cargarVentasEnEjecucion();
         actualizarFooter();
     }
 
-    private void agregarFila(String num, String fecha, String cajero, int items, String monto, String metodo, String estado) {
-        if (num    == null || num.trim().isEmpty())    num    = "S/N";
-        if (fecha  == null || fecha.trim().isEmpty())  fecha  = "-";
-        if (cajero == null || cajero.trim().isEmpty()) cajero = "Desconocido";
-        if (monto  == null || monto.trim().isEmpty())  monto  = "S/. 0.00";
-        if (metodo == null || metodo.trim().isEmpty()) metodo = "-";
-        if (estado == null || estado.trim().isEmpty()) estado = "Pendiente";
-        modeloTabla.addRow(new Object[]{num, fecha, cajero, items, monto, metodo, estado, ""});
+    private void cargarVentasEnEjecucion() {
+        for (VentaEnEjecucion venta : ventasEnEjecucion.values()) {
+            agregarFila(venta.numeroTransaccion, venta.fechaHora, venta.cajero,
+                    venta.productos.size(), "s/ " + String.format("%.2f", venta.total),
+                    venta.metodoPago, venta.estado, venta.comprobanteCompleto());
+        }
+    }
+
+    private void agregarFila(String num, String fecha, String cajero,
+                              int items, String monto, String metodo, String estado, String comprobante) {
+        modeloTabla.addRow(new Object[]{num, fecha, cajero, items, monto, metodo, estado, comprobante, ""});
     }
 
     private void abrirDetalleTransaccion(int filaModelo) {
-        String numTrx = obtenerCeldaSegura(filaModelo, 0, "SIN-NUMERO");
-        String fecha  = obtenerCeldaSegura(filaModelo, 1, "Sin fecha");
-        String cajero = obtenerCeldaSegura(filaModelo, 2, "Desconocido");
-        String estado = obtenerCeldaSegura(filaModelo, 6, "Pendiente");
+        String numTrx = String.valueOf(modeloTabla.getValueAt(filaModelo, 0));
+        String fecha  = String.valueOf(modeloTabla.getValueAt(filaModelo, 1));
+        String cajero = String.valueOf(modeloTabla.getValueAt(filaModelo, 2));
+        String estado = String.valueOf(modeloTabla.getValueAt(filaModelo, 6));
+        String montoTotalTabla = String.valueOf(modeloTabla.getValueAt(filaModelo, 4));
+        String metodoTabla = String.valueOf(modeloTabla.getValueAt(filaModelo, 5));
+        String comprobanteTabla = String.valueOf(modeloTabla.getValueAt(filaModelo, 7));
+        VentaEnEjecucion ventaRuntime = ventasEnEjecucion.get(numTrx);
 
         JDialog dialog = new JDialog(this, "Detalles de la transaccion", true);
-        dialog.setSize(390, 580);
+        dialog.setSize(370, 560);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
 
@@ -362,6 +664,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         contenido.setBackground(Color.WHITE);
         contenido.setBorder(BorderFactory.createLineBorder(BORDE, 1));
 
+        // ── Encabezado del modal ──
         JPanel encabezado = new JPanel(new BorderLayout());
         encabezado.setBackground(Color.WHITE);
         encabezado.setBorder(new EmptyBorder(18, 20, 14, 20));
@@ -381,7 +684,8 @@ public class HistorialTransaccionesFrame extends JFrame {
         encabezado.add(lblTitulo, BorderLayout.WEST);
         encabezado.add(btnCerrarX, BorderLayout.EAST);
 
-        JPanel cuerpo = new JPanel(new GridBagLayout());
+        JPanel cuerpo = new JPanel();
+        cuerpo.setLayout(new GridBagLayout());
         cuerpo.setBackground(Color.WHITE);
         cuerpo.setBorder(new EmptyBorder(0, 20, 16, 20));
 
@@ -392,6 +696,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         g.insets = new Insets(0, 0, 0, 0);
         int fila = 0;
 
+        // Bloque azul claro con datos principales
         JPanel bloqueInfo = new JPanel(new GridBagLayout());
         bloqueInfo.setBackground(AZUL_CLARO);
         bloqueInfo.setBorder(new EmptyBorder(14, 14, 14, 14));
@@ -401,18 +706,30 @@ public class HistorialTransaccionesFrame extends JFrame {
         gi.weightx = 1;
         gi.insets = new Insets(2, 0, 2, 0);
 
+        // Fila 1: No. Transaccion | Fecha/hora
         gi.gridx = 0; gi.gridy = 0; gi.anchor = GridBagConstraints.WEST;
-        addLabel(bloqueInfo, "No. Transaccion", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
+        JLabel lNumLbl = new JLabel("No. Transaccion");
+        lNumLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lNumLbl.setForeground(new Color(120, 120, 120));
+        bloqueInfo.add(lNumLbl, gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, "Fecha / hora", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
+        JLabel lFechaLbl = new JLabel("fecha / hora");
+        lFechaLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lFechaLbl.setForeground(new Color(120, 120, 120));
+        bloqueInfo.add(lFechaLbl, gi);
 
         gi.gridx = 0; gi.gridy = 1;
-        addLabel(bloqueInfo, numTrx, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
+        JLabel lNumVal = new JLabel(numTrx);
+        lNumVal.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        bloqueInfo.add(lNumVal, gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, fecha, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
+        JLabel lFechaVal = new JLabel(fecha);
+        lFechaVal.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        bloqueInfo.add(lFechaVal, gi);
 
+        // Separador interno
         gi.gridx = 0; gi.gridy = 2; gi.gridwidth = 2;
         gi.insets = new Insets(8, 0, 8, 0);
         bloqueInfo.add(new JSeparator(), gi);
@@ -420,16 +737,26 @@ public class HistorialTransaccionesFrame extends JFrame {
         gi.insets = new Insets(2, 0, 2, 0);
         gi.gridwidth = 1;
 
+        // Fila 2: Cajero | Estado
         gi.gridx = 0; gi.gridy = 3;
-        addLabel(bloqueInfo, "Cajero", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
+        JLabel lCajLbl = new JLabel("Cajero");
+        lCajLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lCajLbl.setForeground(new Color(120, 120, 120));
+        bloqueInfo.add(lCajLbl, gi);
 
         gi.gridx = 1;
-        addLabel(bloqueInfo, "Estado", new Font("Segoe UI", Font.PLAIN, 10), new Color(120, 120, 120), gi);
+        JLabel lEstLbl = new JLabel("Estado");
+        lEstLbl.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        lEstLbl.setForeground(new Color(120, 120, 120));
+        bloqueInfo.add(lEstLbl, gi);
 
         gi.gridx = 0; gi.gridy = 4;
-        addLabel(bloqueInfo, cajero, new Font("Segoe UI", Font.BOLD, 13), new Color(25, 25, 25), gi);
+        JLabel lCajVal = new JLabel(cajero);
+        lCajVal.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        bloqueInfo.add(lCajVal, gi);
 
         gi.gridx = 1;
+        // Badge de estado verde
         JLabel lEstBadge = new JLabel(estado);
         lEstBadge.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lEstBadge.setOpaque(true);
@@ -441,6 +768,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         g.gridy = fila++;
         cuerpo.add(bloqueInfo, g);
 
+        // ── Título productos ──
         g.gridy = fila++;
         g.insets = new Insets(14, 0, 8, 0);
         JLabel lblProductos = new JLabel("Productos de la transaccion");
@@ -448,10 +776,37 @@ public class HistorialTransaccionesFrame extends JFrame {
         cuerpo.add(lblProductos, g);
         g.insets = new Insets(0, 0, 0, 0);
 
-        String[][] productos = obtenerProductosPorTransaccion(numTrx);
-        for (String[] prod : productos) {
-            g.gridy = fila++;
-            cuerpo.add(crearFilaProducto(prod[0], prod[1], prod[2]), g);
+        // ── Lista de productos: reales de la ejecucion o demo ──
+        if (ventaRuntime != null) {
+            for (String producto : ventaRuntime.productos) {
+                String[] partes = producto.split(" - ", 2);
+                String nombreProducto = partes.length > 0 ? partes[0] : producto;
+                String detalleProducto = partes.length > 1 ? partes[1] : "Producto registrado";
+                g.gridy = fila++;
+                cuerpo.add(crearFilaProducto(nombreProducto, detalleProducto, detalleProducto), g);
+            }
+        } else {
+            String[][] productos;
+            if (numTrx.equals("TRX-2025-001")) {
+                productos = new String[][]{
+                    {"Lomo saltado", "s/ 18.000 X 1", "s/ 18.000"},
+                    {"Inka Kola",    "s/ 8.000 X 2",  "s/ 16.000"}
+                };
+            } else if (numTrx.equals("TRX-2025-002")) {
+                productos = new String[][]{
+                    {"Chicha morada", "s/ 4.000 X 2", "s/ 8.000"}
+                };
+            } else {
+                productos = new String[][]{
+                    {"Pisco sour",   "s/ 14.000 X 1", "s/ 14.000"},
+                    {"Ceviche",      "s/ 4.000 X 1",  "s/ 4.000"}
+                };
+            }
+
+            for (String[] prod : productos) {
+                g.gridy = fila++;
+                cuerpo.add(crearFilaProducto(prod[0], prod[1], prod[2]), g);
+            }
         }
 
         g.gridy = fila++;
@@ -459,49 +814,48 @@ public class HistorialTransaccionesFrame extends JFrame {
         cuerpo.add(new JSeparator(), g);
         g.insets = new Insets(3, 0, 3, 0);
 
-        double[] montos = calcularMontos(productos);
-        String subtotalStr = String.format("S/. %.2f", montos[0]);
-        String igvStr      = String.format("S/. %.2f", montos[1]);
-        String totalStr    = String.format("S/. %.2f", montos[2]);
+        g.gridy = fila++;
+        cuerpo.add(crearFilaResumen("Sub total", montoTotalTabla, false), g);
 
         g.gridy = fila++;
-        cuerpo.add(crearFilaResumen("Sub total", subtotalStr, false), g);
+        cuerpo.add(crearFilaResumen("Comprobante", comprobanteTabla, false), g);
 
-        g.gridy = fila++;
-        cuerpo.add(crearFilaResumen("IGV 18%", igvStr, false), g);
-
+        // ── Separador ──
         g.gridy = fila++;
         g.insets = new Insets(8, 0, 8, 0);
         cuerpo.add(new JSeparator(), g);
         g.insets = new Insets(3, 0, 3, 0);
 
+        // ── Monto pagado (destacado) ──
         g.gridy = fila++;
-        cuerpo.add(crearFilaMontoPagado("Monto total", totalStr), g);
+        cuerpo.add(crearFilaMontoPagado("Monto pagado", montoTotalTabla), g);
 
+        // ── Separador ──
         g.gridy = fila++;
         g.insets = new Insets(8, 0, 8, 0);
         cuerpo.add(new JSeparator(), g);
         g.insets = new Insets(3, 0, 3, 0);
 
+        // ── Sección Pembayaran ──
         g.gridy = fila++;
         g.insets = new Insets(6, 0, 4, 0);
-        JLabel lblPago = new JLabel("Detalle de pago");
-        lblPago.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        cuerpo.add(lblPago, g);
+        JLabel lblPem = new JLabel("Pembayaran");
+        lblPem.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        cuerpo.add(lblPem, g);
         g.insets = new Insets(3, 0, 3, 0);
 
-        double efectivo = Math.ceil(montos[2] / 10.0) * 10;
-        double vuelto   = efectivo - montos[2];
+        g.gridy = fila++;
+        cuerpo.add(crearFilaResumen("Metodo", metodoTabla, false), g);
 
         g.gridy = fila++;
-        cuerpo.add(crearFilaResumen("Monto recibido", String.format("S/. %.2f", efectivo), false), g);
-
-        g.gridy = fila++;
-        JPanel filaVuelto = crearFilaResumen("Vuelto", String.format("S/. %.2f", vuelto), false);
+        JPanel filaVuelto = crearFilaResumen("Referencia", numTrx, false);
+        // Colorear la etiqueta vuelta en azul
         ((JLabel) filaVuelto.getComponent(0)).setForeground(AZUL);
         ((JLabel) filaVuelto.getComponent(1)).setForeground(AZUL);
+        // En modo sin base de datos no se calcula vuelto; se muestra el total registrado.
         cuerpo.add(filaVuelto, g);
 
+        // ── Botones ──
         JPanel botones = new JPanel(new GridBagLayout());
         botones.setBackground(Color.WHITE);
         botones.setBorder(new EmptyBorder(14, 20, 18, 20));
@@ -511,7 +865,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         gb.weightx = 1;
         gb.insets = new Insets(0, 0, 0, 10);
 
-        JButton btnCerrar = new JButton("Cerrar");
+        JButton btnCerrar = new JButton("cerrar");
         btnCerrar.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnCerrar.setBackground(Color.WHITE);
         btnCerrar.setForeground(new Color(60, 60, 60));
@@ -522,6 +876,7 @@ public class HistorialTransaccionesFrame extends JFrame {
                 new EmptyBorder(8, 16, 8, 16)
         ));
         btnCerrar.addActionListener(e -> dialog.dispose());
+
         gb.gridx = 0;
         botones.add(btnCerrar, gb);
 
@@ -537,9 +892,11 @@ public class HistorialTransaccionesFrame extends JFrame {
             dialog.dispose();
             imprimirTransaccion(filaModelo);
         });
+
         gb.gridx = 1;
         botones.add(btnReimprimir, gb);
 
+        // Ensamblar modal
         JScrollPane scrollCuerpo = new JScrollPane(cuerpo);
         scrollCuerpo.setBorder(BorderFactory.createEmptyBorder());
         scrollCuerpo.getViewport().setBackground(Color.WHITE);
@@ -550,58 +907,6 @@ public class HistorialTransaccionesFrame extends JFrame {
 
         dialog.setContentPane(contenido);
         dialog.setVisible(true);
-    }
-
-    private void addLabel(JPanel panel, String texto, Font font, Color color, GridBagConstraints gbc) {
-        JLabel lbl = new JLabel(texto);
-        lbl.setFont(font);
-        lbl.setForeground(color);
-        panel.add(lbl, gbc);
-    }
-
-    private double[] calcularMontos(String[][] productos) {
-        double subtotal = 0;
-        for (String[] p : productos) {
-            try {
-                String raw = p[2].replace("S/.", "").replace("s/", "").replace(",", ".").trim();
-                subtotal += Double.parseDouble(raw);
-            } catch (NumberFormatException ignored) { }
-        }
-        double igv   = subtotal * 0.18;
-        double total = subtotal + igv;
-        return new double[]{subtotal, igv, total};
-    }
-
-    private String[][] obtenerProductosPorTransaccion(String numTrx) {
-        if (numTrx == null) return new String[][]{{"Sin productos", "-", "S/. 0.00"}};
-        switch (numTrx) {
-            case "TRX-2025-001":
-                return new String[][]{
-                    {"Lomo saltado",  "S/. 3.00 x 1", "S/. 3.00"},
-                    {"Inka Kola",     "S/. 1.00 x 2", "S/. 2.00"}
-                };
-            case "TRX-2025-002":
-                return new String[][]{
-                    {"Chicha morada", "S/. 4.00 x 2", "S/. 8.00"}
-                };
-            case "TRX-2025-003":
-                return new String[][]{
-                    {"Pisco sour",    "S/. 12.00 x 1", "S/. 12.00"},
-                    {"Ceviche",       "S/. 6.00 x 1",  "S/. 6.00"}
-                };
-            default:
-                return new String[][]{{"Sin detalle disponible", "-", "S/. 0.00"}};
-        }
-    }
-
-    private String obtenerCeldaSegura(int fila, int columna, String valorPorDefecto) {
-        try {
-            Object val = modeloTabla.getValueAt(fila, columna);
-            if (val == null || val.toString().trim().isEmpty()) return valorPorDefecto;
-            return val.toString().trim();
-        } catch (Exception ex) {
-            return valorPorDefecto;
-        }
     }
 
     private JPanel crearFilaProducto(String nombre, String detalle, String total) {
@@ -632,6 +937,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         return fila;
     }
 
+    /** Fila simple etiqueta - valor alineados. */
     private JPanel crearFilaResumen(String etiqueta, String valor, boolean negrita) {
         JPanel fila = new JPanel(new BorderLayout());
         fila.setBackground(Color.WHITE);
@@ -650,6 +956,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         return fila;
     }
 
+    /** Fila del monto total pagado con texto grande en azul. */
     private JPanel crearFilaMontoPagado(String etiqueta, String valor) {
         JPanel fila = new JPanel(new BorderLayout());
         fila.setBackground(Color.WHITE);
@@ -670,47 +977,42 @@ public class HistorialTransaccionesFrame extends JFrame {
     }
 
     private void imprimirTransaccion(int fila) {
-        if (fila < 0 || fila >= modeloTabla.getRowCount()) {
-            JOptionPane.showMessageDialog(this, "No se pudo identificar la transacción.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        String num = obtenerCeldaSegura(fila, 0, "SIN-NUMERO");
-        JOptionPane.showMessageDialog(this, "Enviando a impresora: " + num, "Imprimir", JOptionPane.INFORMATION_MESSAGE);
+        javax.swing.JOptionPane.showMessageDialog(this,
+            "Enviando a impresora: " + modeloTabla.getValueAt(fila, 0),
+            "Imprimir", javax.swing.JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void aplicarFiltros() {
-        if (txtBuscar == null || sorter == null) return;
         String texto = txtBuscar.getText().trim();
         RowFilter<DefaultTableModel, Object> filtro = null;
         if (!texto.isEmpty()) {
-            try {
-                filtro = RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1, 2, 5);
-            } catch (Exception ex) {
-                filtro = null;
-            }
+            filtro = RowFilter.regexFilter("(?i)" + Pattern.quote(texto), 0, 1, 2, 5, 7);
         }
         sorter.setRowFilter(filtro);
         actualizarFooter();
     }
 
     private void actualizarFooter() {
-        if (tabla == null || modeloTabla == null || lblFooter == null) return;
-        int vis   = tabla.getRowCount();
-        int total = modeloTabla.getRowCount();
+        int vis   = tabla == null ? 0 : tabla.getRowCount();
+        int total = modeloTabla == null ? 0 : modeloTabla.getRowCount();
         lblFooter.setText("Mostrando 1 - " + vis + " de " + total + " datos");
     }
 
     private void iniciarReloj() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-        relojTimer = new javax.swing.Timer(1000, e -> lblHora.setText("<html><b>Hora</b>&nbsp;&nbsp;" + sdf.format(new Date()) + "</html>"));
-        relojTimer.start();
-        lblHora.setText("<html><b>Hora</b>&nbsp;&nbsp;" + sdf.format(new Date()) + "</html>");
+        Timer timer = new Timer(1000, e ->
+            lblHora.setText("<html><b>Hora</b><br>" + sdf.format(new Date()) + " WIB</html>")
+        );
+        timer.start();
+        lblHora.setText("<html><b>Hora</b><br>" + sdf.format(new Date()) + " WIB</html>");
     }
 
     private static class EstadoRenderer extends DefaultTableCellRenderer {
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column);
             label.setHorizontalAlignment(SwingConstants.CENTER);
             label.setFont(new Font("Segoe UI", Font.BOLD, 11));
             if (!isSelected) {
@@ -723,13 +1025,17 @@ public class HistorialTransaccionesFrame extends JFrame {
 
     private static class AccionesRenderer extends DefaultTableCellRenderer {
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+
             JPanel panel = new JPanel(new GridBagLayout());
-            panel.setBackground(isSelected ? new Color(232, 241, 255) : Color.WHITE);
+            panel.setBackground(isSelected
+                    ? new Color(232, 241, 255) : Color.WHITE);
 
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.insets = new Insets(0, 4, 0, 4);
 
+            // Botón  ver
             JLabel btnVer = new JLabel("👁");
             btnVer.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
             btnVer.setOpaque(true);
@@ -737,6 +1043,7 @@ public class HistorialTransaccionesFrame extends JFrame {
             btnVer.setBorder(new EmptyBorder(5, 9, 5, 9));
             btnVer.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
+            // Botón imprimir
             JLabel btnImp = new JLabel("🖨");
             btnImp.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
             btnImp.setOpaque(true);
@@ -748,6 +1055,9 @@ public class HistorialTransaccionesFrame extends JFrame {
             gbc.gridx = 1; panel.add(btnImp, gbc);
             return panel;
         }
-        
+    }
+    public static void main(String[] args) {
+        HistorialTransaccionesFrame xd = new HistorialTransaccionesFrame();
+        xd.show();
     }
 }
