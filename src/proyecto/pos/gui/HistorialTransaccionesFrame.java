@@ -1056,8 +1056,5 @@ public class HistorialTransaccionesFrame extends JFrame {
             return panel;
         }
     }
-    public static void main(String[] args) {
-        HistorialTransaccionesFrame xd = new HistorialTransaccionesFrame();
-        xd.show();
+  
     }
-}
