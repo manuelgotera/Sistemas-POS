@@ -22,6 +22,7 @@ public class Merma {
     public Merma() {
     }
 
+    
     public Merma(int mermaId, Insumo insumo, Empleado empleado, double cantidad, String motivo, Date fecha_registro) {
         this.mermaId = mermaId;
         this.insumo = insumo;

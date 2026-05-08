@@ -58,11 +58,11 @@ public class InsumoDAOImpl implements InsumoDAO {
                 // Crear insumo
                 Insumo insumo = new Insumo();
                 insumo.setInsumoId(rs.getInt("insumo_id"));
-                insumo.setNombre(rs.getString("nombre"));
+                insumo.setNombre(rs.getString("nombre_insumo"));
                 insumo.setUnidadMedida(rs.getString("unidad_medida"));
-                insumo.setStockMinimo(rs.getDouble("stock_minimo"));
+                insumo.setStockMinimo(rs.getDouble("stock_minimo_alerta"));
                 insumo.setCosto(rs.getFloat("costo"));
-                insumo.setCantidad(rs.getFloat("cantidad"));
+                insumo.setCantidad(rs.getFloat("stock"));
                 insumo.setProveedor(proveedor);
 
                 lista.add(insumo);

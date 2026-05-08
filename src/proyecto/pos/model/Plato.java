@@ -4,6 +4,8 @@
  */
 package proyecto.pos.model;
 
+import java.util.Objects;
+
 /**
  *
  * @author HP
@@ -83,5 +85,24 @@ public class Plato {
                 ", Disponible = " + (disponible) +
                 ", Categoría = " + (categoria != null ? categoria.getNombre() : "N/A") +
                 '}';
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+
+        if (this == o) return true;
+
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        Plato plato = (Plato) o;
+
+        return platoId == plato.platoId;
+    }
+
+    @Override
+    public int hashCode() {
+
+        return Objects.hash(platoId);
     }
 }

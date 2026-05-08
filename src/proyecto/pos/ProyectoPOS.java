@@ -12,6 +12,8 @@ import java.util.List;
 import proyecto.pos.dao.impl.CajaDAOImpl;
 import proyecto.pos.dao.impl.ClienteDAOImpl;
 import proyecto.pos.dao.impl.EmpleadoDAOImpl;
+import proyecto.pos.dao.impl.InsumoDAOImpl;
+import proyecto.pos.dao.impl.MermaDAOImpl;
 import proyecto.pos.dao.impl.PlatoDAOImpl;
 import proyecto.pos.dao.impl.VentaDAOImpl;
 import proyecto.pos.dao.interfaces.*;
@@ -31,17 +33,17 @@ public class ProyectoPOS {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        HistorialTransaccionesFrame jf1 = new HistorialTransaccionesFrame();
-        jf1.setVisible(true);
-        /*DatabaseConnection db = new DatabaseConnection();
+        DatabaseConnection db = new DatabaseConnection();
         Connection c = db.conectar();
         
-        TestHistorial jf1 = new TestHistorial();
-        VentaService vs = new VentaService(new VentaDAOImpl(c));
-        ArrayList<Venta> ventas = (ArrayList<Venta>) vs.listarVentas();
-        for (Venta v : ventas) {
-            System.out.println(v.toString());*/
-        }
+           EmpleadoDAO empleado_dao = new EmpleadoDAOImpl(c);
+        
+        
+        Empleado e = empleado_dao.listar().get(3);
+        
+        
+        System.out.println(e.toString());
+    }
     
     public static void venta(){
         //metodo de recontramrd 

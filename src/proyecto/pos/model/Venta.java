@@ -89,8 +89,15 @@ public class Venta {
     }
 
     
+    public double calcularSubtotal() {
+
+        return detalles.stream()
+                       .mapToDouble(VentaDetalle::getSubtotal)
+                       .sum();
+    }
+    
     public double calcularTotal() {
-        return detalles.stream().mapToDouble(VentaDetalle::calcularSubtotal).sum();
+        return subtotal * 0.18;
     }
 
     public void setVentaId(int ventaId) {
@@ -250,4 +257,6 @@ public class Venta {
 
         return sb.toString();
     }
+    
+    
 }

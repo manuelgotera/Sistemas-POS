@@ -1,5 +1,7 @@
 package proyecto.pos.gui;
 
+import java.sql.SQLException;
+import java.sql.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -9,17 +11,69 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.controller.VentaController;
+import proyecto.pos.dao.impl.VentaDAOImpl;
+import proyecto.pos.dao.interfaces.VentaDAO;
+import proyecto.pos.model.Cliente;
+import proyecto.pos.model.Mesa;
+import proyecto.pos.model.Plato;
+import proyecto.pos.model.Venta;
+import proyecto.pos.model.VentaDetalle;
+import proyecto.pos.service.VentaService;
+import java.util.Date;
+import proyecto.pos.dao.impl.EmpleadoDAOImpl;
+import proyecto.pos.dao.interfaces.EmpleadoDAO;
+import proyecto.pos.model.ComprobantePago;
+import proyecto.pos.model.Empleado;
+import proyecto.pos.model.EstadoPago;
+import proyecto.pos.model.MetodoPago;
 
 public class Pago_GUI extends JDialog {
 
+    //Por el momento
+    private EmpleadoDAO empleado_dao;
+            
     private double total;
     private String nombreCliente;
     private Caja_GUI cajaPadre; 
-    
+    private Cliente cliente;
+    private Mesa mesa;
+    private ArrayList<Plato> platos;
     private JTextField txtEfectivo, txtTarjeta;
     private JLabel lblRestante;
     private JButton btnGuardarImprimir, btnGuardarSolo;
-
+    
+    private VentaController venta_controller;
+    
+    
+    
+    public Pago_GUI(Caja_GUI parent, double total, Cliente cliente, ArrayList<Plato> platos, Mesa mesa, Connection conexion) {
+        super(parent, "Pago", true); 
+        this.cajaPadre = parent;
+        this.platos = platos;
+        this.cliente = cliente;
+        this.mesa = mesa;
+        this.total = total;
+        this.nombreCliente = cliente.getNombre() + " " + cliente.getApellidos() + " ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
+ 
+        this.empleado_dao = new EmpleadoDAOImpl(conexion);
+        VentaDAO ventaDAO =
+            new VentaDAOImpl(conexion);
+        VentaService ventaService =
+                    new VentaService(ventaDAO);
+        this.venta_controller =
+                    new VentaController(ventaService);
+       
+        
+        configurarVentana();
+        initComponents();
+        actualizarCalculos(); 
+    }
+    
     public Pago_GUI(Caja_GUI parent, double total, String cliente) {
         super(parent, "Pago", true); 
         this.cajaPadre = parent;
@@ -164,7 +218,25 @@ public class Pago_GUI extends JDialog {
         btnGuardarSolo.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         btnGuardarImprimir.addActionListener(e -> finalizado("Imprimiendo recibo..."));
-        btnGuardarSolo.addActionListener(e -> finalizado("Venta guardada."));
+        btnGuardarSolo.addActionListener(e -> {
+            Venta venta = new Venta();
+            venta.setCliente(cliente);
+            venta.setCaja_id(1);
+            venta.setDetalles(obtenerVentaDetalle());
+            venta.setDescuento(1);
+            venta.setSubtotal(venta.calcularSubtotal());
+            venta.setFecha(new Date());
+            venta.setIgv(11);
+            venta.setTotal(venta.calcularTotal());
+            venta.setComprobantes(obtenerComprobantesPago());
+            venta.setCaja_id(1);
+            venta.setMesa(mesa);
+            venta.setEmpleado(obtenerEmpleado());
+            venta.setEstadoPago(EstadoPago.PAGADO);
+            venta_controller.registrarVenta(venta);
+            finalizado("Venta guardada.");
+
+        });
 
         pie.add(btnGuardarImprimir);
         pie.add(btnGuardarSolo);
@@ -176,6 +248,68 @@ public class Pago_GUI extends JDialog {
         add(panelPrincipal);
     }
 
+    private Empleado obtenerEmpleado(){
+        Empleado empleado = empleado_dao.obtenerPorId(24);
+        return empleado;
+    }
+    private ArrayList<ComprobantePago> obtenerComprobantesPago() {
+        ArrayList<ComprobantePago> comprobantes = new ArrayList<ComprobantePago>();
+        //FALTA AGREGAR PAGOS MULTIPLES
+        ComprobantePago comprobante = new ComprobantePago();
+        comprobante.setEstado("PAGADO");
+        comprobante.setFecha_emision(new Date());
+        comprobante.setMetodo_pago(new MetodoPago(1,"BCP"));
+        int randomNum = (int)(Math.random() * (1000 - 2 + 1) + 2);
+        String numero_serie = "XXXXX-"+String.valueOf(randomNum);
+        System.out.println(numero_serie);
+        comprobante.setSerie_numero(numero_serie);
+        comprobante.setTipo_comprobante("BOLETA");
+        comprobantes.add(comprobante);
+        return comprobantes;
+    }
+    private ArrayList<VentaDetalle> obtenerVentaDetalle() {
+
+        ArrayList<VentaDetalle> venta_detalle = new ArrayList<>();
+
+        Map<Plato, Integer> cantidades = new HashMap<>();
+
+        // Contar cuántas veces aparece cada plato
+        for (Plato p : platos) {
+
+            if (cantidades.containsKey(p)) {
+
+                cantidades.put(p, cantidades.get(p) + 1);
+
+            } else {
+
+                cantidades.put(p, 1);
+            }
+        }
+
+        for (Map.Entry<Plato, Integer> entry : cantidades.entrySet()) {
+
+            Plato plato = entry.getKey();
+
+            int cantidad = entry.getValue();
+
+            double precio = plato.getPrecio();
+
+            double subtotal = precio * cantidad;
+
+            VentaDetalle detalle = new VentaDetalle(
+                plato,
+                cantidad,
+                precio,
+                subtotal,
+                ""
+            );
+
+            venta_detalle.add(detalle);
+        }
+
+        return venta_detalle;
+    }
+    
     private void agregarEscuchaCalculo(JTextField textField) {
         textField.getDocument().addDocumentListener(new DocumentListener() {
             public void changedUpdate(DocumentEvent e) { actualizarCalculos(); }
@@ -220,6 +354,7 @@ public class Pago_GUI extends JDialog {
     private void finalizado(String mensaje) {
         JOptionPane.showMessageDialog(this, "¡Venta realizada con éxito!\n" + mensaje);
         cajaPadre.vaciarTodo(); 
+        
         this.dispose(); 
     }
 }

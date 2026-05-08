@@ -1,4 +1,4 @@
-package proyecto.pos.gui;
+    package proyecto.pos.gui;
 
 import java.awt.Font;
 import javax.swing.JFrame;

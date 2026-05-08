@@ -23,6 +23,7 @@ import java.sql.*;
 import proyecto.pos.dao.impl.ClienteDAOImpl;
 import proyecto.pos.dao.interfaces.ClienteDAO;
 import proyecto.pos.model.Cliente;
+import proyecto.pos.model.Mesa;
 import proyecto.pos.model.Plato;
 
 public class Caja_GUI extends JFrame {
@@ -35,12 +36,8 @@ public class Caja_GUI extends JFrame {
     private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
     private static final Color ROJO = new Color(220, 53, 69);
     private static final Color VERDE = new Color(40, 167, 69);
-    private static Connection conexion;
-    
-    private static void conectar(){
-        DatabaseConnection db = new DatabaseConnection();
-        conexion = db.conectar();
-    }
+    private  Connection conexion;
+    private  ArrayList<Plato> platos_seleccionados = new ArrayList<Plato>();
 
     
     private ArrayList<Plato> obtenerPlatosBD(){
@@ -48,6 +45,8 @@ public class Caja_GUI extends JFrame {
         ArrayList<Plato> platos = (ArrayList<Plato>) plato_dao.listar();
         return platos;
     }
+    
+    
     
     // --- BASE DE DATOS SIMULADA ---
     /*private String[][] platosPrincipales = {
@@ -74,8 +73,12 @@ public class Caja_GUI extends JFrame {
     private JButton btnPagar, btnVaciar;
     private JLabel lblTotalPagar;
     private double totalAcumulado = 0.0;
-
+    
+    
+    
     public Caja_GUI() {
+        DatabaseConnection db = new DatabaseConnection();
+        this.conexion = db.conectar();
         configurarVentana();
         initComponents();
         filtrarProductos(); // Carga inicial de todos los productos
@@ -328,8 +331,8 @@ public class Caja_GUI extends JFrame {
                 
                 String clienteFinal = "DNI " + dni;
                 String mesaFinal = "Mesa " + mesa;
-                
-                Pago_GUI pago = new Pago_GUI(this, totalAcumulado, clienteFinal + " - " + mesaFinal);
+                //System.out.println(platos_seleccionados.get(1).toString());
+                Pago_GUI pago = new Pago_GUI(this, totalAcumulado, cliente, platos_seleccionados, new Mesa(Integer.parseInt(mesa),0,0,0), conexion);
                 pago.setVisible(true);
             }
         });
@@ -518,7 +521,7 @@ public class Caja_GUI extends JFrame {
         btnAdd.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // --- LÓGICA DE ESTADO (DISPONIBILIDAD) ---
-        if (disponibilidad.equalsIgnoreCase("Disponible")) {
+        if (disponibilidad.equalsIgnoreCase("DISPONIBLE")) {
             s.setForeground(VERDE);
             btnAdd.setBackground(AZUL);
             btnAdd.setForeground(Color.WHITE);
@@ -536,8 +539,10 @@ public class Caja_GUI extends JFrame {
         info.add(Box.createVerticalStrut(3));
         info.add(s);
 
-        btnAdd.addActionListener(e -> agregarAlCarrito(plato.getNombre(), plato.getPrecio()));
-
+        btnAdd.addActionListener(e -> {
+            agregarAlCarrito(plato);
+            System.out.println(platos_seleccionados.isEmpty());
+        });
         card.add(lblImg, BorderLayout.NORTH);
         card.add(info, BorderLayout.CENTER);
         card.add(btnAdd, BorderLayout.SOUTH);
@@ -610,7 +615,7 @@ public class Caja_GUI extends JFrame {
         info.add(Box.createVerticalStrut(3));
         info.add(s);
 
-        btnAdd.addActionListener(e -> agregarAlCarrito(nombre, Double.parseDouble(precio)));
+        btnAdd.addActionListener(e -> agregarAlCarrito1(nombre, Double.parseDouble(precio)));
 
         card.add(lblImg, BorderLayout.NORTH);
         card.add(info, BorderLayout.CENTER);
@@ -620,7 +625,51 @@ public class Caja_GUI extends JFrame {
 
     // --- LÓGICA DEL CARRITO INTERACTIVO ---
 
-    private void agregarAlCarrito(String nombre, double precio) {
+    private void agregarAlCarrito(Plato plato) {
+        
+        platos_seleccionados.add(plato);
+        // Creamos una pequeña tarjeta (panel) para cada item en el carrito
+        JPanel itemPanel = new JPanel(new BorderLayout());
+        itemPanel.setBackground(Color.WHITE);
+        itemPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        itemPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 230, 230)),
+            new EmptyBorder(10, 10, 10, 10)
+        ));
+
+        JLabel lblNombre = new JLabel("<html><b>" + plato.getNombre() + "</b><br><font color='#1A53A0'>S/ " + String.format("%.2f", plato.getPrecio()) + "</font></html>");
+        lblNombre.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        // Botón Eliminar Individual (X)
+        JButton btnRemove = new JButton("X");
+        btnRemove.setForeground(ROJO);
+        btnRemove.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnRemove.setContentAreaFilled(false);
+        btnRemove.setBorderPainted(false);
+        btnRemove.setMargin(new Insets(0, 0, 0, 0));
+        btnRemove.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        
+        btnRemove.addActionListener(e -> {
+            panelCarritoContenedor.remove(itemPanel);
+            totalAcumulado -= plato.getPrecio();
+            platos_seleccionados.remove(plato);
+            actualizarTotal();
+            panelCarritoContenedor.revalidate();
+            panelCarritoContenedor.repaint();
+        });
+        
+        itemPanel.add(lblNombre, BorderLayout.CENTER);
+        itemPanel.add(btnRemove, BorderLayout.EAST);
+        
+        panelCarritoContenedor.add(itemPanel);
+        totalAcumulado += plato.getPrecio();
+        actualizarTotal();
+        
+        panelCarritoContenedor.revalidate();
+        panelCarritoContenedor.repaint();
+    }
+    
+    private void agregarAlCarrito1(String nombre, double precio) {
         // Creamos una pequeña tarjeta (panel) para cada item en el carrito
         JPanel itemPanel = new JPanel(new BorderLayout());
         itemPanel.setBackground(Color.WHITE);
@@ -886,7 +935,8 @@ public class Caja_GUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        conectar();
+        System.out.println("xdd");
+        
         SwingUtilities.invokeLater(() -> new Caja_GUI().setVisible(true));
     }
 }
