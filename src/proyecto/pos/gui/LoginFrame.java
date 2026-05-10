@@ -72,7 +72,7 @@ public class LoginFrame extends JFrame {
         btnIngresar.setForeground(Color.WHITE);
         btnIngresar.setFocusPainted(false);
 
-        JLabel footer = new JLabel("Sistema POS © 2025", SwingConstants.CENTER);
+        JLabel footer = new JLabel("Sistema POS © 2026", SwingConstants.CENTER);
         footer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footer.setForeground(Color.GRAY);
 
