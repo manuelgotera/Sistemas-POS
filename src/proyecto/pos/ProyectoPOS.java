@@ -37,12 +37,12 @@ public class ProyectoPOS {
         Connection c = db.conectar();
         
            EmpleadoDAO empleado_dao = new EmpleadoDAOImpl(c);
-        
-        
+        ClienteDAO cliente_dao = new ClienteDAOImpl(c);
+        Cliente cl = cliente_dao.listar().get(2);
         Empleado e = empleado_dao.listar().get(3);
         
         
-        System.out.println(e.toString());
+        System.out.println(cl.toString());
     }
     
     public static void venta(){

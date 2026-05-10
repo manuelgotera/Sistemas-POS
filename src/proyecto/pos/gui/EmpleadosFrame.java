@@ -1,5 +1,6 @@
 package proyecto.pos.gui;
 
+import java.sql.Connection;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -9,6 +10,13 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.controller.EmpleadoController;
+import proyecto.pos.model.Empleado;
+import proyecto.pos.model.EstadoEmpleado;
+import proyecto.pos.model.Rol;
 
 public class EmpleadosFrame extends JFrame {
 
@@ -24,6 +32,16 @@ public class EmpleadosFrame extends JFrame {
     private static final Color ROJO_BG     = new Color(255, 235, 238);
     private static final Color ROJO_TEXT   = new Color(180, 30, 50);
 
+    private static final int COL_ID        = 0;
+    private static final int COL_NOMBRE    = 1;
+    private static final int COL_APELLIDO  = 2;
+    private static final int COL_DNI       = 3;
+    private static final int COL_TELEFONO  = 4;
+    private static final int COL_EMAIL     = 5;
+    private static final int COL_ROL       = 6;
+    private static final int COL_ESTADO    = 7;
+    private static final int COL_FECHA     = 8;
+
     private JTable tabla;
     private DefaultTableModel modelo;
     private JButton btnAgregar, btnEliminar, btnGuardar, btnEditar;
@@ -33,7 +51,13 @@ public class EmpleadosFrame extends JFrame {
     private JLabel lblActivos;
     private JLabel lblInactivos;
 
+    private EmpleadoController empleado_controller;
+    private Connection conexion;
+    
     public EmpleadosFrame() {
+        DatabaseConnection db = new DatabaseConnection();
+        this.conexion = db.conectar();
+        this.empleado_controller = new EmpleadoController(conexion);
         setTitle("Gestión de Empleados");
         setSize(1180, 720);
         setMinimumSize(new Dimension(1000, 620));
@@ -190,6 +214,7 @@ public class EmpleadosFrame extends JFrame {
         panel.add(crearBarraSuperior(), BorderLayout.NORTH);
         panel.add(crearTabla(), BorderLayout.CENTER);
         panel.add(crearBarraBotones(), BorderLayout.SOUTH);
+        cargarEmpleados();
         return panel;
     }
 
@@ -218,16 +243,44 @@ public class EmpleadosFrame extends JFrame {
 
     private JScrollPane crearTabla() {
         modelo = new DefaultTableModel(
-                new String[]{"Nombre", "Apellido", "DNI", "Teléfono",
-                             "Email", "Rol", "Estado", "Fecha"}, 0
+                    new String[]{
+                    "ID",
+                    "Nombre",
+                    "Apellido",
+                    "DNI",
+                    "Teléfono",
+                    "Email",
+                    "Rol",
+                    "Estado",
+                    "Fecha"
+                }, 0
         ) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return r == filaEditando && c != 5;
+                // ninguna fila editable
+                if (filaEditando == -1)
+                    return false;
+
+                // solo la fila seleccionada
+                if (r != filaEditando)
+                    return false;
+
+                // ID nunca editable
+                if (c == COL_ID)
+                    return false;
+
+                // Rol se cambia con modal
+                if (c == COL_ROL)
+                    return false;
+
+                return true;
             }
         };
 
         tabla = new JTable(modelo);
+        tabla.getColumnModel().getColumn(COL_ID).setMinWidth(0);
+        tabla.getColumnModel().getColumn(COL_ID).setMaxWidth(0);
+        tabla.getColumnModel().getColumn(COL_ID).setWidth(0);
         tabla.setRowHeight(44);
         tabla.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         tabla.setShowVerticalLines(false);
@@ -243,12 +296,22 @@ public class EmpleadosFrame extends JFrame {
         tabla.getTableHeader().setBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDE));
 
-        int[] anchos = {120, 110, 80, 100, 170, 115, 85, 105};
+        int[] anchos = {
+                0,    // ID oculta
+                140,  // Nombre
+                140,  // Apellido
+                90,   // DNI
+                110,  // Teléfono
+                160,  // Email
+                200,  // Rol
+                100,  // Estado
+                120   // Fecha
+            };
         for (int i = 0; i < anchos.length; i++)
             tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
 
         // Estado: ComboBox editor + badge renderer
-        TableColumn colEstado = tabla.getColumnModel().getColumn(6);
+        TableColumn colEstado = tabla.getColumnModel().getColumn(7);
         colEstado.setCellEditor(new DefaultCellEditor(
                 new JComboBox<>(new String[]{"ACTIVO", "INACTIVO"})
         ));
@@ -274,7 +337,7 @@ public class EmpleadosFrame extends JFrame {
         });
 
         // Rol: renderer visual estilo chip clicable
-        TableColumn colRol = tabla.getColumnModel().getColumn(5);
+        TableColumn colRol = tabla.getColumnModel().getColumn(COL_ROL);
         colRol.setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object val,
@@ -282,7 +345,7 @@ public class EmpleadosFrame extends JFrame {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(
                         t, val, sel, foc, row, col);
                 String texto = (val == null ? "" : val.toString());
-                lbl.setText("  ✎  " + texto);
+                lbl.setText(texto);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setOpaque(true);
                 if (!sel) {
@@ -303,18 +366,32 @@ public class EmpleadosFrame extends JFrame {
         tabla.getColumnModel().getColumn(3).setCellRenderer(centro);
 
         tabla.addMouseListener(new MouseAdapter() {
+
             @Override
             public void mouseClicked(MouseEvent e) {
+
                 int fila = tabla.rowAtPoint(e.getPoint());
                 int col  = tabla.columnAtPoint(e.getPoint());
-                if (fila >= 0 && col == 5) abrirSelectorRol(fila);
+
+                // SOLO permitir cambiar rol
+                // si la fila está en edición
+                if (fila == filaEditando && col == COL_ROL) {
+                    abrirSelectorRol(fila);
+                }
             }
+
             @Override
             public void mouseMoved(MouseEvent e) {
-                int col = tabla.columnAtPoint(e.getPoint());
-                tabla.setCursor(col == 5
+
+                int fila = tabla.rowAtPoint(e.getPoint());
+                int col  = tabla.columnAtPoint(e.getPoint());
+
+                // cursor mano SOLO en fila editable
+                tabla.setCursor(
+                    (fila == filaEditando && col == COL_ROL)
                         ? new Cursor(Cursor.HAND_CURSOR)
-                        : Cursor.getDefaultCursor());
+                        : Cursor.getDefaultCursor()
+                );
             }
         });
 
@@ -328,7 +405,7 @@ public class EmpleadosFrame extends JFrame {
 
     private void abrirSelectorRol(int filaVista) {
         int filaModelo = tabla.convertRowIndexToModel(filaVista);
-        Object valActual = modelo.getValueAt(filaModelo, 5);
+        Object valActual = modelo.getValueAt(filaModelo, 6);
         String rolActual = (valActual == null) ? "Cajero" : valActual.toString();
 
         String[] roles = {"Administrador", "Cajero", "Mesero", "Cocinero"};
@@ -417,7 +494,7 @@ public class EmpleadosFrame extends JFrame {
                     }
                 }
                 public void mouseClicked(MouseEvent e) {
-                    modelo.setValueAt(rol, filaModelo, 5);
+                    modelo.setValueAt(rol, filaModelo, 6);
                     dialog.dispose();
                 }
             });
@@ -451,11 +528,43 @@ public class EmpleadosFrame extends JFrame {
         barra.add(btnAgregar);
 
         btnAgregar.addActionListener(e -> {
-            modelo.addRow(new Object[]{"", "", "", "", "", "Cajero", "ACTIVO", ""});
+            String hoy = new SimpleDateFormat("dd/MM/yyyy")
+                .format(new java.util.Date());
+            modelo.addRow(new Object[]{
+                null,
+                "",
+                "",
+                "",
+                "",
+                "",
+                "Cajero",
+                "ACTIVO",
+                hoy
+            });
+
+            // nueva fila editable
+            filaEditando = modelo.getRowCount() - 1;
+
+            // seleccionar la nueva fila
+            tabla.setRowSelectionInterval(
+                filaEditando,
+                filaEditando
+            );
+
+            // refrescar tabla
+            modelo.fireTableDataChanged();
+
             actualizarCards();
         });
         btnEliminar.addActionListener(e -> { eliminarFila(); actualizarCards(); });
-        btnEditar.addActionListener(e -> activarEdicion());
+        btnEditar.addActionListener(e -> {
+            if (filaEditando == -1) {
+                activarEdicion();
+            } else {
+                actualizarEmpleado();
+                actualizarCards();
+            }
+        });
         btnGuardar.addActionListener(e -> guardar());
 
         return barra;
@@ -494,61 +603,161 @@ public class EmpleadosFrame extends JFrame {
     }
 
     private void activarEdicion() {
+
         int fila = tabla.getSelectedRow();
-        if (fila == -1) {
-            JOptionPane.showMessageDialog(this, "Selecciona una fila primero.",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
+
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Selecciona una fila."
+            );
             return;
         }
+
         filaEditando = fila;
+
         modelo.fireTableDataChanged();
     }
-
+    
     private void guardar() {
-        SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
-        formato.setLenient(false);
-        for (int i = 0; i < modelo.getRowCount(); i++) {
-            String nombre   = (String) modelo.getValueAt(i, 0);
-            String apellido = (String) modelo.getValueAt(i, 1);
-            String dni      = (String) modelo.getValueAt(i, 2);
-            String telefono = (String) modelo.getValueAt(i, 3);
-            String email    = (String) modelo.getValueAt(i, 4);
-            String fecha    = (String) modelo.getValueAt(i, 7);
 
-            if (nombre == null || nombre.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Nombre vacío — fila " + (i+1)); return;
+        SimpleDateFormat formato =
+            new SimpleDateFormat("dd/MM/yyyy");
+
+        formato.setLenient(false);
+
+        for (int i = 0; i < modelo.getRowCount(); i++) {
+
+            Object idObj = modelo.getValueAt(i, COL_ID);
+
+            if (idObj != null) {
+                continue;
             }
-            if (apellido == null || apellido.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Apellido vacío — fila " + (i+1)); return;
+
+            String nombre =
+                modelo.getValueAt(i, COL_NOMBRE).toString().trim();
+
+            String apellido =
+                modelo.getValueAt(i, COL_APELLIDO).toString().trim();
+
+            String dni =
+                modelo.getValueAt(i, COL_DNI).toString().trim();
+
+            String telefono =
+                modelo.getValueAt(i, COL_TELEFONO).toString().trim();
+
+            String email =
+                modelo.getValueAt(i, COL_EMAIL).toString().trim();
+
+            String rolStr =
+                modelo.getValueAt(i, COL_ROL).toString().trim();
+            
+            String estadoStr =
+                    modelo.getValueAt(i, COL_ESTADO).toString().trim();
+
+            String fechaStr =
+                modelo.getValueAt(i, COL_FECHA).toString().trim();
+
+            if (nombre.isEmpty()) {
+                err("Nombre vacío", i);
+                return;
             }
-            if (dni == null || !dni.matches("\\d{8}")) {
-                JOptionPane.showMessageDialog(this, "DNI inválido (8 dígitos) — fila " + (i+1)); return;
+
+            if (apellido.isEmpty()) {
+                err("Apellido vacío", i);
+                return;
             }
-            if (telefono == null || telefono.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Teléfono vacío — fila " + (i+1)); return;
+
+            if (!dni.matches("\\d{8}")) {
+                err("DNI inválido", i);
+                return;
             }
-            if (email == null || !email.contains("@")) {
-                JOptionPane.showMessageDialog(this, "Email inválido — fila " + (i+1)); return;
+
+            if (!email.contains("@")) {
+                err("Email inválido", i);
+                return;
             }
-            try {
-                formato.parse(fecha);
+            
+            
+            
+            java.util.Date fecha;
+                            System.out.println(
+                    "[" + fechaStr + "]"
+                );
+                try {
+                fecha = (java.util.Date) formato.parse(fechaStr);
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(this,
-                        "Fecha inválida (dd/MM/yyyy) — fila " + (i+1)); return;
+                err("Fecha inválida", i);
+                return;
+            }
+
+            Empleado existente =
+                empleado_controller.obtenerPorDni(dni);
+
+            if (existente != null) {
+                err("Empleado ya registrado", i);
+                return;
+            }
+
+            try {
+
+                Rol rol = new Rol();
+
+                rol.setNombre_rol(rolStr);
+
+                switch (rolStr.toUpperCase()) {
+
+                    case "ADMINISTRADOR":
+                        rol.setId(1);
+                        break;
+
+                    case "CAJERO":
+                        rol.setId(2);
+                        break;
+
+                    case "MESERO":
+                        rol.setId(3);
+                        break;
+
+                    case "COCINERO":
+                        rol.setId(4);
+                        break;
+                }
+
+                empleado_controller.registrarEmpleado(
+                        rol,
+                        nombre,
+                        apellido,
+                        dni,
+                        telefono,
+                        email,
+                        EstadoEmpleado.valueOf(estadoStr),
+                        fecha
+                );
+
+            } catch (Exception e) {
+
+                err("Error al guardar: " + e.getMessage(), i);
+
+                return;
             }
         }
+
+        cargarEmpleados();
+
         filaEditando = -1;
+
         modelo.fireTableDataChanged();
-        actualizarCards();
-        JOptionPane.showMessageDialog(this, "Datos guardados correctamente ✔",
-                "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+        JOptionPane.showMessageDialog(this,
+                "Empleados guardados correctamente");
     }
 
     private void actualizarCards() {
         int total = modelo.getRowCount();
         int activos = 0, inactivos = 0;
         for (int i = 0; i < total; i++) {
-            Object est = modelo.getValueAt(i, 6);
+            Object est = modelo.getValueAt(i, 7);
             if ("ACTIVO".equals(est)) activos++; else inactivos++;
         }
         if (lblTotalEmp  != null) lblTotalEmp.setText(String.valueOf(total));
@@ -556,7 +765,200 @@ public class EmpleadosFrame extends JFrame {
         if (lblInactivos != null) lblInactivos.setText(String.valueOf(inactivos));
     }
 
+    private void cargarEmpleados() {
+
+        modelo.setRowCount(0);
+
+        ArrayList<Empleado> lista =
+            (ArrayList<Empleado>) empleado_controller.listarEmpleados();
+
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
+        for (Empleado e : lista) {
+
+            modelo.addRow(new Object[]{
+                e.getId(),
+                e.getNombre(),
+                e.getApellidos(),
+                e.getDni(),
+                e.getTelefono(),
+                e.getEmail(),
+                e.getRol().getNombre_rol(),
+                e.getEstado().name(),
+                sdf.format(e.getFecha_contratación())
+            });
+        }
+
+        actualizarCards();
+    }
+    
+    private void err(String msg, int fila) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                msg + " — fila " + (fila + 1),
+                "Validación",
+                JOptionPane.WARNING_MESSAGE
+        );
+    }
+    
+    private void actualizarEmpleado() {
+        
+        int fila = tabla.getSelectedRow();
+        SimpleDateFormat formato =
+            new SimpleDateFormat("dd/MM/yyyy");
+        
+        if (fila < 0) {
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Selecciona una fila."
+            );
+
+            return;
+        }
+
+        Object idObj = modelo.getValueAt(fila, COL_ID);
+
+        if (idObj == null) {
+
+            JOptionPane.showMessageDialog(
+                this,
+                "El empleado aún no existe en la BD."
+            );
+
+            return;
+        }
+
+        try {
+
+            int id =
+                Integer.parseInt(idObj.toString());
+
+            String nombre =
+                modelo.getValueAt(fila, COL_NOMBRE)
+                      .toString()
+                      .trim();
+
+            String apellido =
+                modelo.getValueAt(fila, COL_APELLIDO)
+                      .toString()
+                      .trim();
+
+            String dni =
+                modelo.getValueAt(fila, COL_DNI)
+                      .toString()
+                      .trim();
+
+            String telefono =
+                modelo.getValueAt(fila, COL_TELEFONO)
+                      .toString()
+                      .trim();
+
+            String email =
+                modelo.getValueAt(fila, COL_EMAIL)
+                      .toString()
+                      .trim();
+
+            String rolStr =
+                modelo.getValueAt(fila, COL_ROL)
+                      .toString()
+                      .trim();
+
+            String estado =
+                modelo.getValueAt(fila, COL_ESTADO)
+                      .toString()
+                      .trim();
+            
+            String fechaStr =
+                modelo.getValueAt(fila, COL_FECHA).toString().trim();
+            // VALIDACIONES
+            if (nombre.isEmpty()) {
+                err("Nombre vacío", fila);
+                return;
+            }
+
+            if (apellido.isEmpty()) {
+                err("Apellido vacío", fila);
+                return;
+            }
+
+            if (!dni.matches("\\d{8}")) {
+                err("DNI inválido", fila);
+                return;
+            }
+
+            if (!email.contains("@")) {
+                err("Email inválido", fila);
+                return;
+            }
+
+            Rol rol = new Rol();
+
+            rol.setNombre_rol(rolStr);
+
+            switch (rolStr.toUpperCase()) {
+
+                case "ADMINISTRADOR":
+                    rol.setId(1);
+                    break;
+
+                case "CAJERO":
+                    rol.setId(2);
+                    break;
+
+                case "MESERO":
+                    rol.setId(3);
+                    break;
+
+                case "COCINERO":
+                    rol.setId(4);
+                    break;
+            }
+             java.util.Date fecha;
+                            System.out.println(
+                    "[" + fechaStr + "]"
+                );
+                try {
+                fecha = (java.util.Date) formato.parse(fechaStr);
+            } catch (Exception e) {
+                err("Fecha inválida", fila);
+                return;
+            }
+
+                
+            empleado_controller.actualizarEmpleado(
+                id,
+                rol,
+                EstadoEmpleado.valueOf(estado),
+                nombre,
+                apellido,
+                dni,
+                telefono,
+                email,
+                fecha
+            );
+
+            filaEditando = -1;
+
+            modelo.fireTableDataChanged();
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Empleado actualizado correctamente"
+            );
+
+        } catch (Exception e) {
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Error al actualizar: " + e.getMessage()
+            );
+        }
+    }
+    
     public static void main(String[] args) {
+        
         SwingUtilities.invokeLater(() -> new EmpleadosFrame().setVisible(true));
     }
 }

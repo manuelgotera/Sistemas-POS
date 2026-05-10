@@ -1,12 +1,19 @@
 package proyecto.pos.gui;
 
+import java.sql.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.stream.IntStream;
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.controller.ClienteController;
+import proyecto.pos.model.Cliente;
+import proyecto.pos.service.ClienteService;
 
 public class ClientesFrame extends JFrame {
 
@@ -23,15 +30,17 @@ public class ClientesFrame extends JFrame {
     private static final Color ACTIVE_BG  = new Color(230, 235, 255);
 
     // ── Índices de columna ───────────────────────────────────────────────────
-    private static final int COL_TIPO      = 0;
-    private static final int COL_NOMBRE    = 1;
-    private static final int COL_APELLIDO  = 2;
-    private static final int COL_DNI       = 3;
-    private static final int COL_TELEFONO  = 4;
-    private static final int COL_EMAIL     = 5;
-    private static final int COL_PUNTOS    = 6;
-    private static final int COL_DIRECCION = 7;
-    private static final int COL_FECHA     = 8;
+
+    private static final int COL_ID         = 0;
+    private static final int COL_TIPO       = 1;
+    private static final int COL_NOMBRE     = 2;
+    private static final int COL_APELLIDO   = 3;
+    private static final int COL_DNI        = 4;
+    private static final int COL_TELEFONO   = 5;
+    private static final int COL_EMAIL      = 6;
+    private static final int COL_PUNTOS     = 7;
+    private static final int COL_DIRECCION  = 8;
+    private static final int COL_FECHA      = 9;
 
     // ── Estado ───────────────────────────────────────────────────────────────
     private DefaultTableModel modelo;
@@ -42,13 +51,18 @@ public class ClientesFrame extends JFrame {
     private JLabel lblPageDesc;
     private JLabel lblTotal, lblEmpresa, lblNatural;
 
+    private ClienteController cliente_controller;
+    private Connection conexion;
     // ══════════════════════════════════════════════════════════════════════════
     public ClientesFrame() {
+        DatabaseConnection db = new DatabaseConnection();
+        this.conexion = db.conectar();
+        this.cliente_controller = new ClienteController(conexion);
         setTitle("Sistema POS");
         setSize(1250, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+        System.out.println("qkoño");
         JPanel root = new JPanel(new BorderLayout());
         // ── ÚNICO CAMBIO: sidebar reutilizable en lugar del buildSidebar() propio
         root.add(new MenuSidebar(this, "Clientes"), BorderLayout.WEST);
@@ -170,6 +184,30 @@ public class ClientesFrame extends JFrame {
         return lVal;
     }
 
+    private void cargarClientes() {
+
+        modelo.setRowCount(0);
+
+        ArrayList<Cliente> lista =
+            (ArrayList<Cliente>) cliente_controller.listarClientes();
+
+        for (Cliente c : lista) {
+            System.out.println(c.getFecha_registro());
+            modelo.addRow(new Object[]{
+                c.getId(), // 🔥 ID oculto
+                c.getTipoCliente(),
+                c.getNombre(),
+                c.getApellidos(),
+                c.getDni(),
+                c.getTelefono(),
+                c.getEmail(),
+                c.getPuntosFideldiad(),
+                c.getDireccion(),
+                c.getFecha_registro()
+            });
+        }
+    }
+    
     private JPanel buildTableCard() {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(CARD_BG);
@@ -189,8 +227,19 @@ public class ClientesFrame extends JFrame {
         card.add(ch, BorderLayout.NORTH);
 
         modelo = new DefaultTableModel(
-            new String[]{"Tipo","Nombre","Apellido","DNI","Teléfono","Email","Puntos","Dirección","Fecha"}, 0
-        ) {
+        new String[]{
+            "ID",
+            "Tipo",
+            "Nombre",
+            "Apellido",
+            "DNI",
+            "Teléfono",
+            "Email",
+            "Puntos",
+            "Dirección",
+            "Fecha"
+        }, 0
+    ){
             public boolean isCellEditable(int r, int c) {
                 if (r != filaEditando) return false;
                 if (c == COL_TIPO)     return false;
@@ -200,6 +249,9 @@ public class ClientesFrame extends JFrame {
         };
 
         tabla = new JTable(modelo);
+        tabla.getColumnModel().getColumn(COL_ID).setMinWidth(0);
+        tabla.getColumnModel().getColumn(COL_ID).setMaxWidth(0);
+        tabla.getColumnModel().getColumn(COL_ID).setWidth(0);
         tabla.setRowHeight(30);
         tabla.setShowHorizontalLines(true);
         tabla.setShowVerticalLines(false);
@@ -215,7 +267,18 @@ public class ClientesFrame extends JFrame {
         tabla.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_CLR));
         tabla.getTableHeader().setReorderingAllowed(false);
 
-        int[] widths = {85, 130, 120, 95, 95, 155, 65, 130, 100};
+        int[] widths = {
+            0,    // ID (oculta)
+            90,   // Tipo
+            160,  // Nombre
+            150,  // Apellido
+            110,  // DNI
+            120,  // Teléfono
+            240,  // Email
+            80,   // Puntos
+            220,  // Dirección
+            120   // Fecha
+        };
         for (int i = 0; i < widths.length; i++)
             tabla.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
 
@@ -262,6 +325,7 @@ public class ClientesFrame extends JFrame {
         card.add(scroll, BorderLayout.CENTER);
         card.add(buildBotones(), BorderLayout.SOUTH);
 
+        cargarClientes();
         return card;
     }
 
@@ -424,28 +488,127 @@ public class ClientesFrame extends JFrame {
     //  LÓGICA DE TABLA  (sin cambios)
     // ══════════════════════════════════════════════════════════════════════════
     private void agregarFila() {
-        String hoy = new SimpleDateFormat("dd/MM/yyyy").format(new java.util.Date());
-        modelo.addRow(new Object[]{"NATURAL","","","","","","0","",hoy});
+
+        String hoy =
+            new SimpleDateFormat("dd/MM/yyyy")
+                .format(new java.util.Date());
+
+        modelo.addRow(new Object[]{
+            null, // 🔥 sin ID = cliente nuevo
+            "NATURAL",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "0",
+            "",
+            hoy
+        });
+
         filaEditando = modelo.getRowCount() - 1;
-        tabla.setRowSelectionInterval(filaEditando, filaEditando);
-        tabla.getColumnModel().getColumn(COL_NOMBRE).setHeaderValue("Nombre");
-        tabla.getColumnModel().getColumn(COL_APELLIDO).setHeaderValue("Apellido");
-        tabla.getColumnModel().getColumn(COL_DNI).setHeaderValue("DNI");
+
+        tabla.setRowSelectionInterval(
+            filaEditando,
+            filaEditando
+        );
+
+        tabla.getColumnModel()
+             .getColumn(COL_NOMBRE)
+             .setHeaderValue("Nombre");
+
+        tabla.getColumnModel()
+             .getColumn(COL_APELLIDO)
+             .setHeaderValue("Apellido");
+
+        tabla.getColumnModel()
+             .getColumn(COL_DNI)
+             .setHeaderValue("DNI");
+
         tabla.getTableHeader().repaint();
+
         modelo.fireTableDataChanged();
+
         actualizarStats();
     }
 
     private void eliminarFila() {
+
         int fila = tabla.getSelectedRow();
-        if (fila < 0) { JOptionPane.showMessageDialog(this,"Selecciona una fila."); return; }
-        modelo.removeRow(fila);
+
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Selecciona una fila."
+            );
+            return;
+        }
+
+        // 🔥 obtener ID del cliente
+        Object idObj = modelo.getValueAt(fila, COL_ID);
+
+        if (idObj == null) {
+
+            // cliente aún no guardado en BD
+            modelo.removeRow(fila);
+
+        } else {
+
+            int id = Integer.parseInt(idObj.toString());
+
+            int op = JOptionPane.showConfirmDialog(
+                this,
+                "¿Deseas eliminar este cliente?",
+                "Confirmar eliminación",
+                JOptionPane.YES_NO_OPTION
+            );
+
+            if (op != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            try {
+
+                // 🔥 eliminación lógica en BD
+                cliente_controller.eliminarPorId(id);
+
+                // 🔥 quitar de JTable
+                modelo.removeRow(fila);
+
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Cliente eliminado correctamente"
+                );
+
+            } catch (Exception e) {
+
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Error al eliminar cliente: " + e.getMessage()
+                );
+
+                return;
+            }
+        }
+
         filaEditando = -1;
-        tabla.getColumnModel().getColumn(COL_NOMBRE).setHeaderValue("Nombre");
-        tabla.getColumnModel().getColumn(COL_APELLIDO).setHeaderValue("Apellido");
-        tabla.getColumnModel().getColumn(COL_DNI).setHeaderValue("DNI");
+
+        tabla.getColumnModel()
+             .getColumn(COL_NOMBRE)
+             .setHeaderValue("Nombre");
+
+        tabla.getColumnModel()
+             .getColumn(COL_APELLIDO)
+             .setHeaderValue("Apellido");
+
+        tabla.getColumnModel()
+             .getColumn(COL_DNI)
+             .setHeaderValue("DNI");
+
         tabla.getTableHeader().repaint();
+
         modelo.fireTableDataChanged();
+
         actualizarStats();
     }
 
@@ -466,46 +629,102 @@ public class ClientesFrame extends JFrame {
     }
 
     private void guardar() {
+
         SimpleDateFormat fmt = new SimpleDateFormat("dd/MM/yyyy");
         fmt.setLenient(false);
 
         for (int i = 0; i < modelo.getRowCount(); i++) {
-            String tipo     = safeGet(i, COL_TIPO);
-            String nombre   = safeGet(i, COL_NOMBRE).trim().toUpperCase();
-            String apellido = safeGet(i, COL_APELLIDO).trim().toUpperCase();
-            String dniRuc   = safeGet(i, COL_DNI).trim();
-            String tel      = safeGet(i, COL_TELEFONO).trim();
-            String email    = safeGet(i, COL_EMAIL).trim();
-            String puntos   = safeGet(i, COL_PUNTOS).trim();
-            String fecha    = safeGet(i, COL_FECHA).trim();
+
+            // 🔥 SI YA TIENE ID → YA EXISTE EN BD
+            Object idObj = modelo.getValueAt(i, COL_ID);
+
+            if (idObj != null) {
+                continue;
+            }
+
+            String tipo      = safeGet(i, COL_TIPO);
+            String nombre    = safeGet(i, COL_NOMBRE).trim().toUpperCase();
+            String apellido  = safeGet(i, COL_APELLIDO).trim().toUpperCase();
+            String dni       = safeGet(i, COL_DNI).trim();
+            String tel       = safeGet(i, COL_TELEFONO).trim();
+            String email     = safeGet(i, COL_EMAIL).trim();
+            String direccion = safeGet(i, COL_DIRECCION).trim();
+            String fechaStr  = safeGet(i, COL_FECHA).trim();
+
             boolean esEmpresa = "EMPRESA".equals(tipo);
 
-            modelo.setValueAt(nombre, i, COL_NOMBRE);
-            if (!esEmpresa) modelo.setValueAt(apellido, i, COL_APELLIDO);
+            // VALIDACIONES
+            if (nombre.isEmpty()) {
+                err(esEmpresa ? "Razón social vacía" : "Nombre vacío", i);
+                return;
+            }
 
-            if (nombre.isEmpty()) { err(esEmpresa ? "Razón Social vacía" : "Nombre vacío", i); return; }
-            if (!esEmpresa && apellido.isEmpty()) { err("Apellido vacío", i); return; }
+            if (!esEmpresa && apellido.isEmpty()) {
+                err("Apellido vacío", i);
+                return;
+            }
 
             int dniLen = esEmpresa ? 11 : 8;
-            if (!dniRuc.matches("\\d{" + dniLen + "}")) {
-                err(esEmpresa ? "RUC debe tener 11 dígitos" : "DNI debe tener 8 dígitos", i); return;
+
+            if (!dni.matches("\\d{" + dniLen + "}")) {
+                err(esEmpresa ? "RUC inválido" : "DNI inválido", i);
+                return;
             }
-            if (tel.isEmpty())        { err("Teléfono vacío",            i); return; }
-            if (!email.contains("@")) { err("Email inválido",            i); return; }
-            try { Integer.parseInt(puntos); }
-            catch (Exception ex)      { err("Puntos debe ser un número", i); return; }
-            try { fmt.parse(fecha); }
-            catch (Exception ex)      { err("Fecha inválida (dd/MM/yyyy)", i); return; }
+
+            if (tel.isEmpty()) {
+                err("Teléfono vacío", i);
+                return;
+            }
+
+            if (!email.contains("@") || !email.contains(".com")) {
+                err("Email inválido", i);
+                return;
+            }
+
+            Date fecha;
+            
+            try {
+                fecha = fmt.parse(fechaStr);
+            } catch (Exception ex) {
+                err("Fecha inválida", i);
+                return;
+            }
+            
+            Cliente existente =
+                cliente_controller.obtenerPorDni(dni);
+
+            if (existente != null) {
+                err("Cliente ya registrado", i);
+                return;
+            }
+
+            try {
+
+                cliente_controller.registrarCliente(
+                    esEmpresa ? "EMPRESA" : "NATURAL",
+                    nombre,
+                    apellido,
+                    dni,
+                    tel,
+                    email,
+                    direccion,
+                    fecha
+                );
+
+            } catch (Exception e) {
+
+                err("Error al guardar: " + e.getMessage(), i);
+                return;
+            }
         }
 
-        filaEditando = -1;
-        tabla.getColumnModel().getColumn(COL_NOMBRE).setHeaderValue("Nombre");
-        tabla.getColumnModel().getColumn(COL_APELLIDO).setHeaderValue("Apellido");
-        tabla.getColumnModel().getColumn(COL_DNI).setHeaderValue("DNI");
-        tabla.getTableHeader().repaint();
-        modelo.fireTableDataChanged();
-        JOptionPane.showMessageDialog(this, "Datos guardados correctamente ✓",
-                "Guardado", JOptionPane.INFORMATION_MESSAGE);
+        // 🔥 RECARGAR TABLA
+        cargarClientes();
+
+        JOptionPane.showMessageDialog(
+            this,
+            "Clientes guardados correctamente"
+        );
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -75,8 +75,12 @@ public class ClienteDAOImpl implements ClienteDAO {
     public List<Cliente> listar() {
 
         List<Cliente> lista = new ArrayList<>();
-        String sql = "SELECT cliente_id, tipo_cliente, nombre, apellido, dni, telefono, email, direccion, puntos_fidelidad FROM clientes";
-
+        String sql = "SELECT cliente_id, tipo_cliente, nombre, apellido, "
+            + "dni, telefono, email, direccion, puntos_fidelidad, "
+            + "fecha_registro "
+            + "FROM clientes "
+            + "WHERE estado <> 'ELIMINADO'";
+        
         try (PreparedStatement ps = conexion.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -118,29 +122,45 @@ public class ClienteDAOImpl implements ClienteDAO {
     @Override
     public void eliminar(int id) {
 
-        String sql = "DELETE FROM clientes WHERE cliente_id = ?";
+        String sql = "UPDATE clientes "
+           + "SET estado = 'ELIMINADO', "
+           + "dni = dni * -1 "
+           + "WHERE cliente_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setInt(1, id);
+
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error al eliminar cliente con ID: " + id, e);
+
+            throw new RuntimeException(
+                "Error al eliminar cliente con ID: " + id,
+                e
+            );
         }
     }
 
     public void eliminarPorDni(String dni) {
 
-        String sql = "DELETE FROM clientes WHERE dni = ?";
+        String sql = "UPDATE clientes "
+           + "SET estado = 'ELIMINADO', "
+           + "dni = dni * -1 "
+           + "WHERE cliente_dni = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setString(1, dni);
+
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error al eliminar cliente con DNI: " + dni, e);
+
+            throw new RuntimeException(
+                "Error al eliminar cliente con ID: " + dni,
+                e
+            );
         }
     }
 
@@ -157,7 +177,7 @@ public class ClienteDAOImpl implements ClienteDAO {
         c.setEmail(rs.getString("email"));
         c.setDireccion(rs.getString("direccion"));
         c.setPuntosFideldiad(rs.getInt("puntos_fidelidad"));
-
+        c.setFecha_registro(rs.getDate("fecha_registro"));
         return c;
     }
 }
