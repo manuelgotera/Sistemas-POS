@@ -7,19 +7,19 @@ import javax.swing.border.*;
 
 public class MenuSidebar extends JPanel {
 
-    private static final Color AZUL       = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO = new Color(232, 241, 255);
-    private static final Color SIDEBAR    = new Color(250, 251, 253);
-    private static final Color BORDE      = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE= new Color(105, 113, 128);
-    private static final Color ROJO       = new Color(220, 53, 69);
+    private static final Color AZUL        = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO  = new Color(232, 241, 255);
+    private static final Color SIDEBAR     = new Color(250, 251, 253);
+    private static final Color BORDE       = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
+    private static final Color ROJO        = new Color(220, 53, 69);
 
     private JFrame parentFrame;
     private String ventanaActiva;
 
     public MenuSidebar(JFrame parentFrame, String ventanaActiva) {
-        this.parentFrame    = parentFrame;
-        this.ventanaActiva  = ventanaActiva;
+        this.parentFrame   = parentFrame;
+        this.ventanaActiva = ventanaActiva;
         initComponents();
     }
 
@@ -33,15 +33,18 @@ public class MenuSidebar extends JPanel {
         add(crearLinea());
         add(Box.createVerticalStrut(34));
 
-        JButton btnCajero    = crearBotonMenu("Cajero",             "/img/carrito.png",       ventanaActiva.equals("Cajero"));
-        JButton btnStock     = crearBotonMenu("Artículos y Stock",  "/img/stock.png",         ventanaActiva.equals("Stock"));
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.","/img/Historial.png",     ventanaActiva.equals("Historial"));
-        JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
-        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/billetera.png",     ventanaActiva.equals("Gastos"));
-        JButton btnClientes  = crearBotonMenu("Clientes",           "/img/clientes.png",      ventanaActiva.equals("Clientes"));
-        JButton btnEmpleados = crearBotonMenu("Empleados",          "/img/empleados.png",     ventanaActiva.equals("Empleados"));
-        JButton btnConfig    = crearBotonMenu("Configuración",      "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
+        // ── Botones de navegación ─────────────────────────────────────────────
+        JButton btnCajero    = crearBotonMenu("Cajero",              "/img/carrito.png",       ventanaActiva.equals("Cajero"));
+        JButton btnStock     = crearBotonMenu("Artículos y Stock",   "/img/stock.png",         ventanaActiva.equals("Stock"));
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png",     ventanaActiva.equals("Historial"));
+        JButton btnReportes  = crearBotonMenu("Reportes",            "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+        JButton btnGastos    = crearBotonMenu("Gastos",              "/img/billetera.png",     ventanaActiva.equals("Gastos"));
+        JButton btnClientes  = crearBotonMenu("Clientes",            "/img/clientes.png",      ventanaActiva.equals("Clientes"));
+        JButton btnEmpleados = crearBotonMenu("Empleados",           "/img/empleados.png",     ventanaActiva.equals("Empleados"));
+        JButton btnConfig    = crearBotonMenu("Configuración",       "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
+        JButton btnPlatos    = crearBotonMenu("Platos",              "/img/platos.png",        ventanaActiva.equals("Platos"));
 
+        // ── Acciones ─────────────────────────────────────────────────────────
         btnCajero   .addActionListener(e -> navegar(new Caja_GUI()));
         btnStock    .addActionListener(e -> navegar(new ArticulosStockFrame()));
         btnHistorial.addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
@@ -49,10 +52,12 @@ public class MenuSidebar extends JPanel {
         btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
         btnClientes .addActionListener(e -> navegar(new ClientesFrame()));
         btnEmpleados.addActionListener(e -> navegar(new EmpleadosFrame()));
+        btnPlatos   .addActionListener(e -> navegar(new PlatosFrame()));
         btnConfig   .addActionListener(e -> navegar(new ConfiguracionFrame()));
 
-        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes,
-                    btnGastos, btnClientes, btnEmpleados, btnConfig);
+        agregarMenu(this,
+                btnCajero, btnStock, btnHistorial, btnReportes, 
+                           btnGastos, btnClientes, btnEmpleados, btnPlatos, btnConfig);
 
         add(Box.createVerticalGlue());
         add(crearLinea());
@@ -161,7 +166,8 @@ public class MenuSidebar extends JPanel {
         try {
             java.net.URL imgURL = MenuSidebar.class.getResource(path);
             if (imgURL != null) {
-                Image img = new ImageIcon(imgURL).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                Image img = new ImageIcon(imgURL).getImage()
+                        .getScaledInstance(width, height, Image.SCALE_SMOOTH);
                 return new ImageIcon(img);
             }
         } catch (Exception e) {}
@@ -171,14 +177,21 @@ public class MenuSidebar extends JPanel {
     public static class RoundedBorder extends AbstractBorder {
         private final Color color;
         private final int   arc;
-        public RoundedBorder(Color color, int arc) { this.color = color; this.arc = arc; }
-        @Override public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc   = arc;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(color);
             g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
             g2.dispose();
         }
+
         @Override public Insets getBorderInsets(Component c) { return new Insets(1, 1, 1, 1); }
         @Override public Insets getBorderInsets(Component c, Insets insets) {
             insets.left = 1; insets.right = 1; insets.top = 1; insets.bottom = 1;

@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
@@ -170,6 +171,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblHora.setForeground(TEXTO_SUAVE);
 
+        new Timer(1000, e -> lblHora.setText(new SimpleDateFormat("HH:mm:ss").format(new Date()))).start();
 
         tarjeta.add(lblTitulo);
         tarjeta.add(lblHora);
@@ -800,7 +802,6 @@ public class HistorialTransaccionesFrame extends JFrame {
         // Bruto estimado como el 60% del total (demo)
         double bruto = sumaTotal * 0.6;
 
- 
         if (lblTotalTrx    != null) lblTotalTrx.setText(String.valueOf(totalFilas));
         if (lblVentaTotales != null) lblVentaTotales.setText(String.format("S/ %.2f", sumaTotal));
         if (lblBruto        != null) lblBruto.setText(String.format("S/ %.2f", bruto));
@@ -830,7 +831,9 @@ public class HistorialTransaccionesFrame extends JFrame {
         toastDialog.setLocation(getX() + getWidth() - toastDialog.getWidth() - 40, getY() + 70);
         toastDialog.setVisible(true);
 
-       
+        Timer t = new Timer(1800, e -> toastDialog.dispose());
+        t.setRepeats(false);
+        t.start();
     }
 
     // ─── RENDERERS ───────────────────────────────────────────────────────────
@@ -874,6 +877,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         }
     }
 
+    /** Pill reutilizable idéntico al de ArticulosStockFrame */
     private static class PillLabel extends JLabel {
         private final Color colorFondo;
         public PillLabel(String texto, Color colorFondo) {
@@ -893,4 +897,4 @@ public class HistorialTransaccionesFrame extends JFrame {
             super.paintComponent(g);
         }
     }
- }
+}
