@@ -249,7 +249,7 @@ public class Pago_GUI extends JDialog {
     }
 
     private Empleado obtenerEmpleado(){
-        Empleado empleado = empleado_dao.obtenerPorId(24);
+        Empleado empleado = empleado_dao.obtenerPorId(42);
         return empleado;
     }
     private ArrayList<ComprobantePago> obtenerComprobantesPago() {

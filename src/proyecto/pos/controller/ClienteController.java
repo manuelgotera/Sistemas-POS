@@ -56,8 +56,8 @@ public class ClienteController {
     // ACTUALIZAR CLIENTE
     // ========================
     public void actualizarCliente(int id, String tipoCliente, String nombre,
-                                  String apellido, String telefono,
-                                  String email, String direccion,
+                                  String apellido,String dni, String telefono,
+                                  String email, String direccion, Date fecha,
                                   int puntos) {
 
         Cliente cliente = new Cliente();
@@ -69,7 +69,7 @@ public class ClienteController {
         cliente.setEmail(email);
         cliente.setDireccion(direccion);
         cliente.setPuntosFideldiad(puntos);
-
+        cliente.setFecha_registro(fecha);
         clienteService.actualizarCliente(cliente);
     }
 

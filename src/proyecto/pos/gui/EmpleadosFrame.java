@@ -834,7 +834,7 @@ public class EmpleadosFrame extends JFrame {
 
             int id =
                 Integer.parseInt(idObj.toString());
-
+            System.out.println(id);
             String nombre =
                 modelo.getValueAt(fila, COL_NOMBRE)
                       .toString()
@@ -859,7 +859,7 @@ public class EmpleadosFrame extends JFrame {
                 modelo.getValueAt(fila, COL_EMAIL)
                       .toString()
                       .trim();
-
+            System.out.println("mierda de mierda xddxd");
             String rolStr =
                 modelo.getValueAt(fila, COL_ROL)
                       .toString()
@@ -896,7 +896,7 @@ public class EmpleadosFrame extends JFrame {
             Rol rol = new Rol();
 
             rol.setNombre_rol(rolStr);
-
+            System.out.println("mierda de mierda");
             switch (rolStr.toUpperCase()) {
 
                 case "ADMINISTRADOR":

@@ -98,7 +98,8 @@ public class ClienteDAOImpl implements ClienteDAO {
     @Override
     public void actualizar(Cliente cliente) {
 
-        String sql = "UPDATE clientes SET tipo_cliente=?, nombre=?, apellido=?, telefono=?, email=?, direccion=?, puntos_fidelidad=? " +
+        String sql = "UPDATE clientes SET tipo_cliente=?, nombre=?, apellido=?, dni = ?, "
+                + "telefono=?, email=?, direccion=?, puntos_fidelidad=? " +
                      "WHERE cliente_id=?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
@@ -106,11 +107,12 @@ public class ClienteDAOImpl implements ClienteDAO {
             ps.setString(1, cliente.getTipoCliente());
             ps.setString(2, cliente.getNombre());
             ps.setString(3, cliente.getApellidos());
-            ps.setString(4, cliente.getTelefono());
-            ps.setString(5, cliente.getEmail());
-            ps.setString(6, cliente.getDireccion());
-            ps.setInt(7, cliente.getPuntosFideldiad());
-            ps.setInt(8, cliente.getId());
+            ps.setString(4, cliente.getDni());
+            ps.setString(5, cliente.getTelefono());
+            ps.setString(6, cliente.getEmail());
+            ps.setString(7, cliente.getDireccion());
+            ps.setInt(8, cliente.getPuntosFideldiad());
+            ps.setInt(9, cliente.getId());
 
             ps.executeUpdate();
 

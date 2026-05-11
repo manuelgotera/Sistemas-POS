@@ -15,6 +15,7 @@ import proyecto.pos.dao.impl.EmpleadoDAOImpl;
 import proyecto.pos.dao.impl.InsumoDAOImpl;
 import proyecto.pos.dao.impl.MermaDAOImpl;
 import proyecto.pos.dao.impl.PlatoDAOImpl;
+import proyecto.pos.dao.impl.ProveedorDAOImpl;
 import proyecto.pos.dao.impl.VentaDAOImpl;
 import proyecto.pos.dao.interfaces.*;
 import proyecto.pos.gui.ArticulosStockFrame;
@@ -36,13 +37,12 @@ public class ProyectoPOS {
         DatabaseConnection db = new DatabaseConnection();
         Connection c = db.conectar();
         
-           EmpleadoDAO empleado_dao = new EmpleadoDAOImpl(c);
-        ClienteDAO cliente_dao = new ClienteDAOImpl(c);
-        Cliente cl = cliente_dao.listar().get(2);
-        Empleado e = empleado_dao.listar().get(3);
+        ProveedorDAO proveedor_dao = new ProveedorDAOImpl(c);
+        Proveedor p = new Proveedor(21,"PROVEEDOR 1", "20000012", "GUSTAVOsdfsdf", "123123123","GUSTAVO@GMAIL.COM", "MICASA");
+        /*proveedor_dao.insertar(p);*/
+        proveedor_dao.actualizar(p);
+        System.out.println(proveedor_dao.obtenerPorId(21).toString());
         
-        
-        System.out.println(cl.toString());
     }
     
     public static void venta(){

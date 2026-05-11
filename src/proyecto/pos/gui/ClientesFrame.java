@@ -340,7 +340,10 @@ public class ClientesFrame extends JFrame {
         JButton bA  = btn("□  Agregar",  AZUL_BTN);
 
         bE .addActionListener(e -> eliminarFila());
-        bEd.addActionListener(e -> activarEdicion());
+        bEd.addActionListener(e ->{
+            activarEdicion(); 
+            actualizarFila(filaEditando);
+        });
         bG .addActionListener(e -> guardar());
         bA .addActionListener(e -> agregarFila());
 
@@ -680,7 +683,23 @@ public class ClientesFrame extends JFrame {
                 err("Email inválido", i);
                 return;
             }
-
+            
+            System.out.println("Fila: " + i);
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 0) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 1) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 2) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 3) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 4) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 5) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 6) + "]");
+            System.out.println("Valor real: [" + modelo.getValueAt(i, 7) + "]");
+            
+            if (direccion.isEmpty()) {
+                err("cireccion vacia", i);
+                return;
+            }
+            System.out.println(direccion);
+            System.out.println("xdsadas");
             Date fecha;
             
             try {
@@ -727,7 +746,96 @@ public class ClientesFrame extends JFrame {
         );
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
+    private void actualizarFila(int fila){
+        SimpleDateFormat fmt = new SimpleDateFormat("dd-MM-yyyy");
+        fmt.setLenient(false);
+        
+        Object idObj = modelo.getValueAt(fila, COL_ID);
+
+            if (idObj != null) {
+                
+            String id        = safeGet(fila,COL_ID);
+            String tipo      = safeGet(fila, COL_TIPO);
+            String nombre    = safeGet(fila, COL_NOMBRE).trim().toUpperCase();
+            String apellido  = safeGet(fila, COL_APELLIDO).trim().toUpperCase();
+            String dni       = safeGet(fila, COL_DNI).trim();
+            String tel       = safeGet(fila, COL_TELEFONO).trim();
+            String email     = safeGet(fila, COL_EMAIL).trim();
+            String direccion = safeGet(fila, COL_DIRECCION).trim();
+            String fechaStr  = safeGet(fila, COL_FECHA).trim();
+
+            boolean esEmpresa = "EMPRESA".equals(tipo);
+            int idx = Integer.parseInt(id);
+            // VALIDACIONES
+            if (nombre.isEmpty()) {
+                err(esEmpresa ? "Razón social vacía" : "Nombre vacío", fila);
+                return;
+            }
+
+            if (!esEmpresa && apellido.isEmpty()) {
+                err("Apellido vacío", fila);
+                return;
+            }
+
+            int dniLen = esEmpresa ? 11 : 8;
+
+            if (!dni.matches("\\d{" + dniLen + "}")) {
+                err(esEmpresa ? "RUC inválido" : "DNI inválido", fila);
+                return;
+            }
+
+            if (tel.isEmpty()) {
+                err("Teléfono vacío", fila);
+                return;
+            }
+
+            if (!email.contains("@") || !email.contains(".com")) {
+                err("Email inválido", fila);
+                return;
+            }
+
+            Date fecha;
+            
+            try {
+                fecha = fmt.parse(fechaStr);
+            } catch (Exception ex) {
+                err("Fecha inválida", fila);
+                return;
+            }
+
+            try {
+
+                cliente_controller.actualizarCliente(
+                    idx,
+                    esEmpresa ? "EMPRESA" : "NATURAL",
+                    nombre,
+                    apellido,
+                    dni,
+                    tel,
+                    email,
+                    direccion,
+                    fecha,
+                    0
+                );
+
+            } catch (Exception e) {
+
+                err("Error al guardar: " + e.getMessage(), fila);
+                return;
+            }
+        }
+
+        // 🔥 RECARGAR TABLA
+        cargarClientes();
+
+        JOptionPane.showMessageDialog(
+            this,
+            "Clientes guardados correctamente"
+        );
+    }
+    
+     
+// ══════════════════════════════════════════════════════════════════════════
     //  UTILIDADES  (sin cambios)
     // ══════════════════════════════════════════════════════════════════════════
     private String safeGet(int r, int c) {

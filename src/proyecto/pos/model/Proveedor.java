@@ -11,6 +11,7 @@ package proyecto.pos.model;
 public class Proveedor {
 
     private int proveedorId;
+    private String ruc;
     private String nombre_empresa;
     private String contacto_nombre;
     private String telefono;
@@ -20,21 +21,31 @@ public class Proveedor {
     public Proveedor() {
     }
 
-    public Proveedor(String nombre_empresa, String contacto_nombre, String telefono, String email, String direccion) {
+    public Proveedor(String nombre_empresa, String ruc, String contacto_nombre, String telefono, String email, String direccion) {
         this.nombre_empresa = nombre_empresa;
+        this.ruc = ruc;
         this.contacto_nombre = contacto_nombre;
         this.telefono = telefono;
         this.email = email;
         this.direccion = direccion;
     }
 
-    public Proveedor(int proveedorId, String nombre_empresa, String contacto_nombre, String telefono, String email, String direccion) {
+    public Proveedor(int proveedorId, String nombre_empresa, String ruc, String contacto_nombre, String telefono, String email, String direccion) {
         this.proveedorId = proveedorId;
         this.nombre_empresa = nombre_empresa;
+        this.ruc = ruc;
         this.contacto_nombre = contacto_nombre;
         this.telefono = telefono;
         this.email = email;
         this.direccion = direccion;
+    }
+
+    public String getRuc() {
+        return ruc;
+    }
+
+    public void setRuc(String ruc) {
+        this.ruc = ruc;
     }
 
     public int getProveedorId() {
@@ -83,6 +94,11 @@ public class Proveedor {
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
+    }
+
+    @Override
+    public String toString() {
+        return "Proveedor{" + "proveedorId=" + proveedorId + ", ruc=" + ruc + ", nombre_empresa=" + nombre_empresa + ", contacto_nombre=" + contacto_nombre + ", telefono=" + telefono + ", email=" + email + ", direccion=" + direccion + '}';
     }
     
     

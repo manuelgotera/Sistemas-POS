@@ -72,7 +72,7 @@ public class LoginFrame extends JFrame {
         btnIngresar.setForeground(Color.WHITE);
         btnIngresar.setFocusPainted(false);
 
-        JLabel footer = new JLabel("Sistema POS © 2025", SwingConstants.CENTER);
+        JLabel footer = new JLabel("Sistema POS © 2026", SwingConstants.CENTER);
         footer.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footer.setForeground(Color.GRAY);
 
@@ -103,7 +103,7 @@ public class LoginFrame extends JFrame {
         }
 
         if (usuario.equals("admin") && password.equals("1234")) {
-            new HistorialTransaccionesFrame().setVisible(true);
+            new Caja_GUI().setVisible(true);
             this.dispose();
         } else {
             JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos");
