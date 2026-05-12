@@ -36,12 +36,9 @@ public class ProyectoPOS {
     public static void main(String[] args) {
         DatabaseConnection db = new DatabaseConnection();
         Connection c = db.conectar();
+        PlatoDAO plato_dao = new PlatoDAOImpl(c);
+        plato_dao.listar();
         
-        ProveedorDAO proveedor_dao = new ProveedorDAOImpl(c);
-        Proveedor p = new Proveedor(21,"PROVEEDOR 1", "20000012", "GUSTAVOsdfsdf", "123123123","GUSTAVO@GMAIL.COM", "MICASA");
-        /*proveedor_dao.insertar(p);*/
-        proveedor_dao.actualizar(p);
-        System.out.println(proveedor_dao.obtenerPorId(21).toString());
         
     }
     

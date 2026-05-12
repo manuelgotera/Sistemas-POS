@@ -20,4 +20,6 @@ public interface PlatoDAO {
     void actualizarCategoria(int platoId, CategoriaMenu categoria);
     List<Plato> listar();
     Plato obtenerPorId(int id);
+    List<CategoriaMenu> listarCategorias();
+
 }

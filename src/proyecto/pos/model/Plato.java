@@ -17,25 +17,40 @@ public class Plato {
     private float precio;
     private CategoriaMenu categoria;
     private int disponible;
-
+    private String imagen;
+    
     public Plato() {
     }
 
-    public Plato(int platoId, String nombre, float precio, CategoriaMenu categoria, int disponible) {
+    public Plato(int platoId, String nombre, float precio, CategoriaMenu categoria,
+            int disponible, String imagen) {
         this.platoId = platoId;
         this.nombre = nombre;
         this.precio = precio;
         this.categoria = categoria;
         this.disponible = disponible;
+        this.imagen = imagen;
     }
 
-    public Plato(String nombre, float precio, CategoriaMenu categoria, int disponible) {
+    public Plato(String nombre, float precio, CategoriaMenu categoria,
+            int disponible, String imagen) {
         this.nombre = nombre;
         this.precio = precio;
         this.categoria = categoria;
         this.disponible = disponible;
+        this.imagen = imagen;
     }
 
+    public String getImagen() {
+        return imagen;
+    }
+
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
+    }
+
+    
+    
     public int getPlatoId() {
         return platoId;
     }

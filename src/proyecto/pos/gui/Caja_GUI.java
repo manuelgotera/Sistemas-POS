@@ -360,60 +360,93 @@ public class Caja_GUI extends JFrame {
     
     
     private void filtrarProductos() {
-        String textoBuscado = txtBuscar.getText().toLowerCase().trim();
+
+        String textoBuscado = txtBuscar
+                .getText()
+                .toLowerCase()
+                .trim();
+
         contenedorPrincipal.removeAll();
 
-        
-        ArrayList<Plato> platos = obtenerPlatosBD();
-        for (Plato p : platos){
-            if (!platos.isEmpty()) {
-                agregarSeccion(contenedorPrincipal, "Platos Principales", platos);
-            }
-        }
-        
-        
-        // Filtrar Platos
-        
-        /*List<String[]> platosFiltrados = new ArrayList<>();
-        for (String[] p : platosPrincipales) {
-            if (p[0].toLowerCase().contains(textoBuscado)) {
-                platosFiltrados.add(p);
-            }
-        }
-        if (!platosFiltrados.isEmpty()) {
-            agregarSeccion(contenedorPrincipal, "Platos Principales", platosFiltrados.toArray(new String[0][0]));
-        }*/
+        ArrayList<Plato> todosLosPlatos = obtenerPlatosBD();
 
-        // Filtrar Bebidas
-        List<String[]> bebidasFiltradas = new ArrayList<>();
-        for (String[] b : bebidas) {
-            if (b[0].toLowerCase().contains(textoBuscado)) {
-                bebidasFiltradas.add(b);
+        ArrayList<Plato> platosPrincipales = new ArrayList<>();
+
+        ArrayList<Plato> bebidas = new ArrayList<>();
+
+        // =========================
+        // FILTRAR
+        // =========================
+        for (Plato p : todosLosPlatos) {
+
+            if (!p.getNombre()
+                    .toLowerCase()
+                    .contains(textoBuscado)) {
+
+                continue;
+            }
+
+            String categoria =
+                    p.getCategoria()
+                     .getNombre()
+                     .toLowerCase();
+
+            if (categoria.contains("bebida")) {
+
+                bebidas.add(p);
+
+            } else {
+
+                platosPrincipales.add(p);
             }
         }
-        if (!bebidasFiltradas.isEmpty()) {
-            agregarSeccion(contenedorPrincipal, "Bebidas", platos);
+
+        // =========================
+        // MOSTRAR SECCIONES
+        // =========================
+        if (!platosPrincipales.isEmpty()) {
+
+            agregarSeccion(
+                    contenedorPrincipal,
+                    "Platos Principales",
+                    platosPrincipales
+            );
         }
-        
-        if (platos.isEmpty() && bebidasFiltradas.isEmpty()) {
-            JLabel lblVacio = new JLabel("No se encontraron productos.");
-            lblVacio.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        if (!bebidas.isEmpty()) {
+
+            agregarSeccion(
+                    contenedorPrincipal,
+                    "Bebidas",
+                    bebidas
+            );
+        }
+
+        // =========================
+        // MENSAJE VACÍO
+        // =========================
+        if (platosPrincipales.isEmpty()
+                && bebidas.isEmpty()) {
+
+            JLabel lblVacio =
+                    new JLabel("No se encontraron productos.");
+
+            lblVacio.setBorder(
+                    new EmptyBorder(20, 20, 20, 20)
+            );
+
             lblVacio.setForeground(Color.GRAY);
+
             contenedorPrincipal.add(lblVacio);
         }
-        
-        /*if (platosFiltrados.isEmpty() && bebidasFiltradas.isEmpty()) {
-            JLabel lblVacio = new JLabel("No se encontraron productos.");
-            lblVacio.setBorder(new EmptyBorder(20, 20, 20, 20));
-            lblVacio.setForeground(Color.GRAY);
-            contenedorPrincipal.add(lblVacio);
-        }*/
 
         contenedorPrincipal.revalidate();
+
         contenedorPrincipal.repaint();
     }
 
     private void agregarSeccion(JPanel contenedor, String titulo, ArrayList<Plato> platos) {
+        
         String disponibilidad;
         JLabel lbl = new JLabel(titulo);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
@@ -424,6 +457,11 @@ public class Caja_GUI extends JFrame {
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
         
+        System.out.println("SECCION: " + titulo);
+
+        for (Plato p : platos) {
+            System.out.println(p.getNombre());
+        }
         for (Plato p : platos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             cardWrapper.setBackground(Color.WHITE);
@@ -444,34 +482,11 @@ public class Caja_GUI extends JFrame {
         
         contenedor.add(gridWrapper);
     }
-    
-    private void agregarSeccion1(JPanel contenedor, String titulo, String[][] productos) {
-        JLabel lbl = new JLabel(titulo);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lbl.setBorder(new EmptyBorder(15, 0, 10, 0)); 
-        contenedor.add(lbl);
-
-        // MANTENEMOS LA GRILLA DE 4 COLUMNAS COMO SOLICITASTE
-        JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
-        grid.setBackground(Color.WHITE);
-        
-        for (String[] p : productos) {
-            JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            cardWrapper.setBackground(Color.WHITE);
-            // Formato array: Nombre, Precio, Estado, Imagen
-            /*cardWrapper.add(crearCard(p[0], p[1], p[2], p[3])); */
-            grid.add(cardWrapper);
-        }
-        
-        JPanel gridWrapper = new JPanel(new BorderLayout());
-        gridWrapper.setBackground(Color.WHITE);
-        gridWrapper.add(grid, BorderLayout.NORTH);
-        
-        contenedor.add(gridWrapper);
-    }
 
     private JPanel crearCard(Plato plato) {
         String disponibilidad;
+        //plato.setImagen("/img/AjiDeGallina.png");
+        
         JPanel card = new JPanel(new BorderLayout());
         // NUEVO: Dimensiones ajustadas para evitar desbordamiento horizontal y mantener las 4 columnas (de 165 a 150)
         Dimension fixedSize = new Dimension(150, 240);
@@ -480,15 +495,17 @@ public class Caja_GUI extends JFrame {
         card.setMaximumSize(fixedSize);
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
-
-        JLabel lblImg = new JLabel("", SwingConstants.CENTER);
+        System.out.println(getClass().getResource("/img/PiscoSour.png"));
+        JLabel lblImg = new JLabel(plato.getImagen(), SwingConstants.CENTER);
         // NUEVO: Se ajusta el área de la imagen en base a los nuevos tamaños de la tarjeta
         lblImg.setPreferredSize(new Dimension(150, 120));
         lblImg.setOpaque(true);
         lblImg.setBackground(new Color(245, 245, 245)); 
 
         try {
-            java.net.URL imgURL = getClass().getResource("");
+            java.net.URL imgURL = getClass().getResource(plato.getImagen());
+            java.net.URL url = getClass().getResource(plato.getImagen());
+            System.out.println(url);
             if (imgURL != null) {
                 ImageIcon iconOriginal = new ImageIcon(imgURL);
                 // NUEVO: Se ajusta la escala de la imagen para que encaje
@@ -548,81 +565,6 @@ public class Caja_GUI extends JFrame {
         card.add(btnAdd, BorderLayout.SOUTH);
         return card;
     }
-    
-    private JPanel crearCard1(String nombre, String precio, String estado, String imgPath) {
-        JPanel card = new JPanel(new BorderLayout());
-        // NUEVO: Dimensiones ajustadas para evitar desbordamiento horizontal y mantener las 4 columnas (de 165 a 150)
-        Dimension fixedSize = new Dimension(150, 240);
-        card.setPreferredSize(fixedSize);
-        card.setMinimumSize(fixedSize);
-        card.setMaximumSize(fixedSize);
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
-
-        JLabel lblImg = new JLabel("", SwingConstants.CENTER);
-        // NUEVO: Se ajusta el área de la imagen en base a los nuevos tamaños de la tarjeta
-        lblImg.setPreferredSize(new Dimension(150, 120));
-        lblImg.setOpaque(true);
-        lblImg.setBackground(new Color(245, 245, 245)); 
-
-        try {
-            java.net.URL imgURL = getClass().getResource(imgPath);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                // NUEVO: Se ajusta la escala de la imagen para que encaje
-                Image imagenEscalada = iconOriginal.getImage().getScaledInstance(140, 115, Image.SCALE_SMOOTH);
-                lblImg.setIcon(new ImageIcon(imagenEscalada));
-            } else {
-                lblImg.setText("No image");
-                lblImg.setForeground(Color.GRAY);
-            }
-        } catch (Exception e) {}
-
-        JPanel info = new JPanel();
-        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
-        info.setBorder(new EmptyBorder(8, 10, 8, 10));
-        info.setBackground(Color.WHITE);
-
-        JLabel n = new JLabel(nombre);
-        n.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        
-        JLabel p = new JLabel(precio + " so");
-        p.setForeground(AZUL);
-        p.setFont(new Font("Segoe UI", Font.BOLD, 13));
-
-        JLabel s = new JLabel(estado);
-        s.setFont(new Font("Segoe UI", Font.BOLD, 11));
-
-        JButton btnAdd = new JButton("+");
-        btnAdd.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // --- LÓGICA DE ESTADO (DISPONIBILIDAD) ---
-        if (estado.equalsIgnoreCase("Disponible")) {
-            s.setForeground(VERDE);
-            btnAdd.setBackground(AZUL);
-            btnAdd.setForeground(Color.WHITE);
-            btnAdd.setEnabled(true);
-        } else {
-            s.setForeground(ROJO);
-            btnAdd.setBackground(Color.LIGHT_GRAY);
-            btnAdd.setForeground(Color.DARK_GRAY);
-            btnAdd.setEnabled(false); // Bloqueamos el botón
-        }
-
-        info.add(n);
-        info.add(Box.createVerticalStrut(3));
-        info.add(p);
-        info.add(Box.createVerticalStrut(3));
-        info.add(s);
-
-        btnAdd.addActionListener(e -> agregarAlCarrito1(nombre, Double.parseDouble(precio)));
-
-        card.add(lblImg, BorderLayout.NORTH);
-        card.add(info, BorderLayout.CENTER);
-        card.add(btnAdd, BorderLayout.SOUTH);
-        return card;
-    }
-
     // --- LÓGICA DEL CARRITO INTERACTIVO ---
 
     private void agregarAlCarrito(Plato plato) {
