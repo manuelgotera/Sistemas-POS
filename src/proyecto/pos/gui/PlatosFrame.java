@@ -1077,7 +1077,7 @@ public class PlatosFrame extends JFrame {
         // =========================
         // BUSCAR EN BD
         // =========================
-        Plato plato = platoController
+        Plato plato = plato_controller
                 .obtenerPlatoPorId(idPlato);
 
         if (plato == null) {

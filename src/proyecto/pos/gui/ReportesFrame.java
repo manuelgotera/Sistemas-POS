@@ -10,9 +10,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
 import java.awt.GridLayout;
-import java.awt.Image;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -38,19 +36,17 @@ import javax.swing.border.EmptyBorder;
 
 public class ReportesFrame extends JFrame {
 
+    // --- COLORES ---
     private static final Color AZUL = new Color(26, 83, 160);
-    private static final Color AZUL_HOVER = new Color(18, 65, 128);
     private static final Color AZUL_CLARO = new Color(232, 241, 255);
     private static final Color FONDO = new Color(246, 248, 251);
-    private static final Color SIDEBAR = new Color(250, 251, 253);
     private static final Color BORDE = new Color(225, 229, 236);
     private static final Color TEXTO = new Color(30, 37, 48);
     private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
 
     private static final Color MORADO = new Color(183, 80, 255);
     private static final Color CELESTE = new Color(0, 118, 255);
-    private static final Color ROJO = new Color(235, 32, 49); // Mantenido para KPIs
-    private static final Color ROJO_SALIR = new Color(220, 53, 69);
+    private static final Color ROJO = new Color(235, 32, 49); 
     private static final Color VERDE = new Color(0, 172, 65);
     private static final Color NARANJA = new Color(245, 158, 11);
 
@@ -97,164 +93,10 @@ public class ReportesFrame extends JFrame {
         root.setBackground(FONDO);
         setContentPane(root);
 
-        root.add(crearSidebar(), BorderLayout.WEST);
+        // --- SIDEBAR UNIFICADO ---
+        root.add(new MenuSidebar(this, "Reportes"), BorderLayout.WEST);
+        
         root.add(crearContenido(), BorderLayout.CENTER);
-    }
-
-    // ─── SIDEBAR UNIFICADO ────────────────────────────────────────────────────────
-
-    private JPanel crearSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setPreferredSize(new Dimension(220, 0));
-        sidebar.setBackground(SIDEBAR);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDE));
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-
-        sidebar.add(crearHeaderSidebar());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(34));
-
-        JButton btnCajero = crearBotonMenu("Cajero", "/img/carrito.png", false);
-        JButton btnStock = crearBotonMenu("Artículos y Stock", "/img/stock.png", false);
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png", false);
-        JButton btnReportes = crearBotonMenu("Reportes", "/img/Reporte.png", true); // <-- ACTIVO
-        JButton btnGastos = crearBotonMenu("Gastos", "/img/billetera.png", false);
-        JButton btnConfig = crearBotonMenu("Configuración", "/img/configuracion.png", false);
-
-        btnCajero.addActionListener(e -> {
-            new Caja_GUI().setVisible(true);
-            dispose();
-        });
-
-        btnStock.addActionListener(e -> {
-            new ArticulosStockFrame().setVisible(true);
-            dispose();
-        });
-        
-        btnConfig.addActionListener(e -> {
-            new ConfiguracionFrame().setVisible(true);
-            this.dispose();
-        });
-        
-        btnHistorial.addActionListener(e -> {
-            new HistorialTransaccionesFrame().setVisible(true);
-            dispose();
-        });
-
-        btnGastos.addActionListener(e -> mostrarPendiente("Módulo de gastos pendiente de conectar."));
-
-        agregarMenu(sidebar, btnCajero, btnStock, btnHistorial, btnReportes, btnGastos, btnConfig);
-
-        sidebar.add(Box.createVerticalGlue());
-        sidebar.add(crearLinea());
-        sidebar.add(Box.createVerticalStrut(12));
-
-        JButton btnSalir = crearBotonMenu("Salir", "/img/Salir.png", false);
-        btnSalir.setForeground(ROJO_SALIR);
-        btnSalir.addActionListener(e -> System.exit(0));
-
-        agregarMenu(sidebar, btnSalir);
-        sidebar.add(Box.createVerticalStrut(18));
-
-        return sidebar;
-    }
-
-    private JPanel crearHeaderSidebar() {
-        JPanel header = new JPanel(new BorderLayout(8, 0));
-        header.setBackground(SIDEBAR);
-        header.setBorder(new EmptyBorder(16, 16, 16, 14));
-        header.setMaximumSize(new Dimension(220, 78));
-
-        JPanel marca = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        marca.setOpaque(false);
-
-        JLabel logo = new JLabel(redimensionarIcono("/img/carroBlanco.png", 22, 22));
-        logo.setHorizontalAlignment(SwingConstants.CENTER);
-        logo.setOpaque(true);
-        logo.setBackground(AZUL);
-        logo.setPreferredSize(new Dimension(40, 40));
-        logo.setBorder(new EmptyBorder(8, 8, 8, 8));
-
-        JPanel textos = new JPanel();
-        textos.setOpaque(false);
-        textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-
-        JLabel lblPos = new JLabel("Pos");
-        lblPos.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblPos.setForeground(AZUL);
-
-        JLabel lblDesc = new JLabel("Sistema de Caja");
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblDesc.setForeground(TEXTO_SUAVE);
-
-        textos.add(lblPos);
-        textos.add(lblDesc);
-
-        marca.add(logo);
-        marca.add(textos);
-
-        header.add(marca, BorderLayout.CENTER);
-
-        return header;
-    }
-
-    private JButton crearBotonMenu(String texto, String iconPath, boolean seleccionado) {
-        JButton boton = new JButton(texto);
-        if (iconPath != null && !iconPath.isEmpty()) {
-            boton.setIcon(redimensionarIcono(iconPath, 18, 18));
-            boton.setIconTextGap(13);
-        }
-        boton.setMaximumSize(new Dimension(190, 40));
-        boton.setPreferredSize(new Dimension(190, 40));
-        boton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        boton.setHorizontalAlignment(SwingConstants.LEFT);
-        boton.setBorder(new EmptyBorder(0, 14, 0, 10));
-        boton.setFocusPainted(false);
-        boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
-
-        if (seleccionado) {
-            boton.setBackground(AZUL_CLARO);
-            boton.setForeground(AZUL);
-            boton.setBorder(new RoundedBorder(AZUL_CLARO, 12));
-        } else {
-            boton.setBackground(SIDEBAR);
-            boton.setForeground(new Color(62, 70, 82));
-            boton.setBorderPainted(false);
-        }
-
-        boton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(new Color(240, 243, 248));
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (!seleccionado) {
-                    boton.setBackground(SIDEBAR);
-                }
-            }
-        });
-
-        return boton;
-    }
-
-    private void agregarMenu(JPanel panel, JButton... botones) {
-        for (JButton boton : botones) {
-            panel.add(boton);
-            panel.add(Box.createVerticalStrut(7));
-        }
-    }
-
-    private JPanel crearLinea() {
-        JPanel linea = new JPanel();
-        linea.setMaximumSize(new Dimension(220, 1));
-        linea.setPreferredSize(new Dimension(220, 1));
-        linea.setBackground(new Color(232, 235, 241));
-        return linea;
     }
 
     // ─── CONTENIDO PRINCIPAL ──────────────────────────────────────────────────────
@@ -293,7 +135,6 @@ public class ReportesFrame extends JFrame {
 
         JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         derecha.setOpaque(false);
-        // Se ha omitido el botón ojo para estandarizar con las demás ventanas.
         derecha.add(crearTarjetaHora());
         derecha.add(crearTarjetaUsuario());
 
@@ -338,7 +179,8 @@ public class ReportesFrame extends JFrame {
         ));
         tarjeta.setPreferredSize(new Dimension(150, 40));
 
-        JLabel avatar = new JLabel(redimensionarIcono("/img/perfilPedro.jpg", 28, 28));
+        // Se usa MenuSidebar para redimensionar el icono
+        JLabel avatar = new JLabel(MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 28, 28));
         avatar.setPreferredSize(new Dimension(28, 28));
 
         JPanel textos = new JPanel();
@@ -421,8 +263,9 @@ public class ReportesFrame extends JFrame {
         double totalGastos = sumar(gastos);
         double utilidad = totalIngresos - totalGastos;
 
+        // Se usa MenuSidebar para redimensionar los iconos
         cardTransacciones = new KpiCard(
-                redimensionarIcono("/img/carrito.png", 22, 22),
+                MenuSidebar.redimensionarIcono("/img/carrito.png", 22, 22),
                 "Total transacciones",
                 String.valueOf(totalTransacciones),
                 MORADO,
@@ -430,7 +273,7 @@ public class ReportesFrame extends JFrame {
         );
 
         cardVentas = new KpiCard(
-                redimensionarIcono("/img/Reporte.png", 22, 22),
+                MenuSidebar.redimensionarIcono("/img/Reporte.png", 22, 22),
                 "Ventas totales",
                 soles(totalIngresos),
                 CELESTE,
@@ -438,7 +281,7 @@ public class ReportesFrame extends JFrame {
         );
 
         cardGastos = new KpiCard(
-                redimensionarIcono("/img/billetera.png", 22, 22),
+                MenuSidebar.redimensionarIcono("/img/billetera.png", 22, 22),
                 "Total gastos",
                 soles(totalGastos),
                 ROJO,
@@ -446,7 +289,7 @@ public class ReportesFrame extends JFrame {
         );
 
         cardUtilidad = new KpiCard(
-                redimensionarIcono("/img/stock.png", 22, 22),
+                MenuSidebar.redimensionarIcono("/img/stock.png", 22, 22),
                 "Utilidad bruta",
                 soles(utilidad),
                 utilidad >= 0 ? VERDE : ROJO,
@@ -544,7 +387,8 @@ public class ReportesFrame extends JFrame {
 
     private JButton crearBotonSecundario(String texto, String iconPath, int ancho) {
         JButton boton = new JButton(texto);
-        boton.setIcon(redimensionarIcono(iconPath, 16, 16));
+        // Se usa MenuSidebar para redimensionar el icono
+        boton.setIcon(MenuSidebar.redimensionarIcono(iconPath, 16, 16));
         boton.setIconTextGap(8);
         boton.setPreferredSize(new Dimension(ancho, 38));
         boton.setBackground(Color.WHITE);
@@ -696,25 +540,8 @@ public class ReportesFrame extends JFrame {
         JOptionPane.showMessageDialog(this, mensaje, "Reportes", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private ImageIcon redimensionarIcono(String path, int width, int height) {
-        try {
-            java.net.URL imgURL = getClass().getResource(path);
-
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                Image img = iconOriginal.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-                return new ImageIcon(img);
-            }
-        } catch (Exception e) {
-            System.err.println("No se encontró el icono: " + path);
-        }
-
-        return null;
-    }
-
     public static void main(String[] args) {
         activarVisual();
-
         SwingUtilities.invokeLater(() -> new ReportesFrame().setVisible(true));
     }
 
@@ -1181,6 +1008,7 @@ public class ReportesFrame extends JFrame {
         }
     }
 
+    // Se mantiene esta clase porque los paneles de gráficos (RoundedPanel, KpiCard) dependen fuertemente de ella
     private static class RoundedBorder extends AbstractBorder {
 
         private final Color color;
@@ -1246,30 +1074,12 @@ public class ReportesFrame extends JFrame {
     }
 
     private static double redondearMaximo(double max) {
-        if (max <= 0) {
-            return 1000;
-        }
-
-        if (max <= 1000) {
-            return 1000;
-        }
-
-        if (max <= 2000) {
-            return 2000;
-        }
-
-        if (max <= 3000) {
-            return 3000;
-        }
-
-        if (max <= 4000) {
-            return 4000;
-        }
-
-        if (max <= 5000) {
-            return 5000;
-        }
-
+        if (max <= 0) { return 1000; }
+        if (max <= 1000) { return 1000; }
+        if (max <= 2000) { return 2000; }
+        if (max <= 3000) { return 3000; }
+        if (max <= 4000) { return 4000; }
+        if (max <= 5000) { return 5000; }
         return Math.ceil(max / 1000.0) * 1000;
     }
 

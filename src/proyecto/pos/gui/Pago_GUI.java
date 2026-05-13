@@ -49,8 +49,6 @@ public class Pago_GUI extends JDialog {
     
     private VentaController venta_controller;
     
-    
-    
     public Pago_GUI(Caja_GUI parent, double total, Cliente cliente, ArrayList<Plato> platos, Mesa mesa, Connection conexion) {
         super(parent, "Pago", true); 
         this.cajaPadre = parent;
@@ -58,17 +56,20 @@ public class Pago_GUI extends JDialog {
         this.cliente = cliente;
         this.mesa = mesa;
         this.total = total;
-        this.nombreCliente = cliente.getNombre() + " " + cliente.getApellidos() + " ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
+        
+        // --- AQUÍ ESTABA EL ERROR ---
+        // Validamos si el cliente es nulo (sin DNI) para poner Público General
+        if (this.cliente != null) {
+            this.nombreCliente = cliente.getNombre() + " " + cliente.getApellidos() + " ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
+        } else {
+            this.nombreCliente = "Público General ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
+        }
  
         this.empleado_dao = new EmpleadoDAOImpl(conexion);
-        VentaDAO ventaDAO =
-            new VentaDAOImpl(conexion);
-        VentaService ventaService =
-                    new VentaService(ventaDAO);
-        this.venta_controller =
-                    new VentaController(ventaService);
+        VentaDAO ventaDAO = new VentaDAOImpl(conexion);
+        VentaService ventaService = new VentaService(ventaDAO);
+        this.venta_controller = new VentaController(ventaService);
        
-        
         configurarVentana();
         initComponents();
         actualizarCalculos(); 
