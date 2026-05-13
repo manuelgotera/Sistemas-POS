@@ -2,14 +2,18 @@ package proyecto.pos.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.Timer;
 import javax.swing.border.*;
 import javax.swing.event.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.*;
 import proyecto.pos.model.CategoriaMenu;
 import proyecto.pos.model.Plato;
@@ -34,7 +38,7 @@ public class PlatosFrame extends JFrame {
     private static final Color GRIS         = new Color(150, 157, 168);
     private static final Color AMARILLO     = new Color(255, 193, 7);
 
-    // ─── COLUMNAS (sin Costo ni Margen) ──────────────────────────────────────
+    // ─── COLUMNAS ────────────────────────────────────────────────────────────
     private static final int COL_ID         = 0;
     private static final int COL_NOMBRE     = 1;
     private static final int COL_CATEGORIA  = 2;
@@ -44,7 +48,7 @@ public class PlatosFrame extends JFrame {
     private static final int COL_POPULAR    = 6;
     private static final int COL_ACCIONES   = 7;
 
-    private static final String[] CATEGORIAS = {"Todos", "Entradas", "Segundos", "Postres", "Bebidas"};
+    private static final String[] CATEGORIAS = {"Todos","Entradas","Segundos","Postres","Bebidas"};
 
     // ─── COMPONENTES ─────────────────────────────────────────────────────────
     private JTable tabla;
@@ -59,17 +63,23 @@ public class PlatosFrame extends JFrame {
     private JTextField        txtNombrePlato;
     private JComboBox<String> cboCategoriaForm;
     private JTextField        txtPrecio;
-    private JTextArea         txtDescripcionPlato;   // ← NUEVO
     private JCheckBox         chkDisponible;
     private JLabel            lblEstadoBadge;
     private JButton           btnGuardar;
 
+    // ── Imagen del plato ─────────────────────────────────────────────────────
+    private JLabel   lblPreviewImagen;          // miniatura en el formulario
+    private JButton  btnSeleccionarImagen;
+    private String   rutaImagenSeleccionada = null;   // ruta en disco
+
     private int nextId = 106;
 
-    // Recetas en memoria: idPlato → lista de [ingrediente, cantidad, unidad]
-    private final Map<Integer, List<String[]>> recetasPorPlato       = new HashMap<>();
-    // Descripciones en memoria: idPlato → descripción                  ← NUEVO
-    private final Map<Integer, String>         descripcionesPorPlato  = new HashMap<>();
+    // Recetas en memoria
+    private final Map<Integer, List<String[]>> recetasPorPlato      = new HashMap<>();
+    // Descripciones en memoria (se muestran en el dialog de receta)
+    private final Map<Integer, String>         descripcionesPorPlato = new HashMap<>();
+    // Imágenes en memoria: idPlato → ruta del archivo
+    private final Map<Integer, String>         imagenesPorPlato      = new HashMap<>();
 
     public PlatosFrame() {
         configurarVentana();
@@ -247,7 +257,7 @@ public class PlatosFrame extends JFrame {
         form.add(crearLabel("Categoría"));
         form.add(Box.createVerticalStrut(5));
         cboCategoriaForm = new JComboBox<>(new String[]{
-            "Seleccionar Categoría", "Entradas", "Segundos", "Postres", "Bebidas"
+            "Seleccionar Categoría","Entradas","Segundos","Postres","Bebidas"
         });
         cboCategoriaForm.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboCategoriaForm.setBackground(Color.WHITE);
@@ -266,22 +276,41 @@ public class PlatosFrame extends JFrame {
         form.add(txtPrecio);
         form.add(Box.createVerticalStrut(14));
 
-        // ── Descripción del Plato ── NUEVO ────────────────────────────────────
-        form.add(crearLabel("Descripción del Plato"));
-        form.add(Box.createVerticalStrut(5));
-        txtDescripcionPlato = new JTextArea(3, 1);
-        txtDescripcionPlato.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtDescripcionPlato.setForeground(TEXTO);
-        txtDescripcionPlato.setLineWrap(true);
-        txtDescripcionPlato.setWrapStyleWord(true);
-        txtDescripcionPlato.setBorder(BorderFactory.createCompoundBorder(
+        // ── Imagen del Plato ─────────────────────────────────────────────────
+        form.add(crearLabel("Imagen del Plato"));
+        form.add(Box.createVerticalStrut(6));
+
+        // Zona de preview
+        lblPreviewImagen = new JLabel("Sin imagen", SwingConstants.CENTER);
+        lblPreviewImagen.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblPreviewImagen.setForeground(TEXTO_SUAVE);
+        lblPreviewImagen.setOpaque(true);
+        lblPreviewImagen.setBackground(new Color(245, 246, 248));
+        lblPreviewImagen.setBorder(BorderFactory.createCompoundBorder(
                 new MenuSidebar.RoundedBorder(BORDE, 8),
-                new EmptyBorder(8, 10, 8, 10)));
-        JScrollPane scrollDesc = new JScrollPane(txtDescripcionPlato);
-        scrollDesc.setBorder(BorderFactory.createLineBorder(BORDE, 1));
-        scrollDesc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
-        scrollDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(scrollDesc);
+                new EmptyBorder(2, 2, 2, 2)));
+        lblPreviewImagen.setHorizontalAlignment(SwingConstants.CENTER);
+        lblPreviewImagen.setVerticalAlignment(SwingConstants.CENTER);
+        lblPreviewImagen.setPreferredSize(new Dimension(200, 90));
+        lblPreviewImagen.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+        lblPreviewImagen.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.add(lblPreviewImagen);
+        form.add(Box.createVerticalStrut(6));
+
+        // Botón seleccionar imagen
+        btnSeleccionarImagen = new JButton("📷  Seleccionar imagen");
+        btnSeleccionarImagen.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnSeleccionarImagen.setBackground(Color.WHITE);
+        btnSeleccionarImagen.setForeground(AZUL);
+        btnSeleccionarImagen.setFocusPainted(false);
+        btnSeleccionarImagen.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSeleccionarImagen.setBorder(BorderFactory.createCompoundBorder(
+                new MenuSidebar.RoundedBorder(BORDE, 8),
+                new EmptyBorder(7, 10, 7, 10)));
+        btnSeleccionarImagen.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        btnSeleccionarImagen.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnSeleccionarImagen.addActionListener(e -> seleccionarImagen());
+        form.add(btnSeleccionarImagen);
         form.add(Box.createVerticalStrut(14));
         // ─────────────────────────────────────────────────────────────────────
 
@@ -350,6 +379,43 @@ public class PlatosFrame extends JFrame {
         return panel;
     }
 
+    // ── Abre el JFileChooser y carga la imagen en el preview ──────────────────
+    private void seleccionarImagen() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Seleccionar imagen del plato");
+        chooser.setFileFilter(new FileNameExtensionFilter(
+                "Imágenes (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
+        chooser.setAcceptAllFileFilterUsed(false);
+
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File archivo = chooser.getSelectedFile();
+            rutaImagenSeleccionada = archivo.getAbsolutePath();
+            mostrarPreviewImagen(rutaImagenSeleccionada, lblPreviewImagen);
+        }
+    }
+
+    /** Escala la imagen y la pone en un JLabel de preview. */
+    private void mostrarPreviewImagen(String ruta, JLabel destino) {
+        if (ruta == null || ruta.isBlank()) {
+            destino.setIcon(null);
+            destino.setText("Sin imagen");
+            return;
+        }
+        try {
+            BufferedImage img = ImageIO.read(new File(ruta));
+            if (img != null) {
+                int w = destino.getPreferredSize().width  - 8;
+                int h = destino.getPreferredSize().height - 8;
+                Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                destino.setIcon(new ImageIcon(scaled));
+                destino.setText("");
+            }
+        } catch (Exception ex) {
+            destino.setIcon(null);
+            destino.setText("Imagen no válida");
+        }
+    }
+
     private JLabel crearLabel(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -397,7 +463,7 @@ public class PlatosFrame extends JFrame {
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitulo.setForeground(TEXTO);
 
-        top.add(lblTitulo,      BorderLayout.WEST);
+        top.add(lblTitulo,       BorderLayout.WEST);
         top.add(crearBuscador(), BorderLayout.EAST);
 
         JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -453,15 +519,15 @@ public class PlatosFrame extends JFrame {
             public void changedUpdate(DocumentEvent e) { aplicarFiltros(); }
         });
 
-        panel.add(icono,      BorderLayout.WEST);
-        panel.add(txtBuscar,  BorderLayout.CENTER);
+        panel.add(icono,     BorderLayout.WEST);
+        panel.add(txtBuscar, BorderLayout.CENTER);
         return panel;
     }
 
     private JScrollPane crearTabla() {
         String[] columnas = {
-            "ID", "Nombre", "Categoría", "Precio (S/.)",
-            "Disponibilidad", "Última Modif.", "Pop.", "Acciones"
+            "ID","Nombre","Categoría","Precio (S/.)",
+            "Disponibilidad","Última Modif.","Pop.","Acciones"
         };
 
         modeloTabla = new DefaultTableModel(columnas, 0) {
@@ -501,22 +567,17 @@ public class PlatosFrame extends JFrame {
         tabla.getColumnModel().getColumn(COL_POPULAR).setCellRenderer(new PopularRenderer());
         tabla.getColumnModel().getColumn(COL_ACCIONES).setCellRenderer(new AccionesRenderer());
 
-        // ── LISTENER DE CLIC ──────────────────────────────────────────────────
         tabla.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 int fv = tabla.rowAtPoint(e.getPoint());
                 int cv = tabla.columnAtPoint(e.getPoint());
                 if (fv < 0 || cv < 0) return;
-
                 int fm = tabla.convertRowIndexToModel(fv);
 
-                // Doble clic en cualquier parte → ventana de receta
                 if (e.getClickCount() == 2) {
                     abrirVentanaReceta(fm);
                     return;
                 }
-
-                // Clic simple sólo en columna Acciones
                 if (tabla.convertColumnIndexToModel(cv) == COL_ACCIONES) {
                     int xRel  = e.getX() - tabla.getCellRect(fv, cv, true).x;
                     int ancho = tabla.getColumnModel().getColumn(cv).getWidth();
@@ -554,40 +615,37 @@ public class PlatosFrame extends JFrame {
 
     private void cargarDatosDemo() {
         String hoy = new SimpleDateFormat("dd/MM/yyyy").format(new Date());
-        agregarFila(101, "Arroz con Pollo",    "Segundos", 15.00f, true,  hoy, 2);
-        agregarFila(102, "Ceviche", "Entradas", 18.00f, true,  hoy, 2);
-        agregarFila(103, "Inka Kola",          "Bebidas",   5.00f, true,  hoy, 1);
-        agregarFila(104, "Tallarín Saltado",   "Segundos", 14.50f, false, hoy, 2);
-        agregarFila(105, "Tres Leches",        "Postres",  10.00f, true,  hoy, 3);
+        agregarFila(101, "Arroz con Pollo",  "Segundos", 15.00f, true,  hoy, 2);
+        agregarFila(102, "Ceviche",          "Entradas", 18.00f, true,  hoy, 2);
+        agregarFila(103, "Inka Kola",        "Bebidas",   5.00f, true,  hoy, 1);
+        agregarFila(104, "Tallarín Saltado", "Segundos", 14.50f, false, hoy, 2);
+        agregarFila(105, "Tres Leches",      "Postres",  10.00f, true,  hoy, 3);
 
-        // Recetas demo
         recetasPorPlato.put(101, new ArrayList<>(Arrays.asList(
-            new String[]{"Pollo entero",    "300", "g"},
-            new String[]{"Arroz",           "200", "g"},
-            new String[]{"Ají amarillo",    "2",   "unid"},
-            new String[]{"Caldo de pollo",  "250", "ml"}
+            new String[]{"Pollo entero",   "300","g"},
+            new String[]{"Arroz",          "200","g"},
+            new String[]{"Ají amarillo",   "2",  "unid"},
+            new String[]{"Caldo de pollo", "250","ml"}
         )));
         recetasPorPlato.put(102, new ArrayList<>(Arrays.asList(
-            new String[]{"Pescado fresco",  "250", "g"},
-            new String[]{"Limón",           "6",   "unid"},
-            new String[]{"Cebolla roja",    "1",   "unid"},
-            new String[]{"Ají limo",        "1",   "unid"},
-            new String[]{"Cilantro",        "10",  "g"}
+            new String[]{"Pescado fresco", "250","g"},
+            new String[]{"Limón",          "6",  "unid"},
+            new String[]{"Cebolla roja",   "1",  "unid"},
+            new String[]{"Ají limo",       "1",  "unid"},
+            new String[]{"Cilantro",       "10", "g"}
         )));
         recetasPorPlato.put(105, new ArrayList<>(Arrays.asList(
-            new String[]{"Bizcocho",          "150", "g"},
-            new String[]{"Leche evaporada",   "200", "ml"},
-            new String[]{"Crema de leche",    "100", "ml"},
-            new String[]{"Azúcar",            "50",  "g"}
+            new String[]{"Bizcocho",        "150","g"},
+            new String[]{"Leche evaporada", "200","ml"},
+            new String[]{"Crema de leche",  "100","ml"},
+            new String[]{"Azúcar",          "50", "g"}
         )));
 
-        // ── Descripciones demo ── NUEVO ───────────────────────────────────────
         descripcionesPorPlato.put(101, "Arroz cocido con trozos de pollo guisado en salsa de ají amarillo y verduras.");
         descripcionesPorPlato.put(102, "Pescado fresco marinado en limón con cebolla, ají limo y cilantro.");
         descripcionesPorPlato.put(103, "Bebida gaseosa de sabor característico peruano.");
         descripcionesPorPlato.put(104, "Tallarines salteados con carne, tomate, cebolla y sillao.");
         descripcionesPorPlato.put(105, "Bizcocho bañado en tres tipos de leche con crema chantilly.");
-        // ─────────────────────────────────────────────────────────────────────
     }
 
     private void agregarFila(int id, String nombre, String categoria,
@@ -600,18 +658,19 @@ public class PlatosFrame extends JFrame {
         });
     }
 
-    // ─── VENTANA RECETA ───────────────────────────────────────────────────────
+    // ─── VENTANA RECETA (con descripción adentro) ─────────────────────────────
 
     private void abrirVentanaReceta(int filaModelo) {
         int    idPlato   = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
         String nombre    = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_NOMBRE));
         String categoria = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_CATEGORIA));
         String precio    = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_PRECIO));
+        String descActual = descripcionesPorPlato.getOrDefault(idPlato, "");
 
         List<String[]> receta = recetasPorPlato.getOrDefault(idPlato, new ArrayList<>());
 
         JDialog dialog = new JDialog(this, "Receta: " + nombre, true);
-        dialog.setSize(480, 560);
+        dialog.setSize(500, 640);
         dialog.setLocationRelativeTo(this);
         dialog.setUndecorated(true);
 
@@ -619,7 +678,7 @@ public class PlatosFrame extends JFrame {
         root.setBackground(Color.WHITE);
         root.setBorder(BorderFactory.createLineBorder(BORDE, 1));
 
-        // ── Encabezado azul ──
+        // ── Encabezado azul ──────────────────────────────────────────────────
         JPanel enc = new JPanel(new BorderLayout());
         enc.setBackground(AZUL);
         enc.setBorder(new EmptyBorder(16, 20, 16, 20));
@@ -651,8 +710,33 @@ public class PlatosFrame extends JFrame {
         enc.add(encTextos, BorderLayout.WEST);
         enc.add(btnX,      BorderLayout.EAST);
 
-        // ── Tabla de ingredientes ──
-        String[] colsRec = {"Ingrediente", "Cantidad", "Unidad"};
+        // ── Descripción del plato (NUEVA sección dentro del dialog) ──────────
+        JPanel secDescripcion = new JPanel(new BorderLayout(0, 6));
+        secDescripcion.setBackground(Color.WHITE);
+        secDescripcion.setBorder(new EmptyBorder(16, 20, 0, 20));
+
+        JLabel lblTitDesc = new JLabel("Descripción del plato");
+        lblTitDesc.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTitDesc.setForeground(TEXTO);
+
+        JTextArea txtDescDialog = new JTextArea(descActual);
+        txtDescDialog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtDescDialog.setForeground(TEXTO);
+        txtDescDialog.setLineWrap(true);
+        txtDescDialog.setWrapStyleWord(true);
+        txtDescDialog.setBorder(BorderFactory.createCompoundBorder(
+                new MenuSidebar.RoundedBorder(BORDE, 8),
+                new EmptyBorder(8, 10, 8, 10)));
+
+        JScrollPane scrollDescDlg = new JScrollPane(txtDescDialog);
+        scrollDescDlg.setBorder(BorderFactory.createLineBorder(BORDE, 1));
+        scrollDescDlg.setPreferredSize(new Dimension(0, 70));
+
+        secDescripcion.add(lblTitDesc,    BorderLayout.NORTH);
+        secDescripcion.add(scrollDescDlg, BorderLayout.CENTER);
+
+        // ── Tabla de ingredientes ─────────────────────────────────────────────
+        String[] colsRec = {"Ingrediente","Cantidad","Unidad"};
         DefaultTableModel modeloReceta = new DefaultTableModel(colsRec, 0) {
             public boolean isCellEditable(int r, int c) { return true; }
         };
@@ -677,10 +761,10 @@ public class PlatosFrame extends JFrame {
         scrollRec.setBorder(new MenuSidebar.RoundedBorder(BORDE, 8));
         scrollRec.getViewport().setBackground(Color.WHITE);
 
-        // ── Sección ingredientes ──
+        // ── Sección ingredientes ──────────────────────────────────────────────
         JPanel secIngredientes = new JPanel(new BorderLayout());
         secIngredientes.setBackground(Color.WHITE);
-        secIngredientes.setBorder(new EmptyBorder(18, 20, 10, 20));
+        secIngredientes.setBorder(new EmptyBorder(14, 20, 10, 20));
 
         JLabel lblTitIng = new JLabel("Ingredientes de la receta");
         lblTitIng.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -696,7 +780,7 @@ public class PlatosFrame extends JFrame {
         secIngredientes.add(scrollRec, BorderLayout.CENTER);
         secIngredientes.add(hint,      BorderLayout.SOUTH);
 
-        // ── Fila agregar ingrediente ──
+        // ── Fila agregar ingrediente ──────────────────────────────────────────
         JPanel panelAgregar = new JPanel(new BorderLayout(8, 0));
         panelAgregar.setBackground(new Color(248, 249, 252));
         panelAgregar.setBorder(BorderFactory.createCompoundBorder(
@@ -752,7 +836,7 @@ public class PlatosFrame extends JFrame {
         panelAgregar.add(lblAgregar, BorderLayout.WEST);
         panelAgregar.add(camposIng,  BorderLayout.CENTER);
 
-        // ── Botones pie ──
+        // ── Botones pie ───────────────────────────────────────────────────────
         JPanel botones = new JPanel(new BorderLayout(10, 0));
         botones.setBackground(Color.WHITE);
         botones.setBorder(new EmptyBorder(12, 20, 18, 20));
@@ -765,6 +849,7 @@ public class PlatosFrame extends JFrame {
             if (tablaReceta.isEditing())
                 tablaReceta.getCellEditor().stopCellEditing();
 
+            // Guardar ingredientes
             List<String[]> nuevaReceta = new ArrayList<>();
             for (int i = 0; i < modeloReceta.getRowCount(); i++) {
                 nuevaReceta.add(new String[]{
@@ -774,6 +859,10 @@ public class PlatosFrame extends JFrame {
                 });
             }
             recetasPorPlato.put(idPlato, nuevaReceta);
+
+            // ── Guardar descripción editada en el dialog ── NUEVO ──────────────
+            descripcionesPorPlato.put(idPlato, txtDescDialog.getText().trim());
+
             dialog.dispose();
             mostrarToast("✔  Receta de \"" + nombre + "\" guardada");
         });
@@ -781,11 +870,18 @@ public class PlatosFrame extends JFrame {
         botones.add(btnCerrar,     BorderLayout.WEST);
         botones.add(btnGuardarRec, BorderLayout.EAST);
 
-        // ── Ensamblar ──
-        JPanel centro = new JPanel(new BorderLayout(0, 10));
+        // ── Ensamblar ─────────────────────────────────────────────────────────
+        JPanel centro = new JPanel(new BorderLayout(0, 0));
         centro.setBackground(Color.WHITE);
-        centro.add(secIngredientes, BorderLayout.CENTER);
-        centro.add(panelAgregar,    BorderLayout.SOUTH);
+
+        // Descripción arriba, luego ingredientes, luego fila agregar
+        JPanel centroTop = new JPanel(new BorderLayout(0, 0));
+        centroTop.setBackground(Color.WHITE);
+        centroTop.add(secDescripcion,  BorderLayout.NORTH);
+        centroTop.add(secIngredientes, BorderLayout.CENTER);
+
+        centro.add(centroTop,    BorderLayout.CENTER);
+        centro.add(panelAgregar, BorderLayout.SOUTH);
 
         root.add(enc,     BorderLayout.NORTH);
         root.add(centro,  BorderLayout.CENTER);
@@ -825,10 +921,9 @@ public class PlatosFrame extends JFrame {
     // ─── LÓGICA FORMULARIO ────────────────────────────────────────────────────
 
     private void guardarPlato() {
-        String nombre      = txtNombrePlato.getText().trim();
-        String catSel      = String.valueOf(cboCategoriaForm.getSelectedItem());
-        String precioStr   = txtPrecio.getText().replace("S/.", "").replace("S/", "").trim();
-        String descripcion = txtDescripcionPlato.getText().trim();   // ← NUEVO
+        String nombre    = txtNombrePlato.getText().trim();
+        String catSel    = String.valueOf(cboCategoriaForm.getSelectedItem());
+        String precioStr = txtPrecio.getText().replace("S/.", "").replace("S/", "").trim();
 
         if (nombre.isEmpty() || catSel.equals("Seleccionar Categoría")) {
             mostrarToast("⚠  Completa nombre y categoría");
@@ -853,7 +948,9 @@ public class PlatosFrame extends JFrame {
                     modeloTabla.setValueAt(String.format("S/ %.2f", precio),   i, COL_PRECIO);
                     modeloTabla.setValueAt(disponible ? "ACTIVO" : "INACTIVO", i, COL_DISPONIBLE);
                     modeloTabla.setValueAt(fecha,                              i, COL_ULTIMA_MOD);
-                    descripcionesPorPlato.put(idEdicion, descripcion);          // ← NUEVO
+                    // Guardar imagen si se seleccionó una nueva
+                    if (rutaImagenSeleccionada != null)
+                        imagenesPorPlato.put(idEdicion, rutaImagenSeleccionada);
                     aplicarFiltros();
                     mostrarToast("✔  Plato actualizado");
                     limpiarFormulario();
@@ -863,7 +960,8 @@ public class PlatosFrame extends JFrame {
         }
 
         agregarFila(nextId, nombre, catSel, precio, disponible, fecha, 1);
-        descripcionesPorPlato.put(nextId, descripcion);                         // ← NUEVO
+        if (rutaImagenSeleccionada != null)
+            imagenesPorPlato.put(nextId, rutaImagenSeleccionada);
         nextId++;
         aplicarFiltros();
         mostrarToast("✔  Plato agregado");
@@ -881,10 +979,11 @@ public class PlatosFrame extends JFrame {
         chkDisponible.setSelected(activo);
         actualizarBadge();
 
-        // ── Cargar descripción ── NUEVO ───────────────────────────────────────
+        // Cargar imagen guardada del plato
         int idCargado = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
-        txtDescripcionPlato.setText(descripcionesPorPlato.getOrDefault(idCargado, ""));
-        // ─────────────────────────────────────────────────────────────────────
+        String ruta = imagenesPorPlato.getOrDefault(idCargado, null);
+        rutaImagenSeleccionada = ruta;
+        mostrarPreviewImagen(ruta, lblPreviewImagen);
     }
 
     private void limpiarFormulario() {
@@ -892,9 +991,12 @@ public class PlatosFrame extends JFrame {
         txtNombrePlato.setText("");
         cboCategoriaForm.setSelectedIndex(0);
         txtPrecio.setText("");
-        txtDescripcionPlato.setText("");   // ← NUEVO
         chkDisponible.setSelected(true);
         actualizarBadge();
+        // Limpiar imagen
+        rutaImagenSeleccionada = null;
+        lblPreviewImagen.setIcon(null);
+        lblPreviewImagen.setText("Sin imagen");
     }
 
     private void eliminarPlato(int filaModelo) {
@@ -906,7 +1008,8 @@ public class PlatosFrame extends JFrame {
             int id = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
             modeloTabla.removeRow(filaModelo);
             recetasPorPlato.remove(id);
-            descripcionesPorPlato.remove(id);   // ← NUEVO
+            descripcionesPorPlato.remove(id);
+            imagenesPorPlato.remove(id);
             aplicarFiltros();
             mostrarToast("✔  Plato eliminado");
         }

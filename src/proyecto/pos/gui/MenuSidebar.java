@@ -34,30 +34,33 @@ public class MenuSidebar extends JPanel {
         add(Box.createVerticalStrut(34));
 
         // ── Botones de navegación ─────────────────────────────────────────────
-        JButton btnCajero    = crearBotonMenu("Cajero",              "/img/carrito.png",       ventanaActiva.equals("Cajero"));
-        JButton btnStock     = crearBotonMenu("Artículos y Stock",   "/img/stock.png",         ventanaActiva.equals("Stock"));
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.", "/img/Historial.png",     ventanaActiva.equals("Historial"));
-        JButton btnReportes  = crearBotonMenu("Reportes",            "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
-        JButton btnGastos    = crearBotonMenu("Gastos",              "/img/billetera.png",     ventanaActiva.equals("Gastos"));
-        JButton btnClientes  = crearBotonMenu("Clientes",            "/img/clientes.png",      ventanaActiva.equals("Clientes"));
-        JButton btnEmpleados = crearBotonMenu("Empleados",           "/img/empleados.png",     ventanaActiva.equals("Empleados"));
-        JButton btnConfig    = crearBotonMenu("Configuración",       "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
-        JButton btnPlatos    = crearBotonMenu("Platos",              "/img/platos.png",        ventanaActiva.equals("Platos"));
+        JButton btnCajero      = crearBotonMenu("Cajero",              "/img/carrito.png",       ventanaActiva.equals("Cajero"));
+        JButton btnStock       = crearBotonMenu("Artículos y Stock",   "/img/stock.png",         ventanaActiva.equals("Stock"));
+        JButton btnHistorial   = crearBotonMenu("Historial de Trans.", "/img/Historial.png",     ventanaActiva.equals("Historial"));
+        JButton btnReportes    = crearBotonMenu("Reportes",            "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+        JButton btnGastos      = crearBotonMenu("Gastos",              "/img/billetera.png",     ventanaActiva.equals("Gastos"));
+        JButton btnClientes    = crearBotonMenu("Clientes",            "/img/clientes.png",      ventanaActiva.equals("Clientes"));
+        JButton btnEmpleados   = crearBotonMenu("Empleados",           "/img/empleados.png",     ventanaActiva.equals("Empleados"));
+        JButton btnProveedores = crearBotonMenu("Proveedores",         "/img/empleados.png",     ventanaActiva.equals("Proveedores"));
+        JButton btnPlatos      = crearBotonMenu("Platos",              "/img/platos.png",        ventanaActiva.equals("Platos"));
+        JButton btnConfig      = crearBotonMenu("Configuración",       "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
 
         // ── Acciones ─────────────────────────────────────────────────────────
-        btnCajero   .addActionListener(e -> navegar(new Caja_GUI()));
-        btnStock    .addActionListener(e -> navegar(new ArticulosStockFrame()));
-        btnHistorial.addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
-        btnReportes .addActionListener(e -> navegar(new ReportesFrame()));
-        btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
-        btnClientes .addActionListener(e -> navegar(new ClientesFrame()));
-        btnEmpleados.addActionListener(e -> navegar(new EmpleadosFrame()));
-        btnPlatos   .addActionListener(e -> navegar(new PlatosFrame()));
-        btnConfig   .addActionListener(e -> navegar(new ConfiguracionFrame()));
+        btnCajero     .addActionListener(e -> navegar(new Caja_GUI()));
+        btnStock      .addActionListener(e -> navegar(new ArticulosStockFrame()));
+        btnHistorial  .addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
+        btnReportes   .addActionListener(e -> navegar(new ReportesFrame()));
+        btnGastos     .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
+        btnClientes   .addActionListener(e -> navegar(new ClientesFrame()));
+        btnEmpleados  .addActionListener(e -> navegar(new EmpleadosFrame()));
+        btnProveedores.addActionListener(e -> navegar(new ProveedorFrame()));
+        btnPlatos     .addActionListener(e -> navegar(new PlatosFrame()));
+        btnConfig     .addActionListener(e -> navegar(new ConfiguracionFrame()));
 
         agregarMenu(this,
-                btnCajero, btnStock, btnHistorial, btnReportes, 
-                           btnGastos, btnClientes, btnEmpleados, btnPlatos, btnConfig);
+                btnCajero, btnStock, btnHistorial, btnReportes,
+                btnGastos, btnClientes, btnEmpleados, btnProveedores,
+                btnPlatos, btnConfig);
 
         add(Box.createVerticalGlue());
         add(crearLinea());
@@ -136,6 +139,8 @@ public class MenuSidebar extends JPanel {
         boton.setFocusPainted(false);
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
+        boton.setContentAreaFilled(false);
+        boton.setOpaque(true);
 
         if (seleccionado) {
             boton.setBackground(AZUL_CLARO);

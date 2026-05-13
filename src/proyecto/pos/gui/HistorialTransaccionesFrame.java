@@ -114,7 +114,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        // ── USA MenuSidebar igual que ArticulosStockFrame ──
+        // ── USA MenuSidebar igual──
         root.add(new MenuSidebar(this, "Historial"), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
@@ -877,7 +877,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         }
     }
 
-    /** Pill reutilizable idéntico al de ArticulosStockFrame */
+    
     private static class PillLabel extends JLabel {
         private final Color colorFondo;
         public PillLabel(String texto, Color colorFondo) {
