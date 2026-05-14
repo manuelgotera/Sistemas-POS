@@ -3,6 +3,7 @@ package proyecto.pos.gui;
 import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
 import java.awt.event.*;
+import java.net.URL;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -14,7 +15,6 @@ import javax.swing.text.DocumentFilter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.HashMap; 
 import java.util.Map;     
 
@@ -36,14 +36,13 @@ public class Caja_GUI extends JFrame {
     private static final Color VERDE = new Color(40, 167, 69);
     
     private Connection conexion;
-    private ArrayList<Plato> platos_seleccionados = new ArrayList<Plato>();
+    private ArrayList<Plato> platos_seleccionados = new ArrayList<>();
 
     private Map<String, ItemCarritoUI> mapaCarrito = new HashMap<>();
 
-    private ArrayList<Plato> obtenerPlatosBD(){
+    private ArrayList<Plato> obtenerPlatosBD() {
         PlatoDAO plato_dao = new PlatoDAOImpl(conexion);
-        ArrayList<Plato> platos = (ArrayList<Plato>) plato_dao.listar();
-        return platos;
+        return (ArrayList<Plato>) plato_dao.listar();
     }
     
     private JPanel panelCarritoContenedor;
@@ -65,7 +64,7 @@ public class Caja_GUI extends JFrame {
 
     private double totalAcumulado = 0.0;
 
-    // --- NUEVO: Variables Seguras de Descuento ---
+    // --- Variables Seguras de Descuento ---
     private double reglaDescuentoPorcentaje = 0.0; 
     private double reglaDescuentoFijo = 0.0;
     private JButton btnAplicarDescuento;
@@ -427,11 +426,10 @@ public class Caja_GUI extends JFrame {
                         }
                     }
                     
-                    // Asegúrate de enviar el total con el descuento ya restado a Pago_GUI
                     double totalFinal = totalAcumulado;
                     if (reglaDescuentoPorcentaje > 0) totalFinal = totalAcumulado - (totalAcumulado * (reglaDescuentoPorcentaje / 100.0));
                     else if (reglaDescuentoFijo > 0) totalFinal = totalAcumulado - reglaDescuentoFijo;
-                    if(totalFinal < 0) totalFinal = 0; // Seguridad extra
+                    if(totalFinal < 0) totalFinal = 0; 
 
                     Pago_GUI pago = new Pago_GUI(this, totalFinal, cliente, platos_seleccionados, new Mesa(Integer.parseInt(mesa),0,0,0), conexion);
                     pago.setVisible(true);
@@ -465,7 +463,6 @@ public class Caja_GUI extends JFrame {
         JComboBox<String> cmbTipo = new JComboBox<>(new String[]{"Porcentaje (%)", "Monto Fijo (S/)"});
         JTextField txtValor = new JTextField();
         
-        // Filtro para aceptar solo números y decimales
         ((AbstractDocument) txtValor.getDocument()).setDocumentFilter(new DocumentFilter() {
             @Override
             public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -480,7 +477,6 @@ public class Caja_GUI extends JFrame {
             }
         });
 
-        // Pre-llenar si ya había un descuento
         if (reglaDescuentoPorcentaje > 0) {
             cmbTipo.setSelectedIndex(0);
             txtValor.setText(String.valueOf(reglaDescuentoPorcentaje));
@@ -516,7 +512,6 @@ public class Caja_GUI extends JFrame {
             
             double valorIngresado = Double.parseDouble(txtValor.getText());
             
-            // VALIDACIONES ESTRICTAS DE SEGURIDAD
             if (cmbTipo.getSelectedIndex() == 0) { // Porcentaje
                 if (valorIngresado <= 0 || valorIngresado > 100) {
                     JOptionPane.showMessageDialog(dialog, "El porcentaje debe estar entre 1 y 100.");
@@ -545,13 +540,12 @@ public class Caja_GUI extends JFrame {
         dialog.setVisible(true);
     }
 
-
     private Cliente buscarClienteDNI(String dni){
         ClienteDAO cliente_dao = new ClienteDAOImpl(conexion);
-        Cliente cliente = cliente_dao.obtenerPorDni(dni);
-        return cliente;
+        return cliente_dao.obtenerPorDni(dni);
     }
     
+    // --- FILTRADO CORREGIDO ---
     private void filtrarProductos() {
         String textoBuscado = txtBuscar.getText().toLowerCase().trim();
         contenedorPrincipal.removeAll();
@@ -577,8 +571,16 @@ public class Caja_GUI extends JFrame {
                 }
 
                 boolean coincideTexto = p.getNombre().toLowerCase().contains(textoBuscado);
-                boolean coincideCategoria = nombreCatPlato.equalsIgnoreCase(catActual.toLowerCase()) || 
-                                            (catActual.equals("Platos principales") && (nombreCatPlato.contains("principal") || nombreCatPlato.contains("plato")));
+                
+                // LÓGICA DE CATEGORÍAS CORREGIDA
+                boolean coincideCategoria = false;
+                if (catActual.equals("Todos")) {
+                    coincideCategoria = true;
+                } else if (catActual.equalsIgnoreCase("Platos principales")) {
+                    coincideCategoria = nombreCatPlato.contains("principal") || nombreCatPlato.contains("fondo");
+                } else {
+                    coincideCategoria = nombreCatPlato.contains(catActual.toLowerCase());
+                }
 
                 if (coincideTexto && coincideCategoria) {
                     platosDeEstaCategoria.add(p);
@@ -611,7 +613,8 @@ public class Caja_GUI extends JFrame {
 
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
-
+        System.out.println(titulo);
+        
         for (Plato p : platos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
             cardWrapper.setBackground(Color.WHITE);
@@ -649,8 +652,13 @@ public class Caja_GUI extends JFrame {
             } else {
                 lblImg.setText("No image");
                 lblImg.setForeground(Color.GRAY);
+                System.out.println("ADVERTENCIA: No se encontró la imagen en: " + plato.getImagen());
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            lblImg.setText("No image");
+            lblImg.setForeground(Color.GRAY);
+            System.err.println("Error al procesar imagen: " + plato.getImagen());
+        }
 
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
@@ -660,7 +668,8 @@ public class Caja_GUI extends JFrame {
         JLabel n = new JLabel(plato.getNombre());
         n.setFont(new Font("Segoe UI", Font.BOLD, 13));
         
-        JLabel p = new JLabel(plato.getPrecio() + " so");
+        // --- FORMATO DE MONEDA CORREGIDO ---
+        JLabel p = new JLabel("S/ " + String.format(java.util.Locale.US, "%.2f", plato.getPrecio()));
         p.setForeground(AZUL);
         p.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
@@ -701,7 +710,8 @@ public class Caja_GUI extends JFrame {
     private void agregarAlCarrito(Plato plato) {
         if (mapaCarrito.containsKey(plato.getNombre())) {
             ItemCarritoUI item = mapaCarrito.get(plato.getNombre());
-            item.incrementar();
+            item.incrementar(); 
+            // item.incrementar() ya se encarga de agregar a platos_seleccionados y sumar totalAcumulado
         } else {
             ItemCarritoUI nuevoItem = new ItemCarritoUI(plato);
             mapaCarrito.put(plato.getNombre(), nuevoItem);
@@ -762,7 +772,7 @@ public class Caja_GUI extends JFrame {
             JPanel panelDerecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             panelDerecha.setBackground(Color.WHITE);
 
-            lblSubtotalItem = new JLabel(String.format("S/ %.2f", plato.getPrecio() * cantidad));
+            lblSubtotalItem = new JLabel(String.format(java.util.Locale.US, "S/ %.2f", plato.getPrecio() * cantidad));
             lblSubtotalItem.setFont(new Font("Segoe UI", Font.BOLD, 12));
             lblSubtotalItem.setForeground(AZUL);
 
@@ -814,7 +824,7 @@ public class Caja_GUI extends JFrame {
 
         private void actualizarUI() {
             lblCantidad.setText(String.valueOf(cantidad));
-            lblSubtotalItem.setText(String.format("S/ %.2f", plato.getPrecio() * cantidad));
+            lblSubtotalItem.setText(String.format(java.util.Locale.US, "S/ %.2f", plato.getPrecio() * cantidad));
         }
 
         private JButton crearBotonCantidad(String texto) {
@@ -840,11 +850,10 @@ public class Caja_GUI extends JFrame {
     private void actualizarTotal() {
         if (totalAcumulado < 0.01) {
             totalAcumulado = 0.0;
-            reglaDescuentoPorcentaje = 0.0; // Si el carrito está vacío, resetear descuentos
+            reglaDescuentoPorcentaje = 0.0; 
             reglaDescuentoFijo = 0.0;
         } 
         
-        // 1. Calculamos cuánto dinero se debe descontar en base a la regla elegida
         double montoDescuento = 0.0;
         if (reglaDescuentoPorcentaje > 0) {
             montoDescuento = totalAcumulado * (reglaDescuentoPorcentaje / 100.0);
@@ -852,31 +861,27 @@ public class Caja_GUI extends JFrame {
             montoDescuento = reglaDescuentoFijo;
         }
 
-        // SEGURIDAD: Evitar fuga de dinero si quitan platos y el descuento fijo se vuelve mayor al total
         if (montoDescuento > totalAcumulado) {
             montoDescuento = totalAcumulado; 
         }
 
-        // 2. Calculamos el Total Real a pagar
         double totalAPagar = totalAcumulado - montoDescuento;
 
-        // 3. Extraemos el IGV y la Base Imponible del TOTAL QUE VA A PAGAR (Exigencia SUNAT)
         double igvTasa = 0.18;
         double baseImponible = totalAPagar / (1 + igvTasa);
         double igv = totalAPagar - baseImponible;
         
-        lblMontoSubtotal.setText(String.format("S/ %.2f", baseImponible));
+        lblMontoSubtotal.setText(String.format(java.util.Locale.US, "S/ %.2f", baseImponible));
         
         if (montoDescuento > 0) {
-            lblMontoDescuento.setText(String.format("- S/ %.2f", montoDescuento));
+            lblMontoDescuento.setText(String.format(java.util.Locale.US, "- S/ %.2f", montoDescuento));
         } else {
             lblMontoDescuento.setText("S/ 0.00");
         }
         
-        lblMontoIGV.setText(String.format("S/ %.2f", igv));
-        lblTotalPagar.setText(String.format("S/ %.2f", totalAPagar));
+        lblMontoIGV.setText(String.format(java.util.Locale.US, "S/ %.2f", igv));
+        lblTotalPagar.setText(String.format(java.util.Locale.US, "S/ %.2f", totalAPagar));
         
-        // Habilitar o deshabilitar botones
         if (totalAcumulado > 0) {
             btnPagar.setEnabled(true);
             btnPagar.setBackground(AZUL);
@@ -897,8 +902,8 @@ public class Caja_GUI extends JFrame {
         platos_seleccionados.clear(); 
         mapaCarrito.clear(); 
         totalAcumulado = 0.0;
-        reglaDescuentoPorcentaje = 0.0; // Reset
-        reglaDescuentoFijo = 0.0;       // Reset
+        reglaDescuentoPorcentaje = 0.0; 
+        reglaDescuentoFijo = 0.0;       
         
         actualizarTotal();
         
