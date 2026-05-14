@@ -43,7 +43,7 @@ public class Caja_GUI extends JFrame {
     private ArrayList<Plato> obtenerPlatosBD() {
         PlatoDAO plato_dao = new PlatoDAOImpl(conexion);
         return (ArrayList<Plato>) plato_dao.listar();
-    }
+    }//
     
     private JPanel panelCarritoContenedor;
     private JPanel contenedorPrincipal;   
