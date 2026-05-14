@@ -95,6 +95,8 @@ public class PlatoDAOImpl implements PlatoDAO{
         }
     }
     
+    
+    
     @Override
     public void actualizarDisponibilidad(int platoId, int disponible) {
         String sql = "UPDATE platos_menu SET disponible = ? WHERE plato_id = ?";
@@ -155,6 +157,25 @@ public class PlatoDAOImpl implements PlatoDAO{
         }
         return lista;
     }
+    
+    public CategoriaMenu obtenerCategoriaPorId(int id) {
+        String sql = "SELECT * FROM categorias_menu";
+        CategoriaMenu cm = null;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    cm = mapearCategoriaMenu(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return cm;
+    }
+    
     private Plato mapearPlato(ResultSet rs) throws SQLException {
         Plato plato = new Plato();
         plato.setPlatoId(rs.getInt("plato_id"));

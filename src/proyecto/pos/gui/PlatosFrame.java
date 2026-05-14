@@ -856,152 +856,226 @@ public class PlatosFrame extends JFrame {
 
     private void guardarPlato() {
 
+        String nombre      = txtNombrePlato.getText().trim();
+        String catSel      = String.valueOf(cboCategoriaForm.getSelectedItem());
+        String precioStr   = txtPrecio.getText()
+                .replace("S/.", "")
+                .replace("S/", "")
+                .trim();
+
+        String descripcion = txtDescripcionPlato
+                .getText()
+                .trim();
+
+        // =========================
+        // VALIDACIONES
+        // =========================
+        if (nombre.isEmpty()
+                || catSel.equals("Seleccionar Categoría")) {
+
+            mostrarToast("⚠ Completa nombre y categoría");
+            return;
+        }
+
+        float precio = 0f;
+
         try {
 
-            String nombre = txtNombrePlato.getText().trim();
+            precio = Float.parseFloat(precioStr);
 
-            String catSel = String.valueOf(
-                    cboCategoriaForm.getSelectedItem()
-            );
+        } catch (NumberFormatException e) {
 
-            String precioStr = txtPrecio.getText()
-                    .replace("S/.", "")
-                    .replace("S/", "")
-                    .trim();
+            mostrarToast("⚠ Precio inválido");
+            return;
+        }
 
-            String descripcion = txtDescripcionPlato
-                    .getText()
-                    .trim();
+        if (precio <= 0) {
 
-            // =========================
-            // VALIDACIONES
-            // =========================
-            if (nombre.isEmpty()) {
+            mostrarToast("⚠ El precio debe ser mayor a 0");
+            return;
+        }
 
-                mostrarToast("⚠ Ingrese nombre del plato");
-                return;
+        boolean disponible =
+                chkDisponible.isSelected();
+
+        String fecha =
+                new SimpleDateFormat("dd/MM/yyyy")
+                        .format(new Date());
+
+        String idStr =
+                txtIdPlato.getText().trim();
+
+        int idEdicion = -1;
+
+        try {
+
+            idEdicion = Integer.parseInt(idStr);
+
+        } catch (NumberFormatException ignored) {}
+
+        // =========================
+        // BUSCAR CATEGORÍA
+        // =========================
+        CategoriaMenu categoriaSeleccionada = null;
+
+        for (CategoriaMenu c : categorias) {
+
+            if (c.getNombre().equals(catSel)) {
+
+                categoriaSeleccionada = c;
+                break;
             }
+        }
 
-            if (catSel.equals("Seleccionar Categoría")) {
+        if (categoriaSeleccionada == null) {
 
-                mostrarToast("⚠ Seleccione una categoría");
-                return;
-            }
+            mostrarToast("⚠ Categoría inválida");
+            return;
+        }
 
-            float precio;
+        // =========================
+        // ACTUALIZAR
+        // =========================
+        if (idEdicion > 0) {
 
             try {
 
-                precio = Float.parseFloat(precioStr);
+                Plato plato = new Plato();
 
-            } catch (NumberFormatException e) {
-
-                mostrarToast("⚠ Precio inválido");
-                return;
-            }
-
-            if (precio <= 0) {
-
-                mostrarToast("⚠ El precio debe ser mayor a 0");
-                return;
-            }
-
-            boolean disponible = chkDisponible.isSelected();
-
-            // =========================
-            // OBTENER CATEGORÍA
-            // =========================
-            CategoriaMenu categoriaSeleccionada = null;
-
-            for (CategoriaMenu c : categorias) {
-
-                if (c.getNombre().equals(catSel)) {
-
-                    categoriaSeleccionada = c;
-                    break;
-                }
-            }
-
-            if (categoriaSeleccionada == null) {
-
-                mostrarToast("⚠ Categoría inválida");
-                return;
-            }
-
-            // =========================
-            // CREAR PLATO
-            // =========================
-            Plato plato = new Plato();
-
-            plato.setNombre(nombre);
-
-            plato.setPrecio(precio);
-
-            plato.setCategoria(categoriaSeleccionada);
-
-            plato.setDisponible(disponible ? 1 : 0);
-
-            plato.setImagen(null);
-
-            // =========================
-            // VALIDAR SI ES EDICIÓN
-            // =========================
-            String idStr = txtIdPlato.getText().trim();
-
-            int idEdicion = -1;
-
-            try {
-
-                idEdicion = Integer.parseInt(idStr);
-
-            } catch (NumberFormatException ignored) {}
-
-            // =========================
-            // ACTUALIZAR
-            // =========================
-            if (idEdicion > 0) {
-
-                plato_controller.actualizarNombre(
-                        idEdicion,
-                        nombre
-                );
-
-                plato_controller.actualizarPrecio(
-                        idEdicion,
-                        precio
-                );
-
-                plato_controller.actualizarCategoria(
-                        idEdicion,
-                        categoriaSeleccionada
-                );
-
-                plato_controller.actualizarDisponibilidad(
-                        idEdicion,
+                plato.setPlatoId(idEdicion);
+                plato.setNombre(nombre);
+                plato.setPrecio(precio);
+                plato.setCategoria(categoriaSeleccionada);
+                plato.setDisponible(
                         disponible ? 1 : 0
                 );
 
-            } 
+                plato_controller.actualizarDisponibilidad(idEdicion, disponible ? 1: 0);
+                plato_controller.actualizarCategoria(idEdicion, categoriaSeleccionada);
+                plato_controller.actualizarNombre(idEdicion, nombre);
+                plato_controller.actualizarPrecio(idEdicion, precio);
+                // ACTUALIZAR TABLA
+                for (int i = 0;
+                     i < modeloTabla.getRowCount();
+                     i++) {
 
-            // =========================
-            // INSERTAR
-            // =========================
-            else {
+                    int idTabla = Integer.parseInt(
+                            String.valueOf(
+                                    modeloTabla.getValueAt(
+                                            i,
+                                            COL_ID
+                                    )
+                            )
+                    );
 
-                plato_controller.registrarPlato(
-                        nombre,
-                        precio,
-                        categoriaSeleccionada,
-                        disponible ? 1 : 0,
-                        null
+                    if (idTabla == idEdicion) {
+
+                        modeloTabla.setValueAt(
+                                nombre,
+                                i,
+                                COL_NOMBRE
+                        );
+
+                        modeloTabla.setValueAt(
+                                catSel,
+                                i,
+                                COL_CATEGORIA
+                        );
+
+                        modeloTabla.setValueAt(
+                                String.format(
+                                        "S/ %.2f",
+                                        precio
+                                ),
+                                i,
+                                COL_PRECIO
+                        );
+
+                        modeloTabla.setValueAt(
+                                disponible
+                                        ? "ACTIVO"
+                                        : "INACTIVO",
+                                i,
+                                COL_DISPONIBLE
+                        );
+
+                        modeloTabla.setValueAt(
+                                fecha,
+                                i,
+                                COL_ULTIMA_MOD
+                        );
+
+                        break;
+                    }
+                }
+
+                descripcionesPorPlato.put(
+                        idEdicion,
+                        descripcion
                 );
 
-            }
+                aplicarFiltros();
 
-            // =========================
-            // RECARGAR TABLA
-            // =========================
-            cargarDatosDemo();
+                mostrarToast("✔ Plato actualizado");
+
+                limpiarFormulario();
+
+                return;
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+                mostrarToast(
+                        "❌ Error al actualizar"
+                );
+
+                return;
+            }
+        }
+
+        // =========================
+        // INSERTAR NUEVO
+        // =========================
+        try {
+
+            Plato plato = new Plato();
+
+            plato.setNombre(nombre);
+            plato.setPrecio(precio);
+            plato.setCategoria(categoriaSeleccionada);
+            plato.setDisponible(
+                    disponible ? 1 : 0
+            );
+
+            plato_controller.registrarPlato(
+                    nombre,
+                    precio,
+                    categoriaSeleccionada,
+                    disponible ? 1 : 0,
+                    null
+            );
+
+            agregarFila(
+                    nextId,
+                    nombre,
+                    catSel,
+                    precio,
+                    disponible,
+                    fecha,
+                    1
+            );
+
+            descripcionesPorPlato.put(
+                    nextId,
+                    descripcion
+            );
+
+            nextId++;
+
+            aplicarFiltros();
+
+            mostrarToast("✔ Plato agregado");
 
             limpiarFormulario();
 
@@ -1009,9 +1083,13 @@ public class PlatosFrame extends JFrame {
 
             e.printStackTrace();
 
-            mostrarToast("❌ Error: " + e.getMessage());
+            mostrarToast(
+                    "❌ Error al registrar"
+            );
         }
+        cargarDatosDemo();
     }
+    
     private void guardarPlato1() {
         String nombre      = txtNombrePlato.getText().trim();
         String catSel      = String.valueOf(cboCategoriaForm.getSelectedItem());
@@ -1058,79 +1136,78 @@ public class PlatosFrame extends JFrame {
         limpiarFormulario();
     }
 
-    private void cargarEnFormulario(int filaModelo) {
+   private void cargarEnFormulario(int filaModelo) {
 
-    try {
+        try {
 
-        // =========================
-        // OBTENER ID DESDE TABLA
-        // =========================
-        int idPlato = Integer.parseInt(
-                String.valueOf(
-                        modeloTabla.getValueAt(
-                                filaModelo,
-                                COL_ID
-                        )
-                )
-        );
-
-        // =========================
-        // BUSCAR EN BD
-        // =========================
-        Plato plato = platoController
-                .obtenerPlatoPorId(idPlato);
-
-        if (plato == null) {
-
-            mostrarToast("❌ Plato no encontrado");
-            return;
-        }
-
-        // =========================
-        // CARGAR CAMPOS
-        // =========================
-        txtIdPlato.setText(
-                String.valueOf(plato.getPlatoId())
-        );
-
-        txtNombrePlato.setText(
-                plato.getNombre()
-        );
-
-        txtPrecio.setText(
-                String.valueOf(plato.getPrecio())
-        );
-
-        chkDisponible.setSelected(
-                plato.getDisponible() == 1
-        );
-
-        // =========================
-        // CARGAR CATEGORÍA
-        // =========================
-        if (plato.getCategoria() != null) {
-
-            cboCategoriaForm.setSelectedItem(
-                    plato.getCategoria().getNombre()
+            // =========================
+            // OBTENER ID DESDE TABLA
+            // =========================
+            int idPlato = Integer.parseInt(
+                    String.valueOf(
+                            modeloTabla.getValueAt(
+                                    filaModelo,
+                                    COL_ID
+                            )
+                    )
             );
+
+            // =========================
+            // BUSCAR EN BD
+            // =========================
+            Plato plato = plato_controller.obtenerPlatoPorId(idPlato);
+
+            if (plato == null) {
+
+                mostrarToast("❌ Plato no encontrado");
+                return;
+            }
+
+            // =========================
+            // CARGAR CAMPOS
+            // =========================
+            txtIdPlato.setText(
+                    String.valueOf(plato.getPlatoId())
+            );
+
+            txtNombrePlato.setText(
+                    plato.getNombre()
+            );
+
+            txtPrecio.setText(
+                    String.valueOf(plato.getPrecio())
+            );
+
+            chkDisponible.setSelected(
+                    plato.getDisponible() == 1
+            );
+
+            // =========================
+            // CARGAR CATEGORÍA
+            // =========================
+            if (plato.getCategoria() != null) {
+
+                cboCategoriaForm.setSelectedItem(
+                        plato.getCategoria().getNombre()
+                );
+            }
+
+            // =========================
+            // DESCRIPCIÓN
+            // =========================
+            txtDescripcionPlato.setText("");
+
+            // =========================
+            // ACTUALIZAR BADGE
+            // =========================
+            actualizarBadge();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            mostrarToast("❌ Error al cargar plato");
         }
-
-        // =========================
-        // DESCRIPCIÓN
-        // =========================
-        txtDescripcionPlato.setText("");
-
-        // =========================
-        // ACTUALIZAR BADGE
-        // =========================
-        actualizarBadge();
-
-    } catch (Exception e) {
-
-        e.printStackTrace();
-
-        mostrarToast("❌ Error al cargar plato");
-    }
 }
 
     private void limpiarFormulario() {
