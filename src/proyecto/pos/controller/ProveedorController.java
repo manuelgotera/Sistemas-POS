@@ -11,48 +11,72 @@ public class ProveedorController {
     private ProveedorService proveedorService;
 
     public ProveedorController(Connection conexion) {
-        this.proveedorService = new ProveedorService(conexion);
+
+        this.proveedorService =
+                new ProveedorService(conexion);
     }
 
-    // ========================
+    // =========================
     // REGISTRAR
-    // ========================
+    // =========================
     public void registrarProveedor(Proveedor proveedor) {
+
         proveedorService.registrarProveedor(proveedor);
     }
 
-    // ========================
+    // =========================
     // OBTENER POR ID
-    // ========================
-    public Proveedor obtenerPorId(int id) {
+    // =========================
+    public Proveedor obtenerProveedorPorId(int id) {
+
         return proveedorService.obtenerProveedorPorId(id);
     }
 
-    // ========================
+    // =========================
     // OBTENER POR RUC
-    // ========================
-    public Proveedor obtenerPorRuc(String ruc) {
-        return proveedorService.obtenerProveedorPorRuc(ruc);
+    // =========================
+    public Proveedor obtenerProveedorPorRUC(String ruc) {
+
+        return proveedorService.obtenerProveedorPorRUC(ruc);
     }
 
-    // ========================
+    // =========================
     // LISTAR
-    // ========================
+    // =========================
     public List<Proveedor> listarProveedores() {
+
         return proveedorService.listarProveedores();
     }
 
-    // ========================
+    // =========================
     // ACTUALIZAR
-    // ========================
+    // =========================
     public void actualizarProveedor(Proveedor proveedor) {
+
         proveedorService.actualizarProveedor(proveedor);
     }
 
-    // ========================
+    // =========================
     // ELIMINAR
-    // ========================
+    // =========================
     public void eliminarProveedor(int id) {
+
         proveedorService.eliminarProveedor(id);
+    }
+
+    // =========================
+    // ACTIVAR
+    // =========================
+    public void activarProveedor(int id) {
+
+        proveedorService.activarProveedor(id);
+    }
+
+    // =========================
+    // DESACTIVAR
+    // =========================
+    public void desactivarProveedor(int id) {
+
+        proveedorService.desactivarProveedor(id);
     }
 }

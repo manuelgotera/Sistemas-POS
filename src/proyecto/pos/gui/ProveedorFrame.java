@@ -16,15 +16,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
-import proyecto.pos.controller.ProveedorController;
-import java.sql.Connection;
-import proyecto.pos.config.DatabaseConnection;
 
 public class ProveedorFrame extends JFrame {
 
-    
-    private ProveedorController proveedor_controller;
-    private Connection conexion;
     // ── Paleta ────────────────────────────────────────────────────────────────
     static final Color AZUL       = new Color(26, 83, 160);
     static final Color AZUL_HOV   = new Color(18, 65, 128);
@@ -61,6 +55,7 @@ public class ProveedorFrame extends JFrame {
 
     // ── Datos en memoria ──────────────────────────────────────────────────────
     private final List<Proveedor> proveedores = new ArrayList<>();
+    private int nextId = 1;
 
     // ── Componentes ───────────────────────────────────────────────────────────
     private DefaultTableModel                 modelo;
@@ -74,8 +69,6 @@ public class ProveedorFrame extends JFrame {
 
     // ══════════════════════════════════════════════════════════════════════════
     public ProveedorFrame() {
-        DatabaseConnection db = new DatabaseConnection();
-        conexion = db.conectar();
         setTitle("Proveedores Regionales");
         setSize(1280, 740);
         setMinimumSize(new Dimension(1100, 640));
@@ -544,29 +537,29 @@ public class ProveedorFrame extends JFrame {
 
         Proveedor editado = dlg.getProveedor();
 
-        if (!editado.getRuc().equals(original.getRuc())
-                && rucExiste(editado.getRuc(), original.getRuc())) {
+        if (!editado.getRucDni().equals(original.getRucDni())
+                && rucExiste(editado.getRucDni(), original.getId())) {
             JOptionPane.showMessageDialog(this,
                     "Ya existe un proveedor con ese RUC/DNI.",
                     "RUC/DNI duplicado", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (!editado.getNombre_empresa().equalsIgnoreCase(original.getNombre_empresa())
-                && nombreExiste(editado.getNombre_empresa(), original.getProveedorId())) {
+        if (!editado.getNombre().equalsIgnoreCase(original.getNombre())
+                && nombreExiste(editado.getNombre(), original.getId())) {
             JOptionPane.showMessageDialog(this,
                     "Ya existe un proveedor con ese nombre.",
                     "Nombre duplicado", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        editado.setId(original.get);
+        editado.setId(original.getId());
         editado.setCodigo(original.getCodigo());
 
         int idx = indexById(original.getId());
         if (idx >= 0) proveedores.set(idx, editado);
 
-        modelo.setValueAt(editado.getNombre_empresa(),                        fm, COL_NOMBRE);
-        modelo.setValueAt(editado.getRuc(),                        fm, COL_RUCDNI);
+        modelo.setValueAt(editado.getNombre(),                        fm, COL_NOMBRE);
+        modelo.setValueAt(editado.getRucDni(),                        fm, COL_RUCDNI);
         modelo.setValueAt(editado.getTelefono(),                      fm, COL_TELEFONO);
         modelo.setValueAt(editado.getDireccion(),                     fm, COL_DIRECC);
         modelo.setValueAt(editado.getTipoInsumo(),                    fm, COL_TIPO);
@@ -579,7 +572,7 @@ public class ProveedorFrame extends JFrame {
         actualizarAlerta();
 
         JOptionPane.showMessageDialog(this,
-                "Los datos de \"" + editado.getNombre_empresa() + "\" fueron actualizados correctamente.",
+                "Los datos de \"" + editado.getNombre() + "\" fueron actualizados correctamente.",
                 "Actualización exitosa ✓", JOptionPane.INFORMATION_MESSAGE);
         toast("Datos actualizados con éxito ✓");
     }
@@ -593,7 +586,7 @@ public class ProveedorFrame extends JFrame {
                 JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
 
         String codigo = (String) modelo.getValueAt(fm, COL_CODIGO);
-        //proveedores.removeIf(p -> p.getCodigo().equals(codigo));
+        proveedores.removeIf(p -> p.getCodigo().equals(codigo));
         modelo.removeRow(fm);
 
         actualizarStats();

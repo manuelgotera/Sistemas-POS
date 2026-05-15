@@ -116,7 +116,7 @@ public class InsumoService {
 
         if (
             insumo.getProveedor()
-                    .getProveedorId() <= 0
+                    .getId() <= 0
         ) {
 
             throw new IllegalArgumentException(
@@ -311,7 +311,7 @@ public class InsumoService {
             );
         }
 
-        if (proveedor.getProveedorId() <= 0) {
+        if (proveedor.getId() <= 0) {
 
             throw new IllegalArgumentException(
                     "Proveedor inválido"

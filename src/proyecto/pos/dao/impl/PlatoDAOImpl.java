@@ -56,9 +56,9 @@ public class PlatoDAOImpl implements PlatoDAO{
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        for (Plato p : lista){
-            System.out.println(p.toString());
-        }
+//        for (Plato p : lista){
+//            System.out.println(p.toString());
+//        }
         return lista;
     }
 
@@ -172,9 +172,9 @@ public class PlatoDAOImpl implements PlatoDAO{
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        for (CategoriaMenu cm : lista){
-            System.out.println(cm.toString());
-        }
+//        for (CategoriaMenu cm : lista){
+//            System.out.println(cm.toString());
+//        }
         return lista;
     }
     

@@ -27,7 +27,7 @@ public class InsumoDAOImpl implements InsumoDAO {
             ps.setString(1, insumo.getNombre());
             ps.setString(2, insumo.getUnidadMedida());
             ps.setDouble(3, insumo.getStockMinimo());
-            ps.setInt(4, insumo.getProveedor().getProveedorId());
+            ps.setInt(4, insumo.getProveedor().getId());
             ps.setFloat(5, insumo.getCosto());
             ps.setFloat(6, insumo.getCantidad());
 
@@ -52,8 +52,8 @@ public class InsumoDAOImpl implements InsumoDAO {
 
                 // Crear proveedor
                 Proveedor proveedor = new Proveedor();
-                proveedor.setProveedorId(rs.getInt("proveedor_id"));
-                proveedor.setNombre_empresa(rs.getString("nombre_empresa"));
+                proveedor.setId(rs.getInt("proveedor_id"));
+                proveedor.setNombre(rs.getString("nombre_empresa"));
 
                 // Crear insumo
                 Insumo insumo = new Insumo();
@@ -92,8 +92,8 @@ public class InsumoDAOImpl implements InsumoDAO {
             if (rs.next()) {
 
                 Proveedor proveedor = new Proveedor();
-                proveedor.setProveedorId(rs.getInt("proveedor_id"));
-                proveedor.setNombre_empresa(rs.getString("nombre_empresa"));
+                proveedor.setId(rs.getInt("proveedor_id"));
+                proveedor.setNombre(rs.getString("nombre_empresa"));
 
                 insumo = new Insumo();
                 insumo.setInsumoId(rs.getInt("insumo_id"));
@@ -128,7 +128,7 @@ public class InsumoDAOImpl implements InsumoDAO {
 
     @Override
     public void actualizarProveedor(int insumoId, Proveedor proveedor) {
-        int proveedor_id = proveedor.getProveedorId();
+        int proveedor_id = proveedor.getId();
         String sql = "UPDATE insumos SET proveedor_id = ? WHERE insumo_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {

@@ -12,7 +12,7 @@ public class Conexion {
         try {
             // Solo conectamos si no existe una conexión previa
             if (contacto == null || contacto.isClosed()) {
-                contacto = DriverManager.getConnection(url, "ManuGott", "Manuel1828.");
+                contacto = DriverManager.getConnection(url, "GUSTAVO_ALVA", "Gustavo456");
             }
         } catch (SQLException e) {
             System.err.println("Error en clase conexión: " + e.getMessage());
