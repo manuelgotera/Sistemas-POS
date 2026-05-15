@@ -41,8 +41,12 @@ public class PlatoController {
     // ========================
     public Plato obtenerPlatoPorId(int id) {
         return platoService.obtenerPlatoPorId(id);
+        
     }
-
+    
+    public Plato obtenerPlatoPorNombre(String nombre){
+        return platoService.obtenerPlatoPorNombre(nombre);
+    }
     // ========================
     // LISTAR PLATOS
     // ========================

@@ -83,6 +83,26 @@ public class PlatoDAOImpl implements PlatoDAO{
     }
     
     @Override
+    public Plato obtenerPorNombre(String nombre) {
+        String sql = "SELECT p.*, c.* FROM platos_menu p JOIN categorias_menu c "+
+                "ON p.categoria_id = c.categoria_id WHERE nombre_plato = ?";
+        Plato plato = null;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    plato = mapearPlato(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return plato;
+    }
+    
+    @Override
     public void actualizarPrecio(int platoId, float precio) {
         String sql = "UPDATE platos_menu SET precio_venta = ? WHERE plato_id = ?";
 
@@ -197,4 +217,6 @@ public class PlatoDAOImpl implements PlatoDAO{
         cm.setNombre(rs.getString("nombre_categoria"));
         return cm;
     }
+    
+    
 }

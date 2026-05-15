@@ -3,6 +3,7 @@ package proyecto.pos.gui;
 import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import javax.swing.*;
 import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
@@ -496,26 +497,47 @@ public class Caja_GUI extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
         System.out.println(getClass().getResource("/img/PiscoSour.png"));
-        JLabel lblImg = new JLabel(plato.getImagen(), SwingConstants.CENTER);
-        // NUEVO: Se ajusta el área de la imagen en base a los nuevos tamaños de la tarjeta
+        JLabel lblImg = new JLabel("", SwingConstants.CENTER);
+
         lblImg.setPreferredSize(new Dimension(150, 120));
         lblImg.setOpaque(true);
-        lblImg.setBackground(new Color(245, 245, 245)); 
+        lblImg.setBackground(new Color(245, 245, 245));
 
         try {
-            java.net.URL imgURL = getClass().getResource(plato.getImagen());
-            java.net.URL url = getClass().getResource(plato.getImagen());
-            System.out.println(url);
-            if (imgURL != null) {
-                ImageIcon iconOriginal = new ImageIcon(imgURL);
-                // NUEVO: Se ajusta la escala de la imagen para que encaje
-                Image imagenEscalada = iconOriginal.getImage().getScaledInstance(140, 115, Image.SCALE_SMOOTH);
+
+            // plato.getImagen() debe tener la ruta completa
+            // Ejemplo:
+            // C:\Users\Usuario\Downloads\POS_imagenes\pisco.png
+
+            String rutaImagen = plato.getImagen();
+
+            System.out.println(rutaImagen);
+
+            File archivo = new File(rutaImagen);
+
+            if (archivo.exists()) {
+
+                ImageIcon iconOriginal = new ImageIcon(rutaImagen);
+
+                Image imagenEscalada =
+                        iconOriginal.getImage().getScaledInstance(
+                                140,
+                                115,
+                                Image.SCALE_SMOOTH
+                        );
+
                 lblImg.setIcon(new ImageIcon(imagenEscalada));
+
             } else {
+
                 lblImg.setText("No image");
                 lblImg.setForeground(Color.GRAY);
             }
-        } catch (Exception e) {}
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
 
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));

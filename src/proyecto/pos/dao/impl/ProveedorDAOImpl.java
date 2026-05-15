@@ -40,6 +40,19 @@ public class ProveedorDAOImpl implements ProveedorDAO {
             throw new RuntimeException(e);
         }
     }
+    
+    @Override
+    public Proveedor obtenerPorRUC(String ruc) {
+        String sql = "SELECT * FROM proveedores WHERE ruc = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, ruc);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapearProveedor(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     public List<Proveedor> listar() {

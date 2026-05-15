@@ -14,6 +14,7 @@ import proyecto.pos.model.Proveedor;
 public interface ProveedorDAO {
     public void insertar(Proveedor proveedor);
     public Proveedor obtenerPorId(int id);
+    public Proveedor obtenerPorRUC(String ruc);
     public List<Proveedor> listar();
     public void actualizar(Proveedor proveedor);
     public void eliminar(int id);

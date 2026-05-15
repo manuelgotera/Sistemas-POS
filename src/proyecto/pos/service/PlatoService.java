@@ -43,6 +43,16 @@ public class PlatoService {
         return plato;
     }
 
+    
+    public Plato obtenerPlatoPorNombre(String nombre){
+        Plato plato = platoDAO.obtenerPorNombre(nombre);
+
+        if (plato == null) {
+            throw new RuntimeException("Plato no encontrado");
+        }
+
+        return plato;
+    }
     // ========================
     // LISTAR PLATOS
     // ========================
