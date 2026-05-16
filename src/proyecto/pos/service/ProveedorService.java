@@ -78,6 +78,18 @@ public class ProveedorService {
         return proveedorDAO.obtenerPorRUC(ruc);
     }
 
+    
+    public Proveedor obtenerProveedorPorCodigo(String codigo) {
+
+        if (codigo == null || codigo.trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "El codigo no puede estar vacío"
+            );
+        }
+
+        return proveedorDAO.obtenerPorCodigo(codigo);
+    }
     // =========================
     // LISTAR
     // =========================
