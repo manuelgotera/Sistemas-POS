@@ -617,7 +617,7 @@ public class Caja_GUI extends JFrame {
 
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
-        System.out.println(titulo);
+        //System.out.println(titulo);
         
         for (Plato p : platos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -642,7 +642,7 @@ public class Caja_GUI extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
 
-        System.out.println(getClass().getResource("/img/PiscoSour.png"));
+        //System.out.println(getClass().getResource("/img/PiscoSour.png"));
         JLabel lblImg = new JLabel("", SwingConstants.CENTER);
 
         lblImg.setPreferredSize(new Dimension(150, 120));
@@ -657,7 +657,7 @@ public class Caja_GUI extends JFrame {
 
             String rutaImagen = plato.getImagen();
 
-            System.out.println(rutaImagen);
+            //System.out.println(rutaImagen);
 
             File archivo = new File(rutaImagen);
 

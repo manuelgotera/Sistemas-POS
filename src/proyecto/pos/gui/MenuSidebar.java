@@ -33,15 +33,17 @@ public class MenuSidebar extends JPanel {
         add(crearLinea());
         add(Box.createVerticalStrut(34));
 
-        JButton btnCajero    = crearBotonMenu("Cajero",             "/img/carrito.png",       ventanaActiva.equals("Cajero"));
+        JButton btnCajero    = crearBotonMenu("Cajero",             "/img/car.png",       ventanaActiva.equals("Cajero"));
         JButton btnStock     = crearBotonMenu("Artículos y Stock",  "/img/stock.png",         ventanaActiva.equals("Stock"));
-        JButton btnHistorial = crearBotonMenu("Historial de Trans.","/img/Historial.png",     ventanaActiva.equals("Historial"));
+        JButton btnHistorial = crearBotonMenu("Historial de Venta","/img/Historial.png",     ventanaActiva.equals("Historial"));
         JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
-        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/billetera.png",     ventanaActiva.equals("Gastos"));
-        JButton btnClientes  = crearBotonMenu("Clientes",           "/img/clientes.png",      ventanaActiva.equals("Clientes"));
+        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/money.png",     ventanaActiva.equals("Gastos"));
+        JButton btnClientes  = crearBotonMenu("Clientes",           "/img/ClientesIcon.png",      ventanaActiva.equals("Clientes"));
         JButton btnEmpleados = crearBotonMenu("Empleados",          "/img/empleados.png",     ventanaActiva.equals("Empleados"));
         JButton btnConfig    = crearBotonMenu("Configuración",      "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
+        JButton btnPlato    = crearBotonMenu("Add Platos",      "/img/platoIcon.png", ventanaActiva.equals("Platos"));
 
+        
         btnCajero   .addActionListener(e -> navegar(new Caja_GUI()));
         btnStock    .addActionListener(e -> navegar(new ArticulosStockFrame()));
         btnHistorial.addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
@@ -50,9 +52,11 @@ public class MenuSidebar extends JPanel {
         btnClientes .addActionListener(e -> navegar(new ClientesFrame()));
         btnEmpleados.addActionListener(e -> navegar(new EmpleadosFrame()));
         btnConfig   .addActionListener(e -> navegar(new ConfiguracionFrame()));
+        btnPlato   .addActionListener(e -> navegar(new PlatosFrame()));
+        
 
         agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes,
-                    btnGastos, btnClientes, btnEmpleados, btnConfig);
+                    btnGastos, btnClientes, btnEmpleados, btnConfig, btnPlato);
 
         add(Box.createVerticalGlue());
         add(crearLinea());
