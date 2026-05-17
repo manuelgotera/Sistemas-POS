@@ -48,6 +48,7 @@ public class Pago_GUI extends JDialog {
     
     public Pago_GUI(Caja_GUI parent, double total, Cliente cliente, ArrayList<Plato> platos, Mesa mesa, Connection conexion) {
         super(parent, "Pago", true); 
+        this.venta_controller = new VentaController(conexion);
         this.cajaPadre = parent;
         this.platos = platos;
         this.cliente = cliente;
@@ -55,15 +56,15 @@ public class Pago_GUI extends JDialog {
         this.total = total;
         
         if (this.cliente != null) {
+            System.out.println(mesa.getNumero_mesa());
             this.nombreCliente = cliente.getNombre() + " " + cliente.getApellidos() + " ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
         } else {
             this.nombreCliente = "Público General ------- Mesa: " + String.valueOf(mesa.getNumero_mesa());
         }
  
         this.empleado_dao = new EmpleadoDAOImpl(conexion);
-        VentaDAO ventaDAO = new VentaDAOImpl(conexion);
-        VentaService ventaService = new VentaService(ventaDAO);
-        this.venta_controller = new VentaController(ventaService);
+
+        VentaController venta_controller = new VentaController(conexion);
         
         configurarVentana();
         initComponents();
@@ -207,8 +208,9 @@ public class Pago_GUI extends JDialog {
             venta.setEstadoPago(EstadoPago.PAGADO);
 
             venta_controller.registrarVenta(venta);
+            descontar();
             finalizado(mensajeFinal);
-
+            cajaPadre.setTotalAcumulado(0);
         } catch (Exception ex) {
             ex.printStackTrace(); // Imprime el error real en la consola
             JOptionPane.showMessageDialog(this, "Error en Base de Datos: " + ex.getMessage(), "Fallo al Guardar", JOptionPane.ERROR_MESSAGE);
@@ -295,7 +297,12 @@ private ArrayList<VentaDetalle> obtenerVentaDetalle() {
             btnGuardarImprimir.setEnabled(false); btnGuardarSolo.setEnabled(false);
         }
     }
-
+    
+    private void descontar(){
+        for(Plato p : platos){
+            venta_controller.descontarStockPorVenta(p.getPlatoId(),1);
+        }
+    }
     private void finalizado(String mensaje) {
         JOptionPane.showMessageDialog(this, "¡Operación exitosa!\n" + mensaje);
         cajaPadre.vaciarTodo(); 

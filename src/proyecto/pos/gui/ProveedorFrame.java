@@ -41,7 +41,9 @@ public class ProveedorFrame extends JFrame {
     private JLabel lblTotal;
     private JLabel lblActivos;
     private JLabel lblInactivos;
-
+    private int columnaEditando = -1;
+    
+    
     public ProveedorFrame() {
 
         DatabaseConnection db = new DatabaseConnection();
@@ -75,10 +77,16 @@ public class ProveedorFrame extends JFrame {
     }
 
     private void cargarProveedores(){
+        String cumplimiento;
         modelo.setRowCount(0);
         obtenerProveedores();
         for (Proveedor p : proveedores) {
-
+            if(p.getCumplimiento() == 1){
+                cumplimiento = "ACTIVO";
+            }
+            else{
+                cumplimiento = "INACTIVO";
+            }
             modelo.addRow(new Object[]{
                 p.getId(),
                 p.getCodigo(),
@@ -90,7 +98,7 @@ public class ProveedorFrame extends JFrame {
                 p.getTipoInsumo(),
                 p.getRegion(),
                 p.getContacto(),
-                p.getCumplimiento()
+                cumplimiento
             });
         }
 
@@ -376,15 +384,21 @@ public class ProveedorFrame extends JFrame {
                 },
                 0
         ){
-             @Override
+            @Override
             public boolean isCellEditable(int row, int column) {
 
-                // SOLO la fila agregada es editable
+                // FILAS NUEVAS
+                if (modelo.getValueAt(row, 0) == null) {
+                    return true;
+                }
+
+                // EDITAR TODA LA FILA
                 return row == filaEditando;
             }
         };
 
         tabla = new JTable(modelo);
+        tabla.setCellSelectionEnabled(true);
         tabla.getColumnModel().getColumn(0).setMinWidth(0);
         tabla.getColumnModel().getColumn(0).setMaxWidth(0);
         tabla.getColumnModel().getColumn(0).setWidth(0);
@@ -431,10 +445,21 @@ public class ProveedorFrame extends JFrame {
                             "Bebidas",
                             "Lácteos",
                             "Condimentos",
-                            "Mariscos"
+                            "Mariscos",
+                            "Otros"
                         })
                 )
         );
+        
+        TableColumn colCumplimiento = tabla.getColumnModel().getColumn(10);
+        colCumplimiento.setCellEditor
+                (new DefaultCellEditor(
+                        new JComboBox<>(new String[]{
+                            "ACTIVO",
+                            "INACTIVO"
+                        }
+                )
+        ));
         
         for (int i = 0; i < anchos.length; i++) {
 
@@ -444,8 +469,6 @@ public class ProveedorFrame extends JFrame {
         }
 
         // BADGE CUMPLIMIENTO
-        TableColumn colCumplimiento =
-                tabla.getColumnModel().getColumn(7);
 
         colCumplimiento.setCellRenderer(
                 new DefaultTableCellRenderer() {
@@ -479,7 +502,7 @@ public class ProveedorFrame extends JFrame {
 
                 lbl.setOpaque(true);
 
-                if (val.equalsIgnoreCase("ALTO")) {
+                if (val.equalsIgnoreCase("ACTIVO")) {
 
                     lbl.setBackground(VERDE_BG);
                     lbl.setForeground(VERDE_TEXT);
@@ -533,7 +556,7 @@ public class ProveedorFrame extends JFrame {
                 "Carnes",           
                 "",                 
                 "",                 
-                "ALTO"              
+                "ACTIVO"              
             });
 
             filaEditando = modelo.getRowCount() - 1;
@@ -559,7 +582,8 @@ public class ProveedorFrame extends JFrame {
                 new Color(184, 134, 11), // AMARILLO OSCURO
                 Color.WHITE
         );
-
+        btnEditar.addActionListener(e -> activarEdicionFila());
+        
         JButton btnEliminar = crearBotonAccion(
                 "✕ Eliminar",
                 new Color(220, 53, 69), // ROJO
@@ -661,46 +685,50 @@ public class ProveedorFrame extends JFrame {
     
     // ───────────────── GUARDAR PROVEEDORES ─────────────────
 
+    // ───────────────── GUARDAR PROVEEDORES ─────────────────
+
     private void guardar() {
+
+        // TERMINAR EDICIÓN ACTIVA EN LA TABLA
+        if (tabla.isEditing()) {
+            tabla.getCellEditor().stopCellEditing();
+        }
+
+        // ───────── ACTUALIZAR FILA EXISTENTE ─────────
+
+        if (filaEditando != -1
+                && modelo.getValueAt(filaEditando, 0) != null) {
+
+            actualizarProveedor();
+
+            filaEditando = -1;
+
+            modelo.fireTableDataChanged();
+
+            return;
+        }
+
+        // ───────── GUARDAR NUEVOS ─────────
 
         for (int i = 0; i < modelo.getRowCount(); i++) {
 
             Object idObj = modelo.getValueAt(i, 0);
 
-            // SOLO guardar filas nuevas
+            // SOLO FILAS NUEVAS
             if (idObj != null) {
                 continue;
             }
 
-            String codigo =
-                    modelo.getValueAt(i, 1).toString().trim();
-
-            String nombre =
-                    modelo.getValueAt(i, 2).toString().trim();
-
-            String ruc =
-                    modelo.getValueAt(i, 3).toString().trim();
-
-            String telefono =
-                    modelo.getValueAt(i, 4).toString().trim();
-
-            String email =
-                    modelo.getValueAt(i, 5).toString().trim();
-
-            String direccion =
-                    modelo.getValueAt(i, 6).toString().trim();
-
-            String tipoInsumo =
-                    modelo.getValueAt(i, 7).toString().trim();
-
-            String region =
-                    modelo.getValueAt(i, 8).toString().trim();
-
-            String contacto =
-                    modelo.getValueAt(i, 9).toString().trim();
-
-            String cumplimiento =
-                    modelo.getValueAt(i, 10).toString().trim();
+            String codigo       = safeGet(i, 1);
+            String nombre       = safeGet(i, 2);
+            String ruc          = safeGet(i, 3);
+            String telefono     = safeGet(i, 4);
+            String email        = safeGet(i, 5);
+            String direccion    = safeGet(i, 6);
+            String tipoInsumo   = safeGet(i, 7);
+            String region       = safeGet(i, 8);
+            String contacto     = safeGet(i, 9);
+            String cumplimiento = safeGet(i, 10);
 
             // ───────── VALIDACIONES ─────────
 
@@ -723,12 +751,12 @@ public class ProveedorFrame extends JFrame {
             }
 
             // DNI O RUC
-            /*if (!(ruc.matches("\\d{8}") ||
-                  ruc.matches("\\d{11}"))) {
+            if (!(ruc.matches("\\d{8}")
+                    || ruc.matches("\\d{11}"))) {
 
                 err("RUC o DNI inválido", i);
                 return;
-            }*/
+            }
 
             if (telefono.isEmpty()) {
 
@@ -761,6 +789,12 @@ public class ProveedorFrame extends JFrame {
                 return;
             }
 
+            if (tipoInsumo.isEmpty()) {
+
+                err("Tipo de insumo vacío", i);
+                return;
+            }
+
             if (region.isEmpty()) {
 
                 err("Región vacía", i);
@@ -773,8 +807,8 @@ public class ProveedorFrame extends JFrame {
                 return;
             }
 
-            if (!(cumplimiento.equalsIgnoreCase("ALTO")
-                    || cumplimiento.equalsIgnoreCase("BAJO"))) {
+            if (!(cumplimiento.equalsIgnoreCase("ACTIVO")
+                    || cumplimiento.equalsIgnoreCase("INACTIVO"))) {
 
                 err("Cumplimiento inválido", i);
                 return;
@@ -789,31 +823,35 @@ public class ProveedorFrame extends JFrame {
                 return;
             }
 
-            if (proveedor_controller
-                    .obtenerProveedorPorRUC(ruc) != null) {
+            if (proveedor_controller.obtenerProveedorPorRUC(ruc) != null) {
 
                 err("El RUC/DNI ya existe", i);
                 return;
             }
 
-            // ───────── GUARDAR ─────────
-            Proveedor p = new Proveedor();
-            p.setCodigo(codigo);
-            p.setNombre(nombre);
-            p.setRucDni(ruc);
-            p.setTelefono(telefono);
-            p.setEmail(email);
-            p.setDireccion(direccion);
-            p.setTipoInsumo(tipoInsumo);
-            p.setRegion(region);
-            p.setContacto(contacto);
-            if(cumplimiento.equals("ALTO")){
-                p.setCumplimiento(1);
-            }else{p.setCumplimiento(0);}
-            
+            // ───────── REGISTRAR ─────────
+
             try {
 
-                proveedor_controller.registrarProveedor(p);
+                Proveedor p = new Proveedor();
+                    p.setCodigo(codigo);
+                    p.setNombre(nombre);
+                    p.setRucDni(ruc);
+                    p.setTelefono(telefono);
+                    p.setEmail(email);
+                    p.setDireccion(direccion);
+                    p.setTipoInsumo(tipoInsumo);
+                    p.setRegion(region);
+                    p.setContacto(contacto);
+                    if(cumplimiento.equalsIgnoreCase("ACTIVO")){
+                        p.setCumplimiento(1);
+                    }else{
+                        p.setCumplimiento(0);
+                    }
+
+            
+            proveedor_controller.registrarProveedor(p);
+
             } catch (Exception e) {
 
                 err("Error al guardar: " + e.getMessage(), i);
@@ -830,7 +868,6 @@ public class ProveedorFrame extends JFrame {
                 this,
                 "Proveedores guardados correctamente"
         );
-        cargarProveedores();
     }
     
     private void err(String msg, int fila) {
@@ -842,6 +879,32 @@ public class ProveedorFrame extends JFrame {
                 JOptionPane.WARNING_MESSAGE
         );
     }
+    
+    private void activarEdicionFila() {
+
+        int fila = tabla.getSelectedRow();
+
+        if (fila < 0) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Selecciona una fila."
+            );
+
+            return;
+        }
+
+        filaEditando = fila;
+
+        modelo.fireTableDataChanged();
+
+        tabla.setRowSelectionInterval(fila, fila);
+    }
+    
+    // ───────────────── EDITAR CELDA ─────────────────
+
+   
+    
     // ───────────────── MAIN ─────────────────
 
     public static void main(String[] args) {
@@ -850,5 +913,113 @@ public class ProveedorFrame extends JFrame {
 
             new ProveedorFrame().setVisible(true);
         });
+    }
+    
+    // ───────────────── ACTUALIZAR CELDA ─────────────────
+
+    private void actualizarProveedor() {
+
+        try {
+
+            int fila = filaEditando;
+
+            int id = Integer.parseInt(
+                    modelo.getValueAt(fila, 0).toString()
+            );
+
+            String codigo       = safeGet(fila, 1);
+            String nombre       = safeGet(fila, 2);
+            String ruc          = safeGet(fila, 3);
+            String telefono     = safeGet(fila, 4);
+            String email        = safeGet(fila, 5);
+            String direccion    = safeGet(fila, 6);
+            String tipoInsumo   = safeGet(fila, 7);
+            String region       = safeGet(fila, 8);
+            String contacto     = safeGet(fila, 9);
+            String cumplimiento = safeGet(fila, 10);
+
+            // ───────── VALIDACIONES ─────────
+
+            if (codigo.isEmpty()) {
+                err("Código vacío", fila);
+                return;
+            }
+
+            if (nombre.isEmpty()) {
+                err("Nombre vacío", fila);
+                return;
+            }
+
+            if (!(ruc.matches("\\d{8}")
+                    || ruc.matches("\\d{11}"))) {
+
+                err("RUC/DNI inválido", fila);
+                return;
+            }
+
+            if (!telefono.matches("\\d{9}")) {
+
+                err("Teléfono inválido", fila);
+                return;
+            }
+
+            if (!email.matches(
+                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+
+                err("Email inválido", fila);
+                return;
+            }
+
+            if (!(cumplimiento.equalsIgnoreCase("ACTIVO")
+                    || cumplimiento.equalsIgnoreCase("INACTIVO"))) {
+
+                err("Cumplimiento inválido", fila);
+                return;
+            }
+
+            // ───────── ACTUALIZAR ─────────
+
+            Proveedor p = new Proveedor();
+            p.setId(id);
+            p.setCodigo(codigo);
+            p.setNombre(nombre);
+            p.setRucDni(ruc);
+            p.setTelefono(telefono);
+            p.setEmail(email);
+            p.setDireccion(direccion);
+            p.setTipoInsumo(tipoInsumo);
+            p.setRegion(region);
+            p.setContacto(contacto);
+            if(cumplimiento.equalsIgnoreCase("ACTIVO")){
+                p.setCumplimiento(1);
+            }else{
+                p.setCumplimiento(0);
+            }
+            
+            
+            proveedor_controller.actualizarProveedor(p);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Proveedor actualizado correctamente"
+            );
+
+        } catch (Exception e) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Error al actualizar: "
+                            + e.getMessage()
+            );
+        }
+    }
+    
+        private String safeGet(int fila, int columna) {
+
+        Object val = modelo.getValueAt(fila, columna);
+
+        return val == null
+                ? ""
+                : val.toString().trim();
     }
 }
