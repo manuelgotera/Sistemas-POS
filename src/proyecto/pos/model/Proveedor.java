@@ -65,4 +65,20 @@ public class Proveedor {
     public String toString() {
         return nombre + " (" + rucDni + ")";
     }
+
+    public int getProveedorId() {
+        return getId();
+    }
+
+    public void setProveedorId(int proveedorId) {
+        setId(proveedorId);
+    }
+
+    public String getNombre_empresa() {
+        return getNombre();
+    }
+
+    public void setNombre_empresa(String nombreEmpresa) {
+        setNombre(nombreEmpresa);
+    }
 }
