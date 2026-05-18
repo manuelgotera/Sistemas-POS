@@ -53,7 +53,7 @@ public class UsuarioDAOImpl implements UsuarioDAO{
     public Usuario obtenerPorId(int id) {
 
         String sql = """
-            SELECT u.*, e.nombre AS empleado_nombre, r.nombre AS rol_nombre
+            SELECT u.*, e.nombre AS empleado_nombre, r.nombre_rol AS rol_nombre
             FROM usuarios u
             JOIN empleados e ON u.empleado_id = e.empleado_id
             JOIN roles r ON u.rol_id = r.rol_id
@@ -139,7 +139,7 @@ public class UsuarioDAOImpl implements UsuarioDAO{
 
         String sql = """
             UPDATE usuarios
-            SET username = ?, password = ?, estado = ?, empleado_id = ?, rol_id = ?
+            SET username = ?, password_hash = ?, estado = ?, empleado_id = ?, rol_id = ?
             WHERE usuario_id = ?
         """;
 
@@ -180,7 +180,7 @@ public class UsuarioDAOImpl implements UsuarioDAO{
 
         u.setUsuarioId(rs.getInt("usuario_id"));
         u.setUsername(rs.getString("username"));
-        u.setPassword(rs.getString("password"));
+        u.setPassword(rs.getString("password_hash"));
         u.setEstado(rs.getString("estado"));
 
         Empleado e = new Empleado();
