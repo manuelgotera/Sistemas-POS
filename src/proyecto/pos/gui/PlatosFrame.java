@@ -973,6 +973,7 @@ public class PlatosFrame extends JFrame {
         for(Insumo i : insumos){
             cbIngredientes.addItem(i.getNombre());
         }
+        
         JTextField txtIngCantidad = new JTextField();
         JTextField txtIngUnidad   = new JTextField();
         cbIngredientes.setPreferredSize(new Dimension(200, 35));
@@ -1049,7 +1050,7 @@ public class PlatosFrame extends JFrame {
                 Insumo in = new Insumo();
                 in = insumo_controller.obtenerPorId(id_insumo);
                 p.setPlatoId(idPlato);
-                nueva_receta.setCantidad_requerida(Integer.parseInt(modeloReceta.getValueAt(i,2).toString()));
+                nueva_receta.setCantidad_requerida(Float.parseFloat(modeloReceta.getValueAt(i,2).toString()));
                 nueva_receta.setPlato(p);
                 nueva_receta.setInsumo(in);
                 receta_controller.registrarReceta(nueva_receta);

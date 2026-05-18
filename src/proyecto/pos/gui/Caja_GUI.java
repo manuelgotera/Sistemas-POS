@@ -1,4 +1,4 @@
-package proyecto.pos.gui;
+ package proyecto.pos.gui;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
@@ -23,11 +23,13 @@ import java.util.HashMap;
 import java.util.Map;     
 
 import proyecto.pos.config.DatabaseConnection;
-import proyecto.pos.dao.impl.PlatoDAOImpl;
-import proyecto.pos.dao.interfaces.PlatoDAO;
+
 import java.sql.*;
-import proyecto.pos.dao.impl.ClienteDAOImpl;
-import proyecto.pos.dao.interfaces.ClienteDAO;
+import proyecto.pos.controller.ClienteController;
+import proyecto.pos.controller.MesaController;
+import proyecto.pos.controller.PlatoController;
+import proyecto.pos.controller.VentaController;
+
 import proyecto.pos.model.Cliente;
 import proyecto.pos.model.Mesa;
 import proyecto.pos.model.Plato;
@@ -41,12 +43,21 @@ public class Caja_GUI extends JFrame {
     
     private Connection conexion;
     private ArrayList<Plato> platos_seleccionados = new ArrayList<>();
-
+    private ArrayList<Mesa> mesas = new ArrayList<>();
+    
     private Map<String, ItemCarritoUI> mapaCarrito = new HashMap<>();
-
-    private ArrayList<Plato> obtenerPlatosBD() {
-        PlatoDAO plato_dao = new PlatoDAOImpl(conexion);
-        return (ArrayList<Plato>) plato_dao.listar();
+    private ArrayList<Plato> platos_menu;
+    private PlatoController plato_controller;
+    private MesaController mesa_controller;
+    private ClienteController cliente_controller;
+    private VentaController venta_controller;
+    
+    private void obtenerPlatosBD() {
+        platos_menu = (ArrayList<Plato>) plato_controller.listarPlatos();
+    }//
+    
+    private void obtenerMesasBD(){
+        mesas = (ArrayList<Mesa>) mesa_controller.listarMesas();
     }
     
     private JPanel panelCarritoContenedor;
@@ -79,6 +90,14 @@ public class Caja_GUI extends JFrame {
     public Caja_GUI() {
         DatabaseConnection db = new DatabaseConnection();
         this.conexion = db.conectar();
+        this.cliente_controller = new ClienteController(conexion);
+        this.plato_controller = new PlatoController(conexion);
+        this.venta_controller = new VentaController(conexion);
+        this.mesa_controller = new MesaController(conexion);
+        
+        mesas = new ArrayList();
+        platos_menu = new ArrayList();
+        
         configurarVentana();
         initComponents();
         filtrarProductos(); 
@@ -406,9 +425,17 @@ public class Caja_GUI extends JFrame {
             if (totalAcumulado > 0) {
                 if (tipoAtencionActual.equals("MESA")) {
                     String dni = txtCliente.getText().trim();
-                    String mesa = txtMesa.getText().trim();
-
-                    if (mesa.isEmpty()) {
+                    String nro_mesa = txtMesa.getText().trim();
+                    
+                    if (!nro_mesa.isEmpty()) {
+                        System.out.println(mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa)).getNumero_mesa());
+                        if(mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa))== null){
+                            JOptionPane.showMessageDialog(this, "Mesa no encontrada.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
+                            txtMesa.requestFocus();
+                            return;
+                        }
+                    }
+                    else{
                         JOptionPane.showMessageDialog(this, "Debe asignar un número de mesa.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
                         txtMesa.requestFocus();
                         return;
@@ -430,12 +457,12 @@ public class Caja_GUI extends JFrame {
                         }
                     }
                     
+                    Mesa mesa = mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa));
                     double totalFinal = totalAcumulado;
                     if (reglaDescuentoPorcentaje > 0) totalFinal = totalAcumulado - (totalAcumulado * (reglaDescuentoPorcentaje / 100.0));
                     else if (reglaDescuentoFijo > 0) totalFinal = totalAcumulado - reglaDescuentoFijo;
-                    if(totalFinal < 0) totalFinal = 0; 
-
-                    Pago_GUI pago = new Pago_GUI(this, totalFinal, cliente, platos_seleccionados, new Mesa(Integer.parseInt(mesa),0,0,0), conexion);
+                    if(totalFinal < 0) totalFinal = 0;
+                    Pago_GUI pago = new Pago_GUI(this, totalFinal, cliente, platos_seleccionados, mesa, conexion);
                     pago.setVisible(true);
                 } 
                 else if (tipoAtencionActual.equals("LLEVAR")) {
@@ -545,8 +572,7 @@ public class Caja_GUI extends JFrame {
     }
 
     private Cliente buscarClienteDNI(String dni){
-        ClienteDAO cliente_dao = new ClienteDAOImpl(conexion);
-        return cliente_dao.obtenerPorDni(dni);
+        return cliente_controller.obtenerPorDni(dni);
     }
     
     // --- FILTRADO CORREGIDO ---
@@ -554,7 +580,7 @@ public class Caja_GUI extends JFrame {
         String textoBuscado = txtBuscar.getText().toLowerCase().trim();
         contenedorPrincipal.removeAll();
         
-        ArrayList<Plato> todosLosPlatos = obtenerPlatosBD();
+        obtenerPlatosBD();
         
         String[] categoriasIterar;
         if (filtroCategoriaActual.equals("Todos")) {
@@ -568,7 +594,7 @@ public class Caja_GUI extends JFrame {
         for (String catActual : categoriasIterar) {
             ArrayList<Plato> platosDeEstaCategoria = new ArrayList<>();
             
-            for (Plato p : todosLosPlatos) {
+            for (Plato p : platos_menu) {
                 String nombreCatPlato = "";
                 if (p.getCategoria() != null && p.getCategoria().getNombre() != null) {
                     nombreCatPlato = p.getCategoria().getNombre().toLowerCase();
@@ -617,7 +643,7 @@ public class Caja_GUI extends JFrame {
 
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
-        //System.out.println(titulo);
+        System.out.println(titulo);
         
         for (Plato p : platos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -642,7 +668,7 @@ public class Caja_GUI extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
 
-        //System.out.println(getClass().getResource("/img/PiscoSour.png"));
+        System.out.println(getClass().getResource("/img/PiscoSour.png"));
         JLabel lblImg = new JLabel("", SwingConstants.CENTER);
 
         lblImg.setPreferredSize(new Dimension(150, 120));
@@ -657,7 +683,7 @@ public class Caja_GUI extends JFrame {
 
             String rutaImagen = plato.getImagen();
 
-            //System.out.println(rutaImagen);
+            System.out.println(rutaImagen);
 
             File archivo = new File(rutaImagen);
 
@@ -934,6 +960,10 @@ public class Caja_GUI extends JFrame {
         
         panelCarritoContenedor.revalidate();
         panelCarritoContenedor.repaint();
+    }
+
+    public void setTotalAcumulado(double totalAcumulado) {
+        this.totalAcumulado = totalAcumulado;
     }
 
     public static void main(String[] args) {

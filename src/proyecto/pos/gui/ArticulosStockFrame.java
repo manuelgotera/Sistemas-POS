@@ -331,7 +331,7 @@ public class ArticulosStockFrame extends JFrame {
 
     private JScrollPane crearTabla() {
         String[] columnas = {
-                "Código", "Nombre", "Tipo", "Unidad", "Proveedor",
+                "Id", "Nombre", "Tipo", "Unidad", "Proveedor",
                 "Costo", "Precio", "Stock", "Min.", "Merma",
                 "Vencimiento", "Alerta", "Status", "Acciones"
         };

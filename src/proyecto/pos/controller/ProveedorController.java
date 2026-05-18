@@ -79,4 +79,8 @@ public class ProveedorController {
 
         proveedorService.desactivarProveedor(id);
     }
+
+    public Proveedor obtenerProveedorPorCodigo(String codigo) {
+        return proveedorService.obtenerProveedorPorCodigo(codigo);
+    }
 }

@@ -19,6 +19,12 @@ public interface InsumoDAO {
     void actualizarStock(int insumoId, float cantidad);
     void actualizarProveedor(int insumoId, Proveedor proveedor);
     void actualizarCosto(int insumoId, float costo);
+    double obtenerStock(int insumoId);
+
+    void actualizarStock(
+            int insumoId,
+            double nuevoStock
+    );
     void actualizarCompleto(Insumo insumo);
     void eliminar(int insumoId);
 }

@@ -1,6 +1,8 @@
 package proyecto.pos.model;
 
 import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
@@ -108,6 +110,68 @@ public class PDFGenerator {
         } catch (Exception e) {
             e.printStackTrace();
             javax.swing.JOptionPane.showMessageDialog(null, "Error al generar PDF: " + e.getMessage());
+        }
+    }
+    
+    public static void generarReporteMermas(javax.swing.JTable tabla) {
+
+        Document doc = new Document(PageSize.A4.rotate(), 15, 15, 20, 20);
+
+        try {
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+            String nombreArchivo = "Reporte_Mermas_" + timestamp + ".pdf";
+
+            PdfWriter.getInstance(doc, new FileOutputStream(nombreArchivo));
+            doc.open();
+
+            Font fTitulo = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
+            Font fHeader = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
+            Font fCelda = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+
+            Paragraph titulo = new Paragraph("REPORTE DE MERMAS", fTitulo);
+            titulo.setAlignment(Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            doc.add(titulo);
+
+            // 🔥 EXCLUIR ÚLTIMA COLUMNA
+            int numColumnas = tabla.getColumnCount() - 1;
+
+            PdfPTable pdfTable = new PdfPTable(numColumnas);
+            pdfTable.setWidthPercentage(100);
+
+            // ENCABEZADOS (sin última columna)
+            for (int i = 0; i < numColumnas; i++) {
+                PdfPCell cell = new PdfPCell(
+                        new Phrase(tabla.getColumnName(i), fHeader)
+                );
+                cell.setBackgroundColor(new BaseColor(192, 57, 43));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setPadding(5);
+                pdfTable.addCell(cell);
+            }
+
+            // DATOS (sin última columna)
+            for (int i = 0; i < tabla.getRowCount(); i++) {
+                for (int j = 0; j < numColumnas; j++) {
+
+                    Object valor = tabla.getValueAt(i, j);
+                    String texto = (valor != null) ? valor.toString() : "";
+
+                    PdfPCell cell = new PdfPCell(new Phrase(texto, fCelda));
+                    cell.setPadding(4);
+                    pdfTable.addCell(cell);
+                }
+            }
+
+            doc.add(pdfTable);
+            doc.close();
+
+            java.awt.Desktop.getDesktop().open(new java.io.File(nombreArchivo));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            javax.swing.JOptionPane.showMessageDialog(null,
+                    "Error al generar PDF: " + e.getMessage());
         }
     }
     

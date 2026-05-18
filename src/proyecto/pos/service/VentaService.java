@@ -1,225 +1,438 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package proyecto.pos.service;
 
+import java.sql.Connection;
 import java.util.Date;
 import java.util.List;
+
+import proyecto.pos.dao.impl.VentaDAOImpl;
 import proyecto.pos.dao.interfaces.VentaDAO;
+
 import proyecto.pos.model.ComprobantePago;
+import proyecto.pos.model.Receta;
 import proyecto.pos.model.Venta;
 import proyecto.pos.model.VentaDetalle;
 
-/**
- *
- * @author HP
- */
 public class VentaService {
 
     private VentaDAO ventaDAO;
+    private InsumoService insumo_service;
+    private RecetaService receta_service;
+    
+    public VentaService(Connection conexion) {
 
-    public VentaService(VentaDAO ventaDAO) {
-        this.ventaDAO = ventaDAO;
+        this.ventaDAO =
+                new VentaDAOImpl(conexion);
+        this.insumo_service = new InsumoService(conexion);
+        this.receta_service = new RecetaService(conexion);
     }
 
-
+    // =====================================================
+    // REGISTRAR VENTA
+    // =====================================================
     public void registrarVenta(Venta venta) {
 
-        try {
-            validarVenta(venta);
-
-            double subtotal = calcularSubtotal(venta);
-            double igv = subtotal * 0.18;
-            double total = subtotal + igv - venta.getDescuento();
-
-            if (total < 0) {
-                throw new IllegalArgumentException("El total no puede ser negativo");
-            }
-
-            venta.setSubtotal(subtotal);
-            venta.setIgv(igv);
-            venta.setTotal(total);
-
-            ventaDAO.insertar(venta);
-
-        } catch (IllegalArgumentException e) {
-            throw e; // errores de negocio
-        } catch (Exception e) {
-            throw new RuntimeException("Error al registrar la venta", e);
-        }
-    }
-
-    public List<Venta> listarVentas() {
-        try {
-            return ventaDAO.listar();
-        } catch (Exception e) {
-            throw new RuntimeException("Error al listar ventas", e);
-        }
-    }
-
-    public List<Venta> listarVentasPorFecha(Date inicio, Date fin) {
-        try {
-            return ventaDAO.listarPorRangoFecha(inicio, fin);
-        } catch (Exception e) {
-            throw new RuntimeException("Error al listar ventas", e);
-        }
-    }
-    
-    
-    public Venta obtenerVenta(int ventaId) {
-
-        if (ventaId <= 0) {
-            throw new IllegalArgumentException("ID inválido");
-        }
-
-        try {
-            Venta venta = ventaDAO.obtenerPorId(ventaId);
-
-            if (venta == null) {
-                throw new IllegalArgumentException("Venta no encontrada");
-            }
-
-            return venta;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error al acceder a la base de datos", e);
-        }
-    }
-    
-    public void actualizarVenta(Venta venta) {
-
+        // =========================
+        // VALIDAR OBJETO
+        // =========================
         if (venta == null) {
-            throw new IllegalArgumentException("Venta nula");
-        }
 
-        if (venta.getVentaId() <= 0) {
-            throw new IllegalArgumentException("ID inválido");
+            throw new IllegalArgumentException(
+                    "La venta no puede ser null"
+            );
         }
 
         validarVenta(venta);
 
-        try {
-            Venta existente = ventaDAO.obtenerPorId(venta.getVentaId());
+        // =========================
+        // CALCULAR TOTALES
+        // =========================
+        double subtotal =
+                calcularSubtotal(venta);
 
-            if (existente == null) {
-                throw new IllegalArgumentException("La venta no existe");
-            }
+        double igv =
+                subtotal * 0.18;
 
-            double subtotal = calcularSubtotal(venta);
-            double igv = subtotal * 0.18;
-            double total = subtotal + igv - venta.getDescuento();
+        double total =
+                subtotal
+                + igv
+                - venta.getDescuento();
 
-            if (total < 0) {
-                throw new IllegalArgumentException("El total no puede ser negativo");
-            }
+        if (total < 0) {
 
-            venta.setSubtotal(subtotal);
-            venta.setIgv(igv);
-            venta.setTotal(total);
-
-            ventaDAO.actualizar(venta);
-
-        } catch (IllegalArgumentException e) {
-            // errores de negocio → no los envuelvas
-            throw e;
-        } catch (Exception e) {
-            // errores técnicos (BD, conexión, etc.)
-            throw new RuntimeException("Error al actualizar la venta", e);
+            throw new IllegalArgumentException(
+                    "El total no puede ser negativo"
+            );
         }
+
+        venta.setSubtotal(subtotal);
+        venta.setIgv(igv);
+        venta.setTotal(total);
+
+        ventaDAO.insertar(venta);
     }
 
+    // =====================================================
+    // LISTAR VENTAS
+    // =====================================================
+    public List<Venta> listarVentas() {
 
-    public void eliminarVenta(int ventaId) {
-
-        try {
-            if (ventaId <= 0) {
-                throw new IllegalArgumentException("ID inválido");
-            }
-            ventaDAO.eliminar(ventaId);
-        } catch (Exception e) {
-            throw new RuntimeException("Error al eliminar la venta", e);
-        }
+        return ventaDAO.listar();
     }
 
-    private void validarVenta(Venta venta) {
+    // =====================================================
+    // LISTAR POR FECHA
+    // =====================================================
+    public List<Venta> listarVentasPorFecha(
+            Date inicio,
+            Date fin
+    ) {
+
+        if (inicio == null || fin == null) {
+
+            throw new IllegalArgumentException(
+                    "Las fechas no pueden ser null"
+            );
+        }
+
+        return ventaDAO.listarPorRangoFecha(
+                inicio,
+                fin
+        );
+    }
+
+    // =====================================================
+    // OBTENER VENTA
+    // =====================================================
+    public Venta obtenerVenta(int ventaId) {
+
+        if (ventaId <= 0) {
+
+            throw new IllegalArgumentException(
+                    "ID inválido"
+            );
+        }
+
+        Venta venta =
+                ventaDAO.obtenerPorId(
+                        ventaId
+                );
 
         if (venta == null) {
-            throw new IllegalArgumentException("La venta no puede ser nula");
+
+            throw new RuntimeException(
+                    "Venta no encontrada"
+            );
         }
 
+        return venta;
+    }
+
+    // =====================================================
+    // ACTUALIZAR VENTA
+    // =====================================================
+    public void actualizarVenta(Venta venta) {
+
+        // =========================
+        // VALIDAR OBJETO
+        // =========================
+        if (venta == null) {
+
+            throw new IllegalArgumentException(
+                    "La venta no puede ser null"
+            );
+        }
+
+        // =========================
+        // VALIDAR ID
+        // =========================
+        if (venta.getVentaId() <= 0) {
+
+            throw new IllegalArgumentException(
+                    "ID inválido"
+            );
+        }
+
+        // =========================
+        // VALIDAR EXISTENCIA
+        // =========================
+        Venta actual =
+                ventaDAO.obtenerPorId(
+                        venta.getVentaId()
+                );
+
+        if (actual == null) {
+
+            throw new RuntimeException(
+                    "La venta no existe"
+            );
+        }
+
+        validarVenta(venta);
+
+        // =========================
+        // RECALCULAR TOTALES
+        // =========================
+        double subtotal =
+                calcularSubtotal(venta);
+
+        double igv =
+                subtotal * 0.18;
+
+        double total =
+                subtotal
+                + igv
+                - venta.getDescuento();
+
+        if (total < 0) {
+
+            throw new IllegalArgumentException(
+                    "El total no puede ser negativo"
+            );
+        }
+
+        venta.setSubtotal(subtotal);
+        venta.setIgv(igv);
+        venta.setTotal(total);
+
+        ventaDAO.actualizar(venta);
+    }
+
+    // =====================================================
+    // ELIMINAR VENTA
+    // =====================================================
+    public void eliminarVenta(int ventaId) {
+
+        if (ventaId <= 0) {
+
+            throw new IllegalArgumentException(
+                    "ID inválido"
+            );
+        }
+
+        Venta venta =
+                ventaDAO.obtenerPorId(
+                        ventaId
+                );
+
+        if (venta == null) {
+
+            throw new RuntimeException(
+                    "Venta no encontrada"
+            );
+        }
+
+        ventaDAO.eliminar(ventaId);
+    }
+
+    // =====================================================
+    // VALIDAR VENTA
+    // =====================================================
+    private void validarVenta(Venta venta) {
+
+        // =========================
+        // CLIENTE
+        // =========================
         if (venta.getCliente() == null) {
-            throw new IllegalArgumentException("La venta debe tener un cliente");
+
+            throw new IllegalArgumentException(
+                    "La venta debe tener un cliente"
+            );
         }
 
+        // =========================
+        // EMPLEADO
+        // =========================
         if (venta.getEmpleado() == null) {
-            throw new IllegalArgumentException("La venta debe tener un empleado");
+
+            throw new IllegalArgumentException(
+                    "La venta debe tener un empleado"
+            );
         }
 
+        // =========================
+        // FECHA
+        // =========================
         if (venta.getFecha() == null) {
-            throw new IllegalArgumentException("La fecha no puede ser nula");
+
+            venta.setFecha(
+                    new java.util.Date()
+            );
         }
 
+        // =========================
+        // CAJA
+        // =========================
         if (venta.getCaja_id() <= 0) {
-            throw new IllegalArgumentException("Caja inválida");
+
+            throw new IllegalArgumentException(
+                    "Caja inválida"
+            );
         }
 
+        // =========================
+        // MESA
+        // =========================
         if (venta.getMesa() == null) {
-            throw new IllegalArgumentException("Debe asignarse una mesa");
+
+            throw new IllegalArgumentException(
+                    "Debe asignarse una mesa"
+            );
         }
 
+        // =========================
+        // ESTADO DE PAGO
+        // =========================
         if (venta.getEstadoPago() == null) {
-            throw new IllegalArgumentException("Debe tener un estado de pago");
+
+            throw new IllegalArgumentException(
+                    "Debe tener un estado de pago"
+            );
         }
 
-        if (venta.getDetalles() == null || venta.getDetalles().isEmpty()) {
-            throw new IllegalArgumentException("Debe haber al menos un detalle");
-        }
-
+        // =========================
+        // DESCUENTO
+        // =========================
         if (venta.getDescuento() < 0) {
-            throw new IllegalArgumentException("El descuento no puede ser negativo");
+
+            throw new IllegalArgumentException(
+                    "El descuento no puede ser negativo"
+            );
         }
 
-        // 🔍 Validar cada detalle
-        for (VentaDetalle d : venta.getDetalles()) {
+        // =========================
+        // DETALLES
+        // =========================
+        if (
+                venta.getDetalles() == null
+                ||
+                venta.getDetalles().isEmpty()
+        ) {
+
+            throw new IllegalArgumentException(
+                    "Debe haber al menos un detalle"
+            );
+        }
+
+        // =========================
+        // VALIDAR DETALLES
+        // =========================
+        for (
+                VentaDetalle d
+                : venta.getDetalles()
+        ) {
 
             if (d == null) {
-                throw new IllegalArgumentException("Detalle nulo");
-            }
 
-            if (d.getCantidad() <= 0) {
-                throw new IllegalArgumentException("Cantidad inválida en detalle");
-            }
-
-            if (d.getPrecioUnitario() <= 0) {
-                throw new IllegalArgumentException("Precio inválido en detalle");
+                throw new IllegalArgumentException(
+                        "Detalle nulo"
+                );
             }
 
             if (d.getPlato() == null) {
-                throw new IllegalArgumentException("Detalle sin plato");
+
+                throw new IllegalArgumentException(
+                        "Detalle sin plato"
+                );
+            }
+
+            if (d.getCantidad() <= 0) {
+
+                throw new IllegalArgumentException(
+                        "Cantidad inválida"
+                );
+            }
+
+            if (d.getPrecioUnitario() <= 0) {
+
+                throw new IllegalArgumentException(
+                        "Precio inválido"
+                );
             }
         }
 
-        // 🔍 Validar comprobantes (si existen)
+        // =========================
+        // VALIDAR COMPROBANTES
+        // =========================
         if (venta.getComprobantes() != null) {
-            for (ComprobantePago c : venta.getComprobantes()) {
+
+            for (
+                    ComprobantePago c
+                    : venta.getComprobantes()
+            ) {
 
                 if (c == null) {
-                    throw new IllegalArgumentException("Comprobante nulo");
+
+                    throw new IllegalArgumentException(
+                            "Comprobante nulo"
+                    );
                 }
 
-                if (c.getTipo_comprobante() == null) {
-                    throw new IllegalArgumentException("Comprobante sin tipo");
+                if (
+                        c.getTipo_comprobante() == null
+                ) {
+
+                    throw new IllegalArgumentException(
+                            "Comprobante sin tipo"
+                    );
                 }
             }
         }
     }
 
-    private double calcularSubtotal(Venta venta) {
+    // =====================================================
+    // CALCULAR SUBTOTAL
+    // =====================================================
+    private double calcularSubtotal(
+            Venta venta
+    ) {
+
         return venta.getDetalles()
                 .stream()
-                .mapToDouble(d -> d.getCantidad() * d.getPrecioUnitario())
+                .mapToDouble(
+                        d ->
+                                d.getCantidad()
+                                * d.getPrecioUnitario()
+                )
                 .sum();
     }
+    
+    public void descontarStockPorVenta(
+            int platoId,
+            int cantidadVendida
+    ) {
 
+        List<Receta> recetas =
+            receta_service.listarRecetaPorPlato(platoId);
+
+        for (Receta receta : recetas) {
+
+            int insumoId =
+                receta.getInsumo().getInsumoId();
+
+            float cantidadNecesaria =
+                receta.getCantidad_requerida()
+                * cantidadVendida;
+
+            float stockActual =
+                insumo_service.obtenerPorId(insumoId).getCantidad();
+
+            float nuevoStock =
+                stockActual - cantidadNecesaria;
+
+            // VALIDAR STOCK
+            if (nuevoStock < 0) {
+
+                throw new RuntimeException(
+                    "Stock insuficiente para el insumo ID: "
+                    + insumoId
+                );
+            }
+
+            // ACTUALIZAR STOCK
+            insumo_service.actualizarStock(
+                    insumoId,
+                    nuevoStock
+            );
+        }
+    }
 }

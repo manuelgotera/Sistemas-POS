@@ -284,4 +284,36 @@ public class ProveedorDAOImpl implements ProveedorDAO {
 
         return p;
     }
+
+    @Override
+    public Proveedor obtenerPorCodigo(String codigo) {
+        String sql = """
+            SELECT *
+            FROM proveedores
+            WHERE codigo = ?
+        """;
+
+        Proveedor proveedor = null;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setString(1, codigo);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    proveedor = mapearProveedor(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+
+            throw new RuntimeException(
+                    "Error al obtener proveedor por RUC: " + codigo,
+                    e
+            );
+        }
+
+        return proveedor;
+    }
 }

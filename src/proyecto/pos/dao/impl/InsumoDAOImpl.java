@@ -11,7 +11,7 @@ public class InsumoDAOImpl implements InsumoDAO {
 
     private Connection conexion;
 
-    public InsumoDAOImpl(){
+    public InsumoDAOImpl() {
         
     }
     
@@ -49,7 +49,6 @@ public class InsumoDAOImpl implements InsumoDAO {
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-
                 // Crear proveedor
                 Proveedor proveedor = new Proveedor();
                 proveedor.setId(rs.getInt("proveedor_id"));
@@ -85,26 +84,23 @@ public class InsumoDAOImpl implements InsumoDAO {
         Insumo insumo = null;
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            System.out.println("xd");
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Proveedor proveedor = new Proveedor();
+                    proveedor.setId(rs.getInt("proveedor_id"));
+                    proveedor.setNombre(rs.getString("nombre_empresa"));
 
-            if (rs.next()) {
-
-                Proveedor proveedor = new Proveedor();
-                proveedor.setId(rs.getInt("proveedor_id"));
-                proveedor.setNombre(rs.getString("nombre_empresa"));
-
-                insumo = new Insumo();
-                insumo.setInsumoId(rs.getInt("insumo_id"));
-                insumo.setNombre(rs.getString("nombre_insumo"));
-                insumo.setUnidadMedida(rs.getString("unidad_medida"));
-                insumo.setStockMinimo(rs.getDouble("stock_minimo_alerta"));
-                insumo.setCosto(rs.getFloat("costo"));
-                insumo.setCantidad(rs.getFloat("stock"));
-                insumo.setProveedor(proveedor);
+                    insumo = new Insumo();
+                    insumo.setInsumoId(rs.getInt("insumo_id"));
+                    insumo.setNombre(rs.getString("nombre_insumo"));
+                    insumo.setUnidadMedida(rs.getString("unidad_medida"));
+                    insumo.setStockMinimo(rs.getDouble("stock_minimo_alerta"));
+                    insumo.setCosto(rs.getFloat("costo"));
+                    insumo.setCantidad(rs.getFloat("stock"));
+                    insumo.setProveedor(proveedor);
+                }
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -117,7 +113,7 @@ public class InsumoDAOImpl implements InsumoDAO {
         String sql = "UPDATE insumos SET stock = ? WHERE insumo_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setDouble(1, stock);
+            ps.setFloat(1, stock);
             ps.setInt(2, insumoId);
 
             ps.executeUpdate();
@@ -132,14 +128,13 @@ public class InsumoDAOImpl implements InsumoDAO {
         String sql = "UPDATE insumos SET proveedor_id = ? WHERE insumo_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setDouble(1, proveedor_id);
+            ps.setInt(1, proveedor_id); // CORREGIDO: de setDouble a setInt
             ps.setInt(2, insumoId);
 
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
-            
     }
 
     @Override
@@ -147,7 +142,7 @@ public class InsumoDAOImpl implements InsumoDAO {
         String sql = "UPDATE insumos SET costo = ? WHERE insumo_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setDouble(1, costo);
+            ps.setFloat(1, costo);
             ps.setInt(2, insumoId);
 
             ps.executeUpdate();
@@ -156,7 +151,40 @@ public class InsumoDAOImpl implements InsumoDAO {
         }
     }
     
-@Override
+    @Override
+    public double obtenerStock(int insumoId) {
+        String sql = "SELECT stock FROM insumos WHERE insumo_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, insumoId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("stock");
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return 0;
+    }
+    
+    @Override
+    public void actualizarStock(int insumoId, double nuevoStock) {
+        String sql = "UPDATE insumos SET stock = ? WHERE insumo_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setDouble(1, nuevoStock);
+            ps.setInt(2, insumoId);
+
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } // CORREGIDO: Se cerró el catch correctamente
+    } // CORREGIDO: Se cerró el método correctamente
+
+    @Override
     public void actualizarCompleto(Insumo insumo) {
         String sql = "UPDATE insumos SET nombre_insumo=?, unidad_medida=?, stock_minimo_alerta=?, proveedor_id=?, costo=?, stock=? WHERE insumo_id=?";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
