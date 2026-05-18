@@ -49,6 +49,16 @@ public class SistemasUsuarios extends JFrame {
 
         btnRegistrar.addActionListener(e -> registrarUsuario());
         btnLogin.addActionListener(e -> iniciarSesion());
+        
+        JButton btnNuevoUsuario = new JButton("Nuevo Usuario");
+        btnNuevoUsuario.setBounds(50, 225, 280, 35);
+        add(btnNuevoUsuario);
+        
+        btnNuevoUsuario.addActionListener(e -> {
+            txtId.setText("");
+            txtPassword.setText("");
+            txtId.requestFocus();
+        });
     }
 
     private void registrarUsuario() {

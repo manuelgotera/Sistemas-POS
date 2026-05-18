@@ -126,6 +126,8 @@ public class InsumoDAOImpl implements InsumoDAO {
         }
     }
 
+    
+    
     @Override
     public void actualizarProveedor(int insumoId, Proveedor proveedor) {
         int proveedor_id = proveedor.getId();

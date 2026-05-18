@@ -88,5 +88,10 @@ public class Merma {
         this.fecha_registro = fecha_registro;
     }
 
+    @Override
+    public String toString() {
+        return "Merma{" + "mermaId=" + mermaId + ", insumo=" + insumo + ", empleado=" + empleado + ", cantidad=" + cantidad + ", motivo=" + motivo + ", fecha_registro=" + fecha_registro + '}';
+    }
+
     
 }

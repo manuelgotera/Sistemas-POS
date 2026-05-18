@@ -5,6 +5,7 @@
 package proyecto.pos.dao.interfaces;
 
 import java.util.List;
+import proyecto.pos.model.Rol;
 import proyecto.pos.model.Usuario;
 
 /**
@@ -19,8 +20,12 @@ public interface UsuarioDAO {
     Usuario obtenerPorUsername(String username);
 
     List<Usuario> listar();
+    
+    List<Rol> listarRoles();
 
     void actualizar(Usuario usuario);
 
     void eliminar(int id);
+  
+    boolean actualizarPassword(int usuarioId, String nuevaPassword);
 }
