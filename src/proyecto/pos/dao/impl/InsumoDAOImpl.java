@@ -155,4 +155,33 @@ public class InsumoDAOImpl implements InsumoDAO {
             e.printStackTrace();
         }
     }
+    
+@Override
+    public void actualizarCompleto(Insumo insumo) {
+        String sql = "UPDATE insumos SET nombre_insumo=?, unidad_medida=?, stock_minimo_alerta=?, proveedor_id=?, costo=?, stock=? WHERE insumo_id=?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, insumo.getNombre());
+            ps.setString(2, insumo.getUnidadMedida());
+            ps.setDouble(3, insumo.getStockMinimo());
+            ps.setInt(4, insumo.getProveedor().getId());
+            ps.setFloat(5, insumo.getCosto());
+            ps.setFloat(6, insumo.getCantidad());
+            ps.setInt(7, insumo.getInsumoId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void eliminar(int insumoId) {
+        String sql = "DELETE FROM insumos WHERE insumo_id = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, insumoId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
 }

@@ -8,6 +8,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import proyecto.pos.model.EstadoEmpleado;
+import proyecto.pos.model.Insumo;
 import proyecto.pos.model.Rol;
 
 public class EmpleadoDAOImpl implements EmpleadoDAO {
@@ -161,6 +162,16 @@ public class EmpleadoDAOImpl implements EmpleadoDAO {
         e.setRol(rol);
 
         return e;
+    }
+
+    @Override
+    public void actualizarCompleto(Insumo insumo) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public void eliminar(int insumoId) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
         
 }

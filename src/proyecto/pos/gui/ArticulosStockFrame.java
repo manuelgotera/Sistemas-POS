@@ -2,15 +2,25 @@ package proyecto.pos.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.Connection;
 import java.text.*;
 import java.time.*;
 import java.time.temporal.*;
 import java.util.Date;
+import java.util.List;
 import java.util.regex.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
+
+// Importaciones de tu backend
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.dao.interfaces.InsumoDAO;
+import proyecto.pos.dao.impl.InsumoDAOImpl;
+import proyecto.pos.model.Insumo;
+import proyecto.pos.model.Proveedor;
+import proyecto.pos.model.PDFGenerator; // Asegúrate de tener el método generarReporteStock
 
 public class ArticulosStockFrame extends JFrame {
 
@@ -52,13 +62,29 @@ public class ArticulosStockFrame extends JFrame {
     private JLabel lblAlerta;
     private JLabel lblFooter;
 
+    // Componentes de Base de Datos
+    private DatabaseConnection dbConnection;
+    private Connection conexionActiva;
+    private InsumoDAO insumoDAO;
+
     public ArticulosStockFrame() {
+        inicializarBaseDatos();
         configurarVentana();
         construirInterfaz();
-        cargarDatosDemo();
+        cargarDatosDesdeBD(); 
         recalcularAlertas();
         actualizarAlertaStock();
         actualizarFooter();
+    }
+
+    private void inicializarBaseDatos() {
+        dbConnection = new DatabaseConnection();
+        conexionActiva = dbConnection.conectar();
+        if (conexionActiva != null) {
+            insumoDAO = new InsumoDAOImpl(conexionActiva);
+        } else {
+            JOptionPane.showMessageDialog(this, "No se pudo conectar a Oracle XE. Mostrando tabla vacía.", "Error de Conexión", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void configurarVentana() {
@@ -67,6 +93,16 @@ public class ArticulosStockFrame extends JFrame {
         setMinimumSize(new Dimension(1100, 640));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        // Cerrar conexión al cerrar la ventana
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (dbConnection != null && conexionActiva != null) {
+                    dbConnection.desconectar(conexionActiva);
+                }
+            }
+        });
     }
 
     private void construirInterfaz() {
@@ -167,7 +203,7 @@ public class ArticulosStockFrame extends JFrame {
         nombre.setFont(new Font("Segoe UI", Font.BOLD, 10));
         nombre.setForeground(TEXTO);
 
-        JLabel rol = new JLabel("Cajero");
+        JLabel rol = new JLabel("Administrador");
         rol.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         rol.setForeground(TEXTO_SUAVE);
 
@@ -206,12 +242,14 @@ public class ArticulosStockFrame extends JFrame {
         JButton btnExportar = crearBotonSecundario("Exportar PDF", "/img/imprimir.png", 150);
         JButton btnAgregar = crearBotonPrimario("+  Añadir Producto", 170);
 
-        btnExportar.addActionListener(e -> JOptionPane.showMessageDialog(
-                this,
-                "La exportación a PDF todavía no está conectada.",
-                "Exportar PDF",
-                JOptionPane.INFORMATION_MESSAGE
-        ));
+        btnExportar.addActionListener(e -> {
+            try {
+                PDFGenerator.generarReporteStock(tablaProductos);
+                mostrarToast("Reporte PDF generado correctamente");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al generar PDF: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
 
         btnAgregar.addActionListener(e -> abrirDialogoAgregar());
 
@@ -238,7 +276,10 @@ public class ArticulosStockFrame extends JFrame {
                 "Todas las categorías",
                 "Consumo crudo",
                 "Preparado",
-                "Bebida"
+                "Bebida",
+                "Carnes",
+                "Vegetales",
+                "Abarrotes"
         });
         cboCategoria.setPreferredSize(new Dimension(190, 36));
         cboCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -421,18 +462,43 @@ public class ArticulosStockFrame extends JFrame {
         return boton;
     }
 
-    private void cargarDatosDemo() {
-        agregarFila("INS-001", "Pollo", "Consumo crudo", "kg", "Avícola San José", 8.50, 0, 12, 10, 0, fechaEnDias(12), true);
-        agregarFila("INS-002", "Arroz", "Consumo crudo", "kg", "Mayorista Norte", 3.40, 0, 4, 15, 0, fechaEnDias(60), true);
-        agregarFila("INS-003", "Chicha morada", "Preparado", "L", "Producción interna", 2.20, 8.00, 18, 8, 1.5, fechaEnDias(3), true);
-        agregarFila("INS-004", "Inka Kola", "Bebida", "unidad", "Distribuidora Lindley", 3.00, 5.00, 120, 20, 0, fechaEnDias(120), true);
-        agregarFila("INS-005", "Pescado", "Consumo crudo", "kg", "Mercado Modelo", 13.00, 0, 8, 6, 0, fechaEnDias(1), true);
-        agregarFila("INS-006", "Salsa criolla", "Preparado", "kg", "Producción interna", 4.00, 0, 2, 5, 0.5, fechaEnDias(-1), true);
-        agregarFila("INS-007", "Gaseosa personal", "Bebida", "unidad", "Distribuidora Centro", 2.50, 4.50, 30, 20, 0, "", true);
-    }
+    // ==============================================================================
+    // LÓGICA CON DAO
+    // ==============================================================================
 
-    private String fechaEnDias(int dias) {
-        return LocalDate.now().plusDays(dias).toString();
+    private void cargarDatosDesdeBD() {
+        modeloTabla.setRowCount(0); 
+        
+        if (insumoDAO == null) return;
+
+        try {
+            List<Insumo> lista = insumoDAO.listar();
+            
+            for (Insumo ins : lista) {
+                // Adaptamos los datos del backend a la tabla visual. 
+                // Usamos el ID como código para mantener el rastreo visual.
+                String codigoStr = String.valueOf(ins.getInsumoId()); 
+                String proveedorNom = ins.getProveedor() != null ? ins.getProveedor().getNombre() : "N/A";
+                
+                // NOTA: Los campos que no existen en tu BD Oracle se rellenan con valores por defecto
+                agregarFila(
+                    codigoStr, 
+                    ins.getNombre(), 
+                    "Sin Categoría", // Falta en BD
+                    ins.getUnidadMedida(), 
+                    proveedorNom, 
+                    ins.getCosto(), 
+                    0.0, // Precio falta en BD
+                    (int)ins.getCantidad(), 
+                    (int)ins.getStockMinimo(), 
+                    0.0, // Merma falta en BD
+                    "", // Fecha Vencimiento falta en BD
+                    true // Activo falta en BD
+                );
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar datos desde Oracle: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void agregarFila(String codigo, String nombre, String categoria, String unidad,
@@ -450,7 +516,6 @@ public class ArticulosStockFrame extends JFrame {
     }
 
     private void abrirDialogoAgregar() {
-        // Asume que ProductoDialog está implementado en tu proyecto
         Window owner = SwingUtilities.getWindowAncestor(this);
         ProductoDialog dialog = new ProductoDialog(owner);
         dialog.setVisible(true);
@@ -458,18 +523,34 @@ public class ArticulosStockFrame extends JFrame {
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
 
-            if (codigoExiste(data.codigo)) {
-                JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
-                return;
+            if (insumoDAO != null) {
+                try {
+                    Insumo nuevoInsumo = new Insumo();
+                    nuevoInsumo.setNombre(data.nombre);
+                    nuevoInsumo.setUnidadMedida(data.unidadMedida);
+                    nuevoInsumo.setStockMinimo(data.stockMinimo);
+                    nuevoInsumo.setCosto((float)data.costo);
+                    nuevoInsumo.setCantidad((float)data.stock);
+                    
+                    // Simulamos asignar un Proveedor con ID 1 (Deberás crear un combo de proveedores real)
+                    Proveedor prov = new Proveedor();
+                    prov.setId(1); 
+                    prov.setNombre(data.proveedor);
+                    nuevoInsumo.setProveedor(prov);
+                    
+                    insumoDAO.insertar(nuevoInsumo);
+                    
+                    // Recargar tabla completa para obtener el ID real generado por Oracle
+                    cargarDatosDesdeBD();
+                    recalcularAlertas();
+                    actualizarAlertaStock();
+                    aplicarFiltros();
+                    mostrarToast("Producto guardado en Oracle exitosamente");
+                    
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Error al insertar: " + e.getMessage());
+                }
             }
-
-            agregarFila(data.codigo, data.nombre, data.categoria, data.unidadMedida, data.proveedor,
-                    data.costo, data.precio, data.stock, data.stockMinimo, data.merma, data.fechaVencimiento, data.activo);
-
-            recalcularAlertas();
-            actualizarAlertaStock();
-            aplicarFiltros();
-            mostrarToast("Datos agregados con éxito");
         }
     }
 
@@ -482,45 +563,57 @@ public class ArticulosStockFrame extends JFrame {
         if (dialog.isConfirmado()) {
             ProductoDialog.ProductoFormData data = dialog.getProductoData();
 
-            if (!data.codigo.equalsIgnoreCase(actual.codigo) && codigoExiste(data.codigo)) {
-                JOptionPane.showMessageDialog(this, "El código del producto ya existe.", "Código duplicado", JOptionPane.WARNING_MESSAGE);
-                return;
+            if (insumoDAO != null) {
+                try {
+                    Insumo editado = new Insumo();
+                    editado.setInsumoId(Integer.parseInt(data.codigo)); // Usamos el código visual como ID
+                    editado.setNombre(data.nombre);
+                    editado.setUnidadMedida(data.unidadMedida);
+                    editado.setStockMinimo(data.stockMinimo);
+                    editado.setCosto((float)data.costo);
+                    editado.setCantidad((float)data.stock);
+                    
+                    Proveedor prov = new Proveedor();
+                    prov.setId(1); 
+                    prov.setNombre(data.proveedor);
+                    editado.setProveedor(prov);
+
+                    insumoDAO.actualizarCompleto(editado);
+                    
+                    cargarDatosDesdeBD();
+                    recalcularAlertas();
+                    actualizarAlertaStock();
+                    aplicarFiltros();
+                    mostrarToast("Datos actualizados en BD exitosamente");
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Error al actualizar: " + e.getMessage());
+                }
             }
-
-            modeloTabla.setValueAt(data.codigo, filaModelo, COL_CODIGO);
-            modeloTabla.setValueAt(data.nombre, filaModelo, COL_NOMBRE);
-            modeloTabla.setValueAt(data.categoria, filaModelo, COL_CATEGORIA);
-            modeloTabla.setValueAt(data.unidadMedida, filaModelo, COL_UNIDAD);
-            modeloTabla.setValueAt(data.proveedor, filaModelo, COL_PROVEEDOR);
-            modeloTabla.setValueAt(formatoMoneda(data.costo), filaModelo, COL_COSTO);
-            modeloTabla.setValueAt(formatoMoneda(data.precio), filaModelo, COL_PRECIO);
-            modeloTabla.setValueAt(data.stock, filaModelo, COL_STOCK);
-            modeloTabla.setValueAt(data.stockMinimo, filaModelo, COL_STOCK_MIN);
-            modeloTabla.setValueAt(data.merma, filaModelo, COL_MERMA);
-            modeloTabla.setValueAt(data.fechaVencimiento == null || data.fechaVencimiento.trim().isEmpty()
-                    ? "Sin fecha" : data.fechaVencimiento, filaModelo, COL_VENCIMIENTO);
-            modeloTabla.setValueAt(data.activo ? "activo" : "inactivo", filaModelo, COL_STATUS);
-
-            recalcularAlertas();
-            actualizarAlertaStock();
-            aplicarFiltros();
-            mostrarToast("Datos actualizados con éxito");
         }
     }
 
     private void eliminarProducto(int filaModelo) {
         String nombre = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_NOMBRE));
+        int insumoId = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_CODIGO))); 
+
         int opcion = JOptionPane.showConfirmDialog(
-                this, "¿Desea eliminar \"" + nombre + "\"?",
+                this, "¿Desea eliminar de la base de datos el insumo \"" + nombre + "\"?",
                 "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
         );
 
         if (opcion == JOptionPane.YES_OPTION) {
-            modeloTabla.removeRow(filaModelo);
-            recalcularAlertas();
-            actualizarAlertaStock();
-            aplicarFiltros();
-            mostrarToast("Producto eliminado correctamente");
+            if (insumoDAO != null) {
+                try {
+                    insumoDAO.eliminar(insumoId);
+                    modeloTabla.removeRow(filaModelo);
+                    recalcularAlertas();
+                    actualizarAlertaStock();
+                    aplicarFiltros();
+                    mostrarToast("Producto eliminado de Oracle");
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Error al eliminar: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -547,14 +640,7 @@ public class ArticulosStockFrame extends JFrame {
         );
     }
 
-    private boolean codigoExiste(String codigo) {
-        for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-            if (String.valueOf(modeloTabla.getValueAt(i, COL_CODIGO)).equalsIgnoreCase(codigo)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // ==============================================================================
 
     private void aplicarFiltros() {
         if (sorter == null || txtBuscar == null || cboCategoria == null) return;
@@ -678,8 +764,7 @@ public class ArticulosStockFrame extends JFrame {
             return label;
         }
     }
-
-    private static class StockRenderer extends DefaultTableCellRenderer {
+private static class StockRenderer extends DefaultTableCellRenderer {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int stock = Integer.parseInt(String.valueOf(value));

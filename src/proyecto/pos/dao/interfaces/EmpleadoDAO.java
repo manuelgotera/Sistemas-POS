@@ -7,6 +7,7 @@ package proyecto.pos.dao.interfaces;
 
 import java.util.List;
 import proyecto.pos.model.Empleado;
+import proyecto.pos.model.Insumo;
 
 /**
  *
@@ -18,4 +19,6 @@ public interface EmpleadoDAO {
     Empleado obtenerPorDni(String dni);
     List<Empleado> listar();
     void actualizar(Empleado empleado);
+    void actualizarCompleto(Insumo insumo);
+    void eliminar(int insumoId);
 }

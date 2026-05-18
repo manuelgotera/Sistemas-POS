@@ -1,4 +1,4 @@
-package proyecto.pos.model;
+    package proyecto.pos.model;
 
 /**
  * DTO simple para mostrar el detalle de productos de una venta en el historial.

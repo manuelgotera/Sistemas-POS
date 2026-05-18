@@ -630,6 +630,76 @@ public class ClientesFrame extends JFrame {
         tabla.getTableHeader().repaint();
         modelo.fireTableDataChanged();
     }
+    
+    
+    
+        private boolean validarDatosCliente(String tipo, String documento, String telefono) {
+        // 1. Validar Teléfono (9 dígitos numéricos)
+        if (!telefono.matches("\\d{9}")) {
+            mostrarError("El teléfono debe tener exactamente 9 dígitos.");
+            return false;
+        }
+
+        // 2. Validar Identificación según el Tipo
+        if ("REGULAR".equals(tipo)) {
+            if (!documento.matches("\\d{8}")) {
+                mostrarError("El DNI para personas naturales debe tener 8 dígitos.");
+                return false;
+            }
+        } else if ("EMPRESA".equals(tipo)) {
+            if (!documento.matches("\\d{11}")) {
+                mostrarError("El RUC para empresas debe tener 11 dígitos.");
+                return false;
+            }
+            // Opcional: Validar inicio de RUC (10, 20, 15, 17)
+            if (!documento.startsWith("10") && !documento.startsWith("20")) {
+                 mostrarError("El RUC debe comenzar con 10 o 20.");
+                 return false;
+            }
+        }
+        return true;
+    }
+
+    private void mostrarError(String msj) {
+        JOptionPane.showMessageDialog(this, msj, "Error de Validación", JOptionPane.WARNING_MESSAGE);
+    }
+    private void actualizarCabeceraTabla(String tipoSeleccionado) {
+    // El índice 3 corresponde a la columna RUC/DNI según tu imagen
+    int columnaIdentificador = 3; 
+    String nuevoTitulo = "REGULAR".equals(tipoSeleccionado) ? "DNI" : "RUC";
+    
+    tabla.getColumnModel().getColumn(columnaIdentificador).setHeaderValue(nuevoTitulo);
+    
+    // Forzar el repintado de la cabecera
+    tabla.getTableHeader().repaint();
+}
+    
+    private void configurarRestricciones() {
+        JTextField txtTelefono = null;
+    // Aplicar a Teléfono (Máximo 9)
+    aplicarFiltroNumerico(txtTelefono, 9);
+        JTextField txtDocumento = null;
+    
+    // Aplicar a DNI/RUC (Máximo 11)
+    aplicarFiltroNumerico(txtDocumento, 11);
+}
+
+private void aplicarFiltroNumerico(JTextField campo, int limite) {
+    ((javax.swing.text.AbstractDocument) campo.getDocument()).setDocumentFilter(new javax.swing.text.DocumentFilter() {
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attrs) 
+                throws javax.swing.text.BadLocationException {
+            String actual = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String futuro = actual.substring(0, offset) + text + actual.substring(offset + length);
+            
+            // Solo permite números y respeta el límite de longitud
+            if (futuro.matches("\\d*") && futuro.length() <= limite) {
+                super.replace(fb, offset, length, text, attrs);
+            }
+        }
+    });
+}
+    
 
     private void guardar() {
 
