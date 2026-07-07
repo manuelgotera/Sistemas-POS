@@ -212,7 +212,7 @@ public class Pago_GUI extends JDialog {
             finalizado(mensajeFinal);
             cajaPadre.setTotalAcumulado(0);
         } catch (Exception ex) {
-            ex.printStackTrace(); // Imprime el error real en la consola
+            ex.printStackTrace(); 
             JOptionPane.showMessageDialog(this, "Error en Base de Datos: " + ex.getMessage(), "Fallo al Guardar", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -240,20 +240,23 @@ public class Pago_GUI extends JDialog {
         return comprobantes;
     }
     
-private ArrayList<VentaDetalle> obtenerVentaDetalle() {
+    // --- LÓGICA DE DETALLES CORREGIDA ---
+    private ArrayList<VentaDetalle> obtenerVentaDetalle() {
         ArrayList<VentaDetalle> venta_detalle = new ArrayList<>();
-        // Ahora agrupamos por el ID del plato (Integer) para que sea exacto y no por memoria
         Map<Integer, VentaDetalle> agrupacion = new HashMap<>();
 
         for (Plato p : platos) {
+            // EL TRUCO: Extraemos el IGV del precio unitario antes de enviarlo a VentaDetalle
+            // Para que tu base de datos no lo cobre doble al momento de guardar
+            double precioBaseSinIgv = p.getPrecio() / 1.18;
+
             if (agrupacion.containsKey(p.getPlatoId())) {
-                // Si el plato ya está, le sumamos 1 a la cantidad y actualizamos su subtotal
                 VentaDetalle det = agrupacion.get(p.getPlatoId());
                 det.setCantidad(det.getCantidad() + 1);
-                det.setSubtotal(det.getCantidad() * det.getPrecioUnitario());
+                det.setSubtotal(det.getCantidad() * det.getPrecioUnitario()); 
             } else {
-                // Si es la primera vez que entra, lo creamos con cantidad 1
-                VentaDetalle det = new VentaDetalle(p, 1, p.getPrecio(), p.getPrecio(), "");
+                // Se envía precioBaseSinIgv en lugar de p.getPrecio()
+                VentaDetalle det = new VentaDetalle(p, 1, precioBaseSinIgv, precioBaseSinIgv, "");
                 agrupacion.put(p.getPlatoId(), det);
             }
         }
@@ -303,6 +306,7 @@ private ArrayList<VentaDetalle> obtenerVentaDetalle() {
             venta_controller.descontarStockPorVenta(p.getPlatoId(),1);
         }
     }
+    
     private void finalizado(String mensaje) {
         JOptionPane.showMessageDialog(this, "¡Operación exitosa!\n" + mensaje);
         cajaPadre.vaciarTodo(); 

@@ -338,8 +338,7 @@ public class VentaDAOImpl implements VentaDAO {
                 v.setIgv(rs.getDouble("igv"));
                 v.setTotal(rs.getDouble("total"));
                 v.setCaja_id(rs.getInt("caja_id"));
-                v.setEstadoPago(EstadoPago.valueOf(rs.getString("estado_pago")));
-
+                v.setEstadoPago(EstadoPago.valueOf(rs.getString("estado_pago").trim().toUpperCase()));
                 Cliente c = new Cliente();
                 c.setNombre(rs.getString("cliente_nombre"));
                 v.setCliente(c);
@@ -398,8 +397,7 @@ public class VentaDAOImpl implements VentaDAO {
                     v.setIgv(rs.getDouble("igv"));
                     v.setTotal(rs.getDouble("total"));
                     v.setCaja_id(rs.getInt("caja_id"));
-                    v.setEstadoPago(EstadoPago.valueOf(rs.getString("estado_pago")));
-
+                    v.setEstadoPago(EstadoPago.valueOf(rs.getString("estado_pago").trim().toUpperCase()));
                     Cliente c = new Cliente();
                     c.setNombre(rs.getString("cliente_nombre"));
                     v.setCliente(c);
@@ -582,7 +580,7 @@ public class VentaDAOImpl implements VentaDAO {
         venta.setSubtotal(rs.getDouble("venta_subtotal"));
         venta.setDescuento(rs.getDouble("venta_descuento"));
         venta.setTotal(rs.getDouble("venta_total"));
-        venta.setEstadoPago(EstadoPago.valueOf(rs.getString("venta_estado_pago")));
+        venta.setEstadoPago(EstadoPago.valueOf(rs.getString("venta_estado_pago").trim().toUpperCase()));       
         venta.setCaja_id(rs.getInt("caja_id"));
         venta.setDetalles(new ArrayList<>());
 

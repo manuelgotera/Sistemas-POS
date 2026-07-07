@@ -49,7 +49,7 @@ public class ProveedorFrame extends JFrame {
         DatabaseConnection db = new DatabaseConnection();
         this.conexion = db.conectar();
         this.proveedor_controller = new ProveedorController(conexion);
-        this.proveedores = new ArrayList();
+        this.proveedores = new ArrayList<>();
         setTitle("Proveedores Regionales");
         setSize(1280, 720);
         setMinimumSize(new Dimension(1100, 650));
@@ -70,7 +70,6 @@ public class ProveedorFrame extends JFrame {
         setContentPane(root);
 
         // SI QUIERES EL SIDEBAR
-        // root.add(new MenuSidebar(this, "Proveedores"), BorderLayout.WEST);
         root.add(new MenuSidebar(this, "Proveedores"), BorderLayout.WEST);
 
         root.add(crearContenido(), BorderLayout.CENTER);
@@ -102,7 +101,31 @@ public class ProveedorFrame extends JFrame {
             });
         }
 
-        //actualizarCards();
+        actualizarCards(); // LÍNEA DESCOMENTADA Y ACTIVA
+    }
+
+    // ───────────────── MÉTODO NUEVO PARA LAS TARJETAS ─────────────────
+    private void actualizarCards() {
+        int total = 0;
+        int activos = 0;
+        int inactivos = 0;
+
+        // Recorremos la lista de proveedores que ya obtuvimos de la BD
+        if (proveedores != null) {
+            total = proveedores.size();
+            for (Proveedor p : proveedores) {
+                if (p.getCumplimiento() == 1) {
+                    activos++;
+                } else {
+                    inactivos++;
+                }
+            }
+        }
+
+        // Actualizamos los JLabels de las tarjetas
+        if (lblTotal != null) lblTotal.setText(String.valueOf(total));
+        if (lblActivos != null) lblActivos.setText(String.valueOf(activos));
+        if (lblInactivos != null) lblInactivos.setText(String.valueOf(inactivos));
     }
     
     // ───────────────── CONTENIDO ─────────────────
@@ -437,20 +460,21 @@ public class ProveedorFrame extends JFrame {
         TableColumn colTipo =
         tabla.getColumnModel().getColumn(7);
 
+        // Cambia esto alrededor de la línea 400
         colTipo.setCellEditor(
-                new DefaultCellEditor(
-                        new JComboBox<>(new String[]{
-                            "Carnes",
-                            "Verduras",
-                            "Bebidas",
-                            "Lácteos",
-                            "Condimentos",
-                            "Mariscos",
-                            "Otros"
-                        })
-                )
+            new DefaultCellEditor(
+                new JComboBox<>(new String[]{
+                    "Carnes y Aves", 
+                    "Vegetales y Frutas",
+                    "Bebidas", 
+                    "Lácteos",
+                    "Pescados y Mariscos",
+                    "Abarrotes Secos",
+                    "Otros"
+                })
+            )
         );
-        
+
         TableColumn colCumplimiento = tabla.getColumnModel().getColumn(10);
         colCumplimiento.setCellEditor
                 (new DefaultCellEditor(
@@ -547,6 +571,7 @@ public class ProveedorFrame extends JFrame {
 
             modelo.addRow(new Object[]{
                 null,               
+                "",                 
                 "",                 
                 "",                 
                 "",                 
@@ -685,9 +710,7 @@ public class ProveedorFrame extends JFrame {
     
     // ───────────────── GUARDAR PROVEEDORES ─────────────────
 
-    // ───────────────── GUARDAR PROVEEDORES ─────────────────
-
-    private void guardar() {
+private void guardar() {
 
         // TERMINAR EDICIÓN ACTIVA EN LA TABLA
         if (tabla.isEditing()) {
@@ -695,21 +718,15 @@ public class ProveedorFrame extends JFrame {
         }
 
         // ───────── ACTUALIZAR FILA EXISTENTE ─────────
-
-        if (filaEditando != -1
-                && modelo.getValueAt(filaEditando, 0) != null) {
-
+        if (filaEditando != -1 && modelo.getValueAt(filaEditando, 0) != null) {
             actualizarProveedor();
-
             filaEditando = -1;
-
             modelo.fireTableDataChanged();
-
+            cargarProveedores(); 
             return;
         }
 
         // ───────── GUARDAR NUEVOS ─────────
-
         for (int i = 0; i < modelo.getRowCount(); i++) {
 
             Object idObj = modelo.getValueAt(i, 0);
@@ -730,144 +747,93 @@ public class ProveedorFrame extends JFrame {
             String contacto     = safeGet(i, 9);
             String cumplimiento = safeGet(i, 10);
 
-            // ───────── VALIDACIONES ─────────
-
-            if (codigo.isEmpty()) {
-
-                err("Código vacío", i);
+            // ───────── VALIDACIONES MEJORADAS ─────────
+            if (codigo.isEmpty()) { err("Código vacío", i); return; }
+            if (nombre.isEmpty()) { err("Nombre / Razón Social vacío", i); return; }
+            if (ruc.isEmpty()) { err("RUC / DNI vacío", i); return; }
+            
+            // Validar longitud de RUC/DNI
+            if (!(ruc.matches("\\d{8}") || ruc.matches("\\d{11}"))) {
+                err("El RUC o DNI debe tener 8 u 11 dígitos", i);
+                return;
+            }
+            
+            // Validar prefijo de RUC peruano
+            if (ruc.length() == 11 && !(ruc.startsWith("10") || ruc.startsWith("20"))) {
+                err("El RUC debe empezar con 10 o 20", i);
                 return;
             }
 
-            if (nombre.isEmpty()) {
-
-                err("Nombre / Razón Social vacío", i);
+            if (telefono.isEmpty()) { err("Teléfono vacío", i); return; }
+            if (!telefono.matches("\\d{9}")) { err("Teléfono debe tener 9 dígitos", i); return; }
+            
+            // Validar formato de email más estricto
+            if (email.isEmpty()) { err("Email vacío", i); return; }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$")) {
+                err("Email inválido (Falta el .com, .pe, etc.)", i);
                 return;
             }
 
-            if (ruc.isEmpty()) {
-
-                err("RUC / DNI vacío", i);
-                return;
-            }
-
-            // DNI O RUC
-            if (!(ruc.matches("\\d{8}")
-                    || ruc.matches("\\d{11}"))) {
-
-                err("RUC o DNI inválido", i);
-                return;
-            }
-
-            if (telefono.isEmpty()) {
-
-                err("Teléfono vacío", i);
-                return;
-            }
-
-            if (!telefono.matches("\\d{9}")) {
-
-                err("Teléfono inválido", i);
-                return;
-            }
-
-            if (email.isEmpty()) {
-
-                err("Email vacío", i);
-                return;
-            }
-
-            if (!email.matches(
-                    "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-
-                err("Email inválido", i);
-                return;
-            }
-
-            if (direccion.isEmpty()) {
-
-                err("Dirección vacía", i);
-                return;
-            }
-
-            if (tipoInsumo.isEmpty()) {
-
-                err("Tipo de insumo vacío", i);
-                return;
-            }
-
-            if (region.isEmpty()) {
-
-                err("Región vacía", i);
-                return;
-            }
-
-            if (contacto.isEmpty()) {
-
-                err("Contacto vacío", i);
-                return;
-            }
-
-            if (!(cumplimiento.equalsIgnoreCase("ACTIVO")
-                    || cumplimiento.equalsIgnoreCase("INACTIVO"))) {
-
+            if (direccion.isEmpty()) { err("Dirección vacía", i); return; }
+            if (tipoInsumo.isEmpty()) { err("Tipo de insumo vacío", i); return; }
+            if (region.isEmpty()) { err("Región vacía", i); return; }
+            if (contacto.isEmpty()) { err("Contacto vacío", i); return; }
+            if (!(cumplimiento.equalsIgnoreCase("ACTIVO") || cumplimiento.equalsIgnoreCase("INACTIVO"))) {
                 err("Cumplimiento inválido", i);
                 return;
             }
 
             // ───────── VALIDAR DUPLICADOS ─────────
-
-            if (proveedor_controller
-                    .obtenerProveedorPorCodigo(codigo) != null) {
-
-                err("El código ya existe", i);
+            if (proveedor_controller.obtenerProveedorPorCodigo(codigo) != null) {
+                err("El código ya existe en la base de datos", i);
                 return;
             }
 
             if (proveedor_controller.obtenerProveedorPorRUC(ruc) != null) {
-
-                err("El RUC/DNI ya existe", i);
+                err("El RUC/DNI ya está registrado", i);
                 return;
             }
 
             // ───────── REGISTRAR ─────────
-
             try {
-
                 Proveedor p = new Proveedor();
-                    p.setCodigo(codigo);
-                    p.setNombre(nombre);
-                    p.setRucDni(ruc);
-                    p.setTelefono(telefono);
-                    p.setEmail(email);
-                    p.setDireccion(direccion);
-                    p.setTipoInsumo(tipoInsumo);
-                    p.setRegion(region);
-                    p.setContacto(contacto);
-                    if(cumplimiento.equalsIgnoreCase("ACTIVO")){
-                        p.setCumplimiento(1);
-                    }else{
-                        p.setCumplimiento(0);
-                    }
+                p.setCodigo(codigo);
+                p.setNombre(nombre);
+                p.setRucDni(ruc);
+                p.setTelefono(telefono);
+                p.setEmail(email);
+                p.setDireccion(direccion);
+                p.setTipoInsumo(tipoInsumo);
+                p.setRegion(region);
+                p.setContacto(contacto);
+                
+                if(cumplimiento.equalsIgnoreCase("ACTIVO")){
+                    p.setCumplimiento(1);
+                } else {
+                    p.setCumplimiento(0);
+                }
 
-            
-            proveedor_controller.registrarProveedor(p);
+                proveedor_controller.registrarProveedor(p);
 
             } catch (Exception e) {
-
-                err("Error al guardar: " + e.getMessage(), i);
-
+                // 🔥 AQUÍ ESTÁ LA MAGIA: Extraemos el error real de Oracle (ORA-XXXX)
+                String causaReal = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
+                
+                JOptionPane.showMessageDialog(this, 
+                    "Error de Base de Datos en fila " + (i + 1) + ":\n" + causaReal,
+                    "Error SQL", 
+                    JOptionPane.ERROR_MESSAGE);
+                
+                e.printStackTrace(); // Esto lo imprimirá en rojo en la consola de NetBeans
                 return;
             }
         }
 
         filaEditando = -1;
-
         modelo.fireTableDataChanged();
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Proveedores guardados correctamente"
-        );
+        
+        JOptionPane.showMessageDialog(this, "Proveedores guardados correctamente");
+        cargarProveedores();
     }
     
     private void err(String msg, int fila) {

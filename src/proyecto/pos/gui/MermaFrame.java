@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import proyecto.pos.config.DatabaseConnection;
 import proyecto.pos.controller.EmpleadoController;
@@ -55,7 +54,6 @@ public class MermaFrame extends JFrame {
     private ArrayList<Merma>    mermas    = new ArrayList<>();
     private ArrayList<Insumo>   insumos   = new ArrayList<>();
     private ArrayList<Empleado> empleados = new ArrayList<>();
-    //private int nextId = 60;
 
     // ── Componentes ──────────────────────────────────────────────────────────
     private DefaultTableModel                 modelo;
@@ -118,7 +116,7 @@ public class MermaFrame extends JFrame {
     }
 
     private void setPersonaFields(Empleado emp, int id, String nombre,
-                                   String apellidos, String dni, String tel, String email) {
+                                  String apellidos, String dni, String tel, String email) {
         try {
             Class<?> p = emp.getClass().getSuperclass();
             sf(p, emp, "id", id); sf(p, emp, "nombre", nombre);
@@ -472,121 +470,118 @@ public class MermaFrame extends JFrame {
     // ═════════════════════════════════════════════════════════════════════════
     //  DIÁLOGO AGREGAR / EDITAR
     // ═════════════════════════════════════════════════════════════════════════
-   // ═════════════════════════════════════════════════════════════════════════
-//  DIÁLOGO AGREGAR / EDITAR
-// ═════════════════════════════════════════════════════════════════════════
-private void abrirDialogo(Integer fm) {
-    boolean esNuevo = (fm == null);
+    private void abrirDialogo(Integer fm) {
+        boolean esNuevo = (fm == null);
 
-    JDialog dlg = new JDialog(this,
-            esNuevo ? "Nueva Merma" : "Editar Merma", true);
-    dlg.setSize(560, 500);
-    dlg.setResizable(false);
-    dlg.setLocationRelativeTo(this);
+        JDialog dlg = new JDialog(this,
+                esNuevo ? "Nueva Merma" : "Editar Merma", true);
+        dlg.setSize(560, 500);
+        dlg.setResizable(false);
+        dlg.setLocationRelativeTo(this);
 
-    // ── Combos ───────────────────────────────────────────────────────────
-    JComboBox<String> cboIns = new JComboBox<>();
-    JComboBox<String> cboEmp = new JComboBox<>();
-    JTextField        txtCant = campoTexto("");
-    JComboBox<String> cboUni  = new JComboBox<>(new String[]{"KG", "LITRO", "UNIDAD", "PAQUETE", "DOCENA"});
-    estilizarCombo(cboUni);
-    rebuilInsumoCombo(cboIns, cboUni);
-    rebuilEmpleadoCombo(cboEmp);
-    estilizarCombo(cboIns);
-    estilizarCombo(cboEmp);
+        // ── Combos ───────────────────────────────────────────────────────────
+        JComboBox<String> cboIns = new JComboBox<>();
+        JComboBox<String> cboEmp = new JComboBox<>();
+        JTextField        txtCant = campoTexto("");
+        JComboBox<String> cboUni  = new JComboBox<>(new String[]{"KG", "LITRO", "UNIDAD", "PAQUETE", "DOCENA"});
+        estilizarCombo(cboUni);
+        rebuilInsumoCombo(cboIns, cboUni);
+        rebuilEmpleadoCombo(cboEmp);
+        estilizarCombo(cboIns);
+        estilizarCombo(cboEmp);
 
-    JTextField txtCostoPreview = campoTexto("S/ 0.00");
-    txtCostoPreview.setEditable(false);
-    txtCostoPreview.setForeground(AZUL);
-    txtCostoPreview.setFont(new Font("Segoe UI", Font.BOLD, 13));
-    txtCostoPreview.setBackground(AZUL_CLAR);
+        JTextField txtCostoPreview = campoTexto("S/ 0.00");
+        txtCostoPreview.setEditable(false);
+        txtCostoPreview.setForeground(AZUL);
+        txtCostoPreview.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        txtCostoPreview.setBackground(AZUL_CLAR);
 
-    JTextArea txtMot = new JTextArea(4, 25);
-    txtMot.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-    txtMot.setLineWrap(true);
-    txtMot.setWrapStyleWord(true);
-    txtMot.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER_CLR, 1, true),
-            new EmptyBorder(8, 10, 8, 10)));
+        JTextArea txtMot = new JTextArea(4, 25);
+        txtMot.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtMot.setLineWrap(true);
+        txtMot.setWrapStyleWord(true);
+        txtMot.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_CLR, 1, true),
+                new EmptyBorder(8, 10, 8, 10)));
 
-    // ── Cálculo costo en tiempo real ─────────────────────────────────────
-    Runnable actualizarCosto = () -> {
-        try {
-            int idx = cboIns.getSelectedIndex();
-            // idx 0 = placeholder, último = "➕ Nuevo insumo..."
-            if (idx <= 0 || idx >= insumos.size() + 1) {
+        // ── Cálculo costo en tiempo real ─────────────────────────────────────
+        Runnable actualizarCosto = () -> {
+            try {
+                int idx = cboIns.getSelectedIndex();
+                // idx 0 = placeholder, último = "➕ Nuevo insumo..."
+                if (idx <= 0 || idx >= insumos.size() + 1) {
+                    txtCostoPreview.setText("S/ 0.00");
+                    txtCostoPreview.setForeground(TEXT_MUTED);
+                    return;
+                }
+                double cant  = Double.parseDouble(txtCant.getText().replace(",", ".").trim());
+                double costo = cant * costoInsumo(insumos.get(idx - 1));
+                txtCostoPreview.setText(String.format("S/ %.2f", costo));
+                txtCostoPreview.setForeground(AZUL);
+            } catch (Exception ex) {
                 txtCostoPreview.setText("S/ 0.00");
                 txtCostoPreview.setForeground(TEXT_MUTED);
-                return;
             }
-            double cant  = Double.parseDouble(txtCant.getText().replace(",", ".").trim());
-            double costo = cant * costoInsumo(insumos.get(idx - 1));
-            txtCostoPreview.setText(String.format("S/ %.2f", costo));
-            txtCostoPreview.setForeground(AZUL);
-        } catch (Exception ex) {
-            txtCostoPreview.setText("S/ 0.00");
-            txtCostoPreview.setForeground(TEXT_MUTED);
-        }
-    };
+        };
 
-    txtCant.getDocument().addDocumentListener(new DocumentListener() {
-        public void insertUpdate(DocumentEvent e)  { actualizarCosto.run(); }
-        public void removeUpdate(DocumentEvent e)  { actualizarCosto.run(); }
-        public void changedUpdate(DocumentEvent e) { actualizarCosto.run(); }
-    });
+        txtCant.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e)  { actualizarCosto.run(); }
+            public void removeUpdate(DocumentEvent e)  { actualizarCosto.run(); }
+            public void changedUpdate(DocumentEvent e) { actualizarCosto.run(); }
+        });
 
-    // Interceptar selección "➕ Nuevo insumo..." / "➕ Nuevo empleado..."
-    cboIns.addActionListener(e -> {
-        int idx = cboIns.getSelectedIndex();
-        int ultimoIns = cboIns.getItemCount() - 1;
-        if (idx == ultimoIns) { // "➕ Nuevo insumo..."
-            Insumo nuevo = dialogNuevoInsumo(dlg);
-            if (nuevo != null) {
-                insumos.add(nuevo);
-                rebuilInsumoCombo(cboIns, cboUni);
-                cboIns.setSelectedIndex(insumos.size()); // selecciona el recién creado
-            } else {
-                cboIns.setSelectedIndex(0);
+        // Interceptar selección "➕ Nuevo insumo..." / "➕ Nuevo empleado..."
+        cboIns.addActionListener(e -> {
+            int idx = cboIns.getSelectedIndex();
+            int ultimoIns = cboIns.getItemCount() - 1;
+            if (idx == ultimoIns) { // "➕ Nuevo insumo..."
+                Insumo nuevo = dialogNuevoInsumo(dlg);
+                if (nuevo != null) {
+                    insumos.add(nuevo);
+                    rebuilInsumoCombo(cboIns, cboUni);
+                    cboIns.setSelectedIndex(insumos.size()); // selecciona el recién creado
+                } else {
+                    cboIns.setSelectedIndex(0);
+                }
             }
-        }
-        actualizarCosto.run();
-    });
+            actualizarCosto.run();
+        });
 
-    cboEmp.addActionListener(e -> {
-        int idx = cboEmp.getSelectedIndex();
-        int ultimoEmp = cboEmp.getItemCount() - 1;
-        if (idx == ultimoEmp) { // "➕ Nuevo empleado..."
-            Empleado nuevo = dialogNuevoEmpleado(dlg);
-            if (nuevo != null) {
-                empleados.add(nuevo);
-                rebuilEmpleadoCombo(cboEmp);
-                cboEmp.setSelectedIndex(empleados.size()); // selecciona el recién creado
-            } else {
-                cboEmp.setSelectedIndex(0);
+        cboEmp.addActionListener(e -> {
+            int idx = cboEmp.getSelectedIndex();
+            int ultimoEmp = cboEmp.getItemCount() - 1;
+            if (idx == ultimoEmp) { // "➕ Nuevo empleado..."
+                Empleado nuevo = dialogNuevoEmpleado(dlg);
+                if (nuevo != null) {
+                    empleados.add(nuevo);
+                    rebuilEmpleadoCombo(cboEmp);
+                    cboEmp.setSelectedIndex(empleados.size()); // selecciona el recién creado
+                } else {
+                    cboEmp.setSelectedIndex(0);
+                }
             }
+        });
+
+        // ── Pre-cargar si es edición ──────────────────────────────────────────
+        if (!esNuevo) {
+            String nomIns = String.valueOf(modelo.getValueAt(fm, COL_INSUMO));
+            for (int i = 1; i < cboIns.getItemCount() - 1; i++)
+                if (cboIns.getItemAt(i).equals(nomIns)) { cboIns.setSelectedIndex(i); break; }
+
+            String nomEmp = String.valueOf(modelo.getValueAt(fm, COL_EMPLEADO));
+            for (int i = 1; i < cboEmp.getItemCount() - 1; i++)
+                if (cboEmp.getItemAt(i).trim().equals(nomEmp.trim())) { cboEmp.setSelectedIndex(i); break; }
+            cboEmp.setSelectedItem(modelo.getValueAt(fm, COL_EMPLEADO));
+            cboIns.setSelectedItem(modelo.getValueAt(fm, COL_INSUMO));
+            txtCant.setText(String.valueOf(modelo.getValueAt(fm, COL_CANT)));
+            txtMot.setText(String.valueOf(modelo.getValueAt(fm, COL_MOTIVO)));
+            String uni = String.valueOf(modelo.getValueAt(fm, COL_UNIDAD));
+            for (int i = 0; i < cboUni.getItemCount(); i++)
+                if (cboUni.getItemAt(i).equals(uni)) { cboUni.setSelectedIndex(i); break; }
+            actualizarCosto.run();
         }
-    });
 
-    // ── Pre-cargar si es edición ──────────────────────────────────────────
-    if (!esNuevo) {
-        String nomIns = String.valueOf(modelo.getValueAt(fm, COL_INSUMO));
-        for (int i = 1; i < cboIns.getItemCount() - 1; i++)
-            if (cboIns.getItemAt(i).equals(nomIns)) { cboIns.setSelectedIndex(i); break; }
-
-        String nomEmp = String.valueOf(modelo.getValueAt(fm, COL_EMPLEADO));
-        for (int i = 1; i < cboEmp.getItemCount() - 1; i++)
-            if (cboEmp.getItemAt(i).trim().equals(nomEmp.trim())) { cboEmp.setSelectedIndex(i); break; }
-        cboEmp.setSelectedItem(modelo.getValueAt(fm, COL_EMPLEADO));
-        cboIns.setSelectedItem(modelo.getValueAt(fm, COL_INSUMO));
-        txtCant.setText(String.valueOf(modelo.getValueAt(fm, COL_CANT)));
-        txtMot.setText(String.valueOf(modelo.getValueAt(fm, COL_MOTIVO)));
-        String uni = String.valueOf(modelo.getValueAt(fm, COL_UNIDAD));
-        for (int i = 0; i < cboUni.getItemCount(); i++)
-            if (cboUni.getItemAt(i).equals(uni)) { cboUni.setSelectedIndex(i); break; }
-        actualizarCosto.run();
-    }
-
-    // ── Root ─────────────────────────────────────────────────────────────
+        // ── Root ─────────────────────────────────────────────────────────────
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CARD_BG);
         dlg.setContentPane(root);
@@ -676,10 +671,16 @@ private void abrirDialogo(Integer fm) {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR),
                 new EmptyBorder(12, 20, 12, 20)));
 
-        int ultimaFila = tabla.getRowCount() - 1;
-        int ultimo_id  = Integer.parseInt(tabla.getValueAt(ultimaFila, 0).toString());
+        // CORRECCIÓN: Manejar la previsualización del ID si la tabla está vacía y al editar
+        int idAsignado = 1;
+        if (tabla.getRowCount() > 0) {
+            try {
+                idAsignado = Integer.parseInt(tabla.getValueAt(tabla.getRowCount() - 1, 0).toString()) + 1;
+            } catch (NumberFormatException ignored) {}
+        }
+
         JLabel lblIdPreview = new JLabel(esNuevo
-                ? "ID asignado: MERM-" + String.format("%04d", ultimo_id)
+                ? "ID asignado: MERM-" + String.format("%04d", idAsignado)
                 : "Editando: " + modelo.getValueAt(fm, COL_MERMA_ID));
         lblIdPreview.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         lblIdPreview.setForeground(TEXT_MUTED);
@@ -729,7 +730,10 @@ private void abrirDialogo(Integer fm) {
             double   costo = cant * insumo.getCosto();
 
             if (!esNuevo) {
-                modelo.setValueAt(ultimo_id, fm, COL_ID);
+                // CORRECCIÓN: Obtener el ID original de la fila que estamos editando en lugar del último
+                int idRealEditando = Integer.parseInt(modelo.getValueAt(fm, COL_ID).toString());
+                
+                modelo.setValueAt(idRealEditando, fm, COL_ID);
                 modelo.setValueAt("MERM-"+insumo.getInsumoId(),               fm, COL_CODINSU);
                 modelo.setValueAt(insumo.getNombre().toUpperCase(),               fm, COL_INSUMO);
                 modelo.setValueAt(String.format("%.2f", cant),     fm, COL_CANT);
@@ -766,215 +770,215 @@ private void abrirDialogo(Integer fm) {
         dlg.setVisible(true);
     }
 
-// ── Reconstruye el combo de insumos con placeholder y opción "➕ Nuevo" ──
-private void rebuilInsumoCombo(JComboBox<String> cbo,JComboBox<String> cbo2) {
-    cbo.removeAllItems();
-    cbo.addItem("— Seleccionar insumo —");
-    for (Insumo i : insumos) cbo.addItem(nombreInsumo(i).toUpperCase());
-    cbo.addItem("➕  Registrar nuevo insumo...");
-    cbo.setSelectedIndex(0);
-    cbo.addActionListener(e -> {
+    // ── Reconstruye el combo de insumos con placeholder y opción "➕ Nuevo" ──
+    private void rebuilInsumoCombo(JComboBox<String> cbo,JComboBox<String> cbo2) {
+        cbo.removeAllItems();
+        cbo.addItem("— Seleccionar insumo —");
+        for (Insumo i : insumos) cbo.addItem(nombreInsumo(i).toUpperCase());
+        cbo.addItem("➕  Registrar nuevo insumo...");
+        cbo.setSelectedIndex(0);
+        cbo.addActionListener(e -> {
 
-            String insumo_cbo = (String) cbo.getSelectedItem();
-            Insumo insumo = encontrarInsumo(insumo_cbo);
-            if (insumo != null) {
-                System.out.println(insumo.getUnidadMedida());
-                cbo2.setSelectedItem(
-                        insumo.getUnidadMedida().toUpperCase());
-                cbo2.setEnabled(false);
-            
-        }
-    });
-}
+                String insumo_cbo = (String) cbo.getSelectedItem();
+                Insumo insumo = encontrarInsumo(insumo_cbo);
+                if (insumo != null) {
+                    System.out.println(insumo.getUnidadMedida());
+                    cbo2.setSelectedItem(
+                            insumo.getUnidadMedida().toUpperCase());
+                    cbo2.setEnabled(false);
+                
+            }
+        });
+    }
 
-// ── Reconstruye el combo de empleados con placeholder y opción "➕ Nuevo" ─
-private void rebuilEmpleadoCombo(JComboBox<String> cbo) {
-    cbo.removeAllItems();
-    cbo.addItem("— Seleccionar empleado —");
-    for (Empleado e : empleados) cbo.addItem(nombreEmpleado(e).toUpperCase());
-    cbo.addItem("➕  Registrar nuevo empleado...");
-    cbo.setSelectedIndex(0);
-}
+    // ── Reconstruye el combo de empleados con placeholder y opción "➕ Nuevo" ─
+    private void rebuilEmpleadoCombo(JComboBox<String> cbo) {
+        cbo.removeAllItems();
+        cbo.addItem("— Seleccionar empleado —");
+        for (Empleado e : empleados) cbo.addItem(nombreEmpleado(e).toUpperCase());
+        cbo.addItem("➕  Registrar nuevo empleado...");
+        cbo.setSelectedIndex(0);
+    }
 
-// ── Sub-diálogo: Nuevo Insumo ─────────────────────────────────────────────
-private Insumo dialogNuevoInsumo(JDialog parent) {
-    JDialog dlg = new JDialog(parent, "Registrar Nuevo Insumo", true);
-    dlg.setSize(400, 340);
-    dlg.setResizable(false);
-    dlg.setLocationRelativeTo(parent);
+    // ── Sub-diálogo: Nuevo Insumo ─────────────────────────────────────────────
+    private Insumo dialogNuevoInsumo(JDialog parent) {
+        JDialog dlg = new JDialog(parent, "Registrar Nuevo Insumo", true);
+        dlg.setSize(400, 340);
+        dlg.setResizable(false);
+        dlg.setLocationRelativeTo(parent);
 
-    JPanel root = new JPanel(new BorderLayout());
-    root.setBackground(CARD_BG);
-    dlg.setContentPane(root);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(CARD_BG);
+        dlg.setContentPane(root);
 
-    // Header
-    JPanel header = new JPanel(new BorderLayout());
-    header.setBackground(AZUL);
-    header.setBorder(new EmptyBorder(14, 20, 14, 20));
-    JLabel hTit = new JLabel("Nuevo Insumo");
-    hTit.setFont(new Font("Segoe UI", Font.BOLD, 15));
-    hTit.setForeground(Color.WHITE);
-    header.add(hTit);
-    root.add(header, BorderLayout.NORTH);
+        // Header
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(AZUL);
+        header.setBorder(new EmptyBorder(14, 20, 14, 20));
+        JLabel hTit = new JLabel("Nuevo Insumo");
+        hTit.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        hTit.setForeground(Color.WHITE);
+        header.add(hTit);
+        root.add(header, BorderLayout.NORTH);
 
-    // Body
-    JPanel body = new JPanel(new GridBagLayout());
-    body.setBackground(CARD_BG);
-    body.setBorder(new EmptyBorder(18, 24, 8, 24));
-    GridBagConstraints gc = new GridBagConstraints();
-    gc.fill = GridBagConstraints.HORIZONTAL;
-    gc.insets = new Insets(5, 4, 5, 4);
-    gc.weightx = 1.0;
-    gc.gridwidth = 2;
+        // Body
+        JPanel body = new JPanel(new GridBagLayout());
+        body.setBackground(CARD_BG);
+        body.setBorder(new EmptyBorder(18, 24, 8, 24));
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.insets = new Insets(5, 4, 5, 4);
+        gc.weightx = 1.0;
+        gc.gridwidth = 2;
 
-    JTextField txtNombre  = campoTexto("");
-    JTextField txtUnidad  = campoTexto("Kg");
-    JTextField txtCosto   = campoTexto("0.00");
-    JTextField txtStock   = campoTexto("0");
+        JTextField txtNombre  = campoTexto("");
+        JTextField txtUnidad  = campoTexto("Kg");
+        JTextField txtCosto   = campoTexto("0.00");
+        JTextField txtStock   = campoTexto("0");
 
-    gc.gridx = 0; gc.gridy = 0; body.add(lbl("Nombre del insumo *"), gc);
-    gc.gridy = 1; body.add(txtNombre, gc);
+        gc.gridx = 0; gc.gridy = 0; body.add(lbl("Nombre del insumo *"), gc);
+        gc.gridy = 1; body.add(txtNombre, gc);
 
-    gc.gridwidth = 1;
-    gc.gridx = 0; gc.gridy = 2; body.add(lbl("Unidad *"), gc);
-    gc.gridx = 1;               body.add(lbl("Costo unitario (S/) *"), gc);
-    gc.gridx = 0; gc.gridy = 3; body.add(txtUnidad, gc);
-    gc.gridx = 1;               body.add(txtCosto, gc);
+        gc.gridwidth = 1;
+        gc.gridx = 0; gc.gridy = 2; body.add(lbl("Unidad *"), gc);
+        gc.gridx = 1;               body.add(lbl("Costo unitario (S/) *"), gc);
+        gc.gridx = 0; gc.gridy = 3; body.add(txtUnidad, gc);
+        gc.gridx = 1;               body.add(txtCosto, gc);
 
-    gc.gridwidth = 2;
-    gc.gridx = 0; gc.gridy = 4; body.add(lbl("Stock inicial"), gc);
-    gc.gridy = 5; body.add(txtStock, gc);
+        gc.gridwidth = 2;
+        gc.gridx = 0; gc.gridy = 4; body.add(lbl("Stock inicial"), gc);
+        gc.gridy = 5; body.add(txtStock, gc);
 
-    root.add(body, BorderLayout.CENTER);
+        root.add(body, BorderLayout.CENTER);
 
-    // Footer
-    JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-    footer.setBackground(PAGE_BG);
-    footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR));
+        // Footer
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        footer.setBackground(PAGE_BG);
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR));
 
-    JButton btnCan = btnDialogSec("Cancelar");
-    JButton btnOk  = btnDialogPri("Agregar");
+        JButton btnCan = btnDialogSec("Cancelar");
+        JButton btnOk  = btnDialogPri("Agregar");
 
-    final Insumo[] resultado = {null};
+        final Insumo[] resultado = {null};
 
-    btnCan.addActionListener(e -> dlg.dispose());
-    btnOk.addActionListener(e -> {
-        String nombre = txtNombre.getText().trim();
-        String unidad = txtUnidad.getText().trim();
-        if (nombre.isEmpty() || unidad.isEmpty()) {
-            JOptionPane.showMessageDialog(dlg, "Nombre y unidad son obligatorios.",
-                    "Campos requeridos", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        float costoVal = 0f;
-        float stockVal = 0f;
-        try { costoVal = Float.parseFloat(txtCosto.getText().replace(",", ".").trim()); }
-        catch (NumberFormatException ignored) {}
-        try { stockVal = Float.parseFloat(txtStock.getText().replace(",", ".").trim()); }
-        catch (NumberFormatException ignored) {}
+        btnCan.addActionListener(e -> dlg.dispose());
+        btnOk.addActionListener(e -> {
+            String nombre = txtNombre.getText().trim();
+            String unidad = txtUnidad.getText().trim();
+            if (nombre.isEmpty() || unidad.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg, "Nombre y unidad son obligatorios.",
+                        "Campos requeridos", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            float costoVal = 0f;
+            float stockVal = 0f;
+            try { costoVal = Float.parseFloat(txtCosto.getText().replace(",", ".").trim()); }
+            catch (NumberFormatException ignored) {}
+            try { stockVal = Float.parseFloat(txtStock.getText().replace(",", ".").trim()); }
+            catch (NumberFormatException ignored) {}
 
-        // Genera un ID incremental simple
-        int nuevoId = 100 + insumos.size();
-        resultado[0] = new Insumo(nuevoId, nombre, unidad, 0.0, null, costoVal, stockVal);
-        dlg.dispose();
-    });
+            // Genera un ID incremental simple
+            int nuevoId = 100 + insumos.size();
+            resultado[0] = new Insumo(nuevoId, nombre, unidad, 0.0, null, costoVal, stockVal);
+            dlg.dispose();
+        });
 
-    footer.add(btnCan);
-    footer.add(btnOk);
-    root.add(footer, BorderLayout.SOUTH);
+        footer.add(btnCan);
+        footer.add(btnOk);
+        root.add(footer, BorderLayout.SOUTH);
 
-    dlg.setVisible(true);
-    return resultado[0]; // null si canceló
-}
+        dlg.setVisible(true);
+        return resultado[0]; // null si canceló
+    }
 
-// ── Sub-diálogo: Nuevo Empleado ───────────────────────────────────────────
-private Empleado dialogNuevoEmpleado(JDialog parent) {
-    JDialog dlg = new JDialog(parent, "Registrar Nuevo Empleado", true);
-    dlg.setSize(400, 380);
-    dlg.setResizable(false);
-    dlg.setLocationRelativeTo(parent);
+    // ── Sub-diálogo: Nuevo Empleado ───────────────────────────────────────────
+    private Empleado dialogNuevoEmpleado(JDialog parent) {
+        JDialog dlg = new JDialog(parent, "Registrar Nuevo Empleado", true);
+        dlg.setSize(400, 380);
+        dlg.setResizable(false);
+        dlg.setLocationRelativeTo(parent);
 
-    JPanel root = new JPanel(new BorderLayout());
-    root.setBackground(CARD_BG);
-    dlg.setContentPane(root);
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(CARD_BG);
+        dlg.setContentPane(root);
 
-    // Header
-    JPanel header = new JPanel(new BorderLayout());
-    header.setBackground(AZUL);
-    header.setBorder(new EmptyBorder(14, 20, 14, 20));
-    JLabel hTit = new JLabel("Nuevo Empleado");
-    hTit.setFont(new Font("Segoe UI", Font.BOLD, 15));
-    hTit.setForeground(Color.WHITE);
-    header.add(hTit);
-    root.add(header, BorderLayout.NORTH);
+        // Header
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(AZUL);
+        header.setBorder(new EmptyBorder(14, 20, 14, 20));
+        JLabel hTit = new JLabel("Nuevo Empleado");
+        hTit.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        hTit.setForeground(Color.WHITE);
+        header.add(hTit);
+        root.add(header, BorderLayout.NORTH);
 
-    // Body
-    JPanel body = new JPanel(new GridBagLayout());
-    body.setBackground(CARD_BG);
-    body.setBorder(new EmptyBorder(18, 24, 8, 24));
-    GridBagConstraints gc = new GridBagConstraints();
-    gc.fill = GridBagConstraints.HORIZONTAL;
-    gc.insets = new Insets(5, 4, 5, 4);
-    gc.weightx = 1.0;
+        // Body
+        JPanel body = new JPanel(new GridBagLayout());
+        body.setBackground(CARD_BG);
+        body.setBorder(new EmptyBorder(18, 24, 8, 24));
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.insets = new Insets(5, 4, 5, 4);
+        gc.weightx = 1.0;
 
-    JTextField txtNombre    = campoTexto("");
-    JTextField txtApellidos = campoTexto("");
-    JTextField txtDni       = campoTexto("");
-    JTextField txtTel       = campoTexto("");
-    JTextField txtEmail     = campoTexto("");
+        JTextField txtNombre    = campoTexto("");
+        JTextField txtApellidos = campoTexto("");
+        JTextField txtDni       = campoTexto("");
+        JTextField txtTel       = campoTexto("");
+        JTextField txtEmail     = campoTexto("");
 
-    gc.gridwidth = 1;
-    gc.gridx = 0; gc.gridy = 0; body.add(lbl("Nombre *"),    gc);
-    gc.gridx = 1;               body.add(lbl("Apellidos *"),  gc);
-    gc.gridx = 0; gc.gridy = 1; body.add(txtNombre,          gc);
-    gc.gridx = 1;               body.add(txtApellidos,        gc);
+        gc.gridwidth = 1;
+        gc.gridx = 0; gc.gridy = 0; body.add(lbl("Nombre *"),    gc);
+        gc.gridx = 1;               body.add(lbl("Apellidos *"),  gc);
+        gc.gridx = 0; gc.gridy = 1; body.add(txtNombre,          gc);
+        gc.gridx = 1;               body.add(txtApellidos,        gc);
 
-    gc.gridx = 0; gc.gridy = 2; body.add(lbl("DNI *"),       gc);
-    gc.gridx = 1;               body.add(lbl("Teléfono"),     gc);
-    gc.gridx = 0; gc.gridy = 3; body.add(txtDni,             gc);
-    gc.gridx = 1;               body.add(txtTel,              gc);
+        gc.gridx = 0; gc.gridy = 2; body.add(lbl("DNI *"),       gc);
+        gc.gridx = 1;               body.add(lbl("Teléfono"),     gc);
+        gc.gridx = 0; gc.gridy = 3; body.add(txtDni,             gc);
+        gc.gridx = 1;               body.add(txtTel,              gc);
 
-    gc.gridwidth = 2;
-    gc.gridx = 0; gc.gridy = 4; body.add(lbl("Email"),       gc);
-    gc.gridy = 5;               body.add(txtEmail,            gc);
+        gc.gridwidth = 2;
+        gc.gridx = 0; gc.gridy = 4; body.add(lbl("Email"),       gc);
+        gc.gridy = 5;               body.add(txtEmail,            gc);
 
-    root.add(body, BorderLayout.CENTER);
+        root.add(body, BorderLayout.CENTER);
 
-    // Footer
-    JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-    footer.setBackground(PAGE_BG);
-    footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR));
+        // Footer
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        footer.setBackground(PAGE_BG);
+        footer.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR));
 
-    JButton btnCan = btnDialogSec("Cancelar");
-    JButton btnOk  = btnDialogPri("Agregar");
+        JButton btnCan = btnDialogSec("Cancelar");
+        JButton btnOk  = btnDialogPri("Agregar");
 
-    final Empleado[] resultado = {null};
+        final Empleado[] resultado = {null};
 
-    btnCan.addActionListener(e -> dlg.dispose());
-    btnOk.addActionListener(e -> {
-        String nombre    = txtNombre.getText().trim();
-        String apellidos = txtApellidos.getText().trim();
-        String dni       = txtDni.getText().trim();
-        if (nombre.isEmpty() || apellidos.isEmpty() || dni.isEmpty()) {
-            JOptionPane.showMessageDialog(dlg, "Nombre, apellidos y DNI son obligatorios.",
-                    "Campos requeridos", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        int nuevoId = 100 + empleados.size();
-        Empleado emp = new Empleado();
-        setPersonaFields(emp, nuevoId, nombre, apellidos, dni,
-                txtTel.getText().trim(), txtEmail.getText().trim());
-        resultado[0] = emp;
-        dlg.dispose();
-    });
+        btnCan.addActionListener(e -> dlg.dispose());
+        btnOk.addActionListener(e -> {
+            String nombre    = txtNombre.getText().trim();
+            String apellidos = txtApellidos.getText().trim();
+            String dni       = txtDni.getText().trim();
+            if (nombre.isEmpty() || apellidos.isEmpty() || dni.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg, "Nombre, apellidos y DNI son obligatorios.",
+                        "Campos requeridos", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int nuevoId = 100 + empleados.size();
+            Empleado emp = new Empleado();
+            setPersonaFields(emp, nuevoId, nombre, apellidos, dni,
+                    txtTel.getText().trim(), txtEmail.getText().trim());
+            resultado[0] = emp;
+            dlg.dispose();
+        });
 
-    footer.add(btnCan);
-    footer.add(btnOk);
-    root.add(footer, BorderLayout.SOUTH);
+        footer.add(btnCan);
+        footer.add(btnOk);
+        root.add(footer, BorderLayout.SOUTH);
 
-    dlg.setVisible(true);
-    return resultado[0];
-}
+        dlg.setVisible(true);
+        return resultado[0];
+    }
 
     private JLabel seccionLabel(String texto) {
         JLabel l = new JLabel(texto.toUpperCase());
@@ -1048,9 +1052,7 @@ private Empleado dialogNuevoEmpleado(JDialog parent) {
     private Object[] toRow(Merma m) {
         Empleado empleado = empleado_controller.obtenerPorId(m.getEmpleado().getId());
         Insumo insumo = insumo_controller.obtenerPorId(m.getInsumo().getInsumoId());
-        System.out.println(m.toString());
-        System.out.println(empleado);
-        System.out.println(insumo);
+       // System.out.println(m.getEmpleado());
         float costo = (float) (m.getCantidad() * insumo.getCosto());
         
         return new Object[]{    
@@ -1247,5 +1249,3 @@ private Empleado dialogNuevoEmpleado(JDialog parent) {
         });
     }
 }
-
-

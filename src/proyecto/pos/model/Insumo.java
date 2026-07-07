@@ -17,6 +17,8 @@ public class Insumo {
     private Proveedor proveedor;
     private float costo;
     private float cantidad;
+    private String categoria;
+    
     
     public Insumo() {
     }
@@ -94,6 +96,14 @@ public class Insumo {
 
     public void setCantidad(float cantidad) {
         this.cantidad = cantidad;
+    }
+    
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
     }
     
 }

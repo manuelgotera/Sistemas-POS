@@ -53,6 +53,7 @@ public class ClientesFrame extends JFrame {
 
     private ClienteController cliente_controller;
     private Connection conexion;
+
     // ══════════════════════════════════════════════════════════════════════════
     public ClientesFrame() {
         DatabaseConnection db = new DatabaseConnection();
@@ -62,7 +63,6 @@ public class ClientesFrame extends JFrame {
         setSize(1250, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        System.out.println("qkoño");
         JPanel root = new JPanel(new BorderLayout());
         // ── ÚNICO CAMBIO: sidebar reutilizable en lugar del buildSidebar() propio
         root.add(new MenuSidebar(this, "Clientes"), BorderLayout.WEST);
@@ -71,7 +71,7 @@ public class ClientesFrame extends JFrame {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  ÁREA PRINCIPAL  (sin cambios)
+    //  ÁREA PRINCIPAL 
     // ══════════════════════════════════════════════════════════════════════════
     private JPanel buildMainArea() {
         JPanel w = new JPanel(new BorderLayout());
@@ -131,7 +131,7 @@ public class ClientesFrame extends JFrame {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  PÁGINA CLIENTES  (sin cambios)
+    //  PÁGINA CLIENTES 
     // ══════════════════════════════════════════════════════════════════════════
     private JPanel buildClientesPage() {
         JPanel page = new JPanel(new BorderLayout(0, 16));
@@ -192,7 +192,6 @@ public class ClientesFrame extends JFrame {
             (ArrayList<Cliente>) cliente_controller.listarClientes();
 
         for (Cliente c : lista) {
-            System.out.println(c.getFecha_registro());
             modelo.addRow(new Object[]{
                 c.getId(), // 🔥 ID oculto
                 c.getTipoCliente(),
@@ -206,6 +205,9 @@ public class ClientesFrame extends JFrame {
                 c.getFecha_registro()
             });
         }
+        
+        // CORRECCIÓN APLICADA: Actualiza los stats después de cargar de la BD
+        actualizarStats();
     }
     
     private JPanel buildTableCard() {
@@ -329,7 +331,7 @@ public class ClientesFrame extends JFrame {
         return card;
     }
 
-    private JPanel buildBotones() {
+private JPanel buildBotones() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         p.setBackground(CARD_BG);
         p.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_CLR));
@@ -340,10 +342,10 @@ public class ClientesFrame extends JFrame {
         JButton bA  = btn("□  Agregar",  AZUL_BTN);
 
         bE .addActionListener(e -> eliminarFila());
-        bEd.addActionListener(e ->{
-            activarEdicion(); 
-            actualizarFila(filaEditando);
-        });
+        
+        // CORRECCIÓN: El botón editar solo habilita la escritura.
+        bEd.addActionListener(e -> activarEdicion()); 
+        
         bG .addActionListener(e -> guardar());
         bA .addActionListener(e -> agregarFila());
 
@@ -367,7 +369,7 @@ public class ClientesFrame extends JFrame {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  MODAL TIPO  (sin cambios)
+    //  MODAL TIPO 
     // ══════════════════════════════════════════════════════════════════════════
     private void abrirModalTipo(int fila) {
         String actual = safeGet(fila, COL_TIPO);
@@ -488,12 +490,13 @@ public class ClientesFrame extends JFrame {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  LÓGICA DE TABLA  (sin cambios)
+    //  LÓGICA DE TABLA 
     // ══════════════════════════════════════════════════════════════════════════
     private void agregarFila() {
 
+        // CORRECCIÓN APLICADA: Formato yyyy-MM-dd
         String hoy =
-            new SimpleDateFormat("dd/MM/yyyy")
+            new SimpleDateFormat("yyyy-MM-dd")
                 .format(new java.util.Date());
 
         modelo.addRow(new Object[]{
@@ -701,18 +704,31 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
 }
     
 
-    private void guardar() {
+private void guardar() {
+        // CORRECCIÓN VITAL: Si el cursor sigue adentro de la celda escribiendo, forzamos la captura del texto.
+        if (tabla.isEditing()) {
+            tabla.getCellEditor().stopCellEditing();
+        }
 
-        SimpleDateFormat fmt = new SimpleDateFormat("dd/MM/yyyy");
+        // CORRECCIÓN: ¿Estamos editando un cliente que ya existe en la BD? (Tiene ID)
+        if (filaEditando != -1) {
+            Object idObj = modelo.getValueAt(filaEditando, COL_ID);
+            if (idObj != null) {
+                // Es un cliente antiguo, lo actualizamos y salimos.
+                actualizarFila(filaEditando);
+                return; 
+            }
+        }
+
+        // --- LÓGICA ORIGINAL PARA INSERTAR NUEVOS CLIENTES (Sin ID) ---
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
         fmt.setLenient(false);
 
         for (int i = 0; i < modelo.getRowCount(); i++) {
 
-            // 🔥 SI YA TIENE ID → YA EXISTE EN BD
             Object idObj = modelo.getValueAt(i, COL_ID);
-
             if (idObj != null) {
-                continue;
+                continue; // Salta los clientes que ya existen
             }
 
             String tipo      = safeGet(i, COL_TIPO);
@@ -726,52 +742,16 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
 
             boolean esEmpresa = "EMPRESA".equals(tipo);
 
-            // VALIDACIONES
-            if (nombre.isEmpty()) {
-                err(esEmpresa ? "Razón social vacía" : "Nombre vacío", i);
-                return;
-            }
-
-            if (!esEmpresa && apellido.isEmpty()) {
-                err("Apellido vacío", i);
-                return;
-            }
-
+            if (nombre.isEmpty()) { err(esEmpresa ? "Razón social vacía" : "Nombre vacío", i); return; }
+            if (!esEmpresa && apellido.isEmpty()) { err("Apellido vacío", i); return; }
+            
             int dniLen = esEmpresa ? 11 : 8;
+            if (!dni.matches("\\d{" + dniLen + "}")) { err(esEmpresa ? "RUC inválido" : "DNI inválido", i); return; }
+            if (tel.isEmpty()) { err("Teléfono vacío", i); return; }
+            if (!email.contains("@") || !email.contains(".com")) { err("Email inválido", i); return; }
+            if (direccion.isEmpty()) { err("Direccion vacia", i); return; }
 
-            if (!dni.matches("\\d{" + dniLen + "}")) {
-                err(esEmpresa ? "RUC inválido" : "DNI inválido", i);
-                return;
-            }
-
-            if (tel.isEmpty()) {
-                err("Teléfono vacío", i);
-                return;
-            }
-
-            if (!email.contains("@") || !email.contains(".com")) {
-                err("Email inválido", i);
-                return;
-            }
-            
-            System.out.println("Fila: " + i);
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 0) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 1) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 2) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 3) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 4) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 5) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 6) + "]");
-            System.out.println("Valor real: [" + modelo.getValueAt(i, 7) + "]");
-            
-            if (direccion.isEmpty()) {
-                err("cireccion vacia", i);
-                return;
-            }
-            System.out.println(direccion);
-            System.out.println("xdsadas");
             Date fecha;
-            
             try {
                 fecha = fmt.parse(fechaStr);
             } catch (Exception ex) {
@@ -779,50 +759,36 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
                 return;
             }
             
-            Cliente existente =
-                cliente_controller.obtenerPorDni(dni);
-
+            Cliente existente = cliente_controller.obtenerPorDni(dni);
             if (existente != null) {
                 err("Cliente ya registrado", i);
                 return;
             }
 
             try {
-
                 cliente_controller.registrarCliente(
-                    esEmpresa ? "EMPRESA" : "NATURAL",
-                    nombre,
-                    apellido,
-                    dni,
-                    tel,
-                    email,
-                    direccion,
-                    fecha
+                    esEmpresa ? "EMPRESA" : "NATURAL", nombre, apellido, dni, tel, email, direccion, fecha
                 );
-
             } catch (Exception e) {
-
                 err("Error al guardar: " + e.getMessage(), i);
                 return;
             }
         }
 
         // 🔥 RECARGAR TABLA
+        filaEditando = -1; // Cierra modo edición
         cargarClientes();
 
-        JOptionPane.showMessageDialog(
-            this,
-            "Clientes guardados correctamente"
-        );
+        JOptionPane.showMessageDialog(this, "Clientes guardados correctamente");
     }
 
-    private void actualizarFila(int fila){
-        SimpleDateFormat fmt = new SimpleDateFormat("dd-MM-yyyy");
+private void actualizarFila(int fila){
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
         fmt.setLenient(false);
         
         Object idObj = modelo.getValueAt(fila, COL_ID);
 
-            if (idObj != null) {
+        if (idObj != null) {
                 
             String id        = safeGet(fila,COL_ID);
             String tipo      = safeGet(fila, COL_TIPO);
@@ -836,36 +802,16 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
 
             boolean esEmpresa = "EMPRESA".equals(tipo);
             int idx = Integer.parseInt(id);
-            // VALIDACIONES
-            if (nombre.isEmpty()) {
-                err(esEmpresa ? "Razón social vacía" : "Nombre vacío", fila);
-                return;
-            }
-
-            if (!esEmpresa && apellido.isEmpty()) {
-                err("Apellido vacío", fila);
-                return;
-            }
-
+            
+            if (nombre.isEmpty()) { err(esEmpresa ? "Razón social vacía" : "Nombre vacío", fila); return; }
+            if (!esEmpresa && apellido.isEmpty()) { err("Apellido vacío", fila); return; }
+            
             int dniLen = esEmpresa ? 11 : 8;
-
-            if (!dni.matches("\\d{" + dniLen + "}")) {
-                err(esEmpresa ? "RUC inválido" : "DNI inválido", fila);
-                return;
-            }
-
-            if (tel.isEmpty()) {
-                err("Teléfono vacío", fila);
-                return;
-            }
-
-            if (!email.contains("@") || !email.contains(".com")) {
-                err("Email inválido", fila);
-                return;
-            }
+            if (!dni.matches("\\d{" + dniLen + "}")) { err(esEmpresa ? "RUC inválido" : "DNI inválido", fila); return; }
+            if (tel.isEmpty()) { err("Teléfono vacío", fila); return; }
+            if (!email.contains("@") || !email.contains(".com")) { err("Email inválido", fila); return; }
 
             Date fecha;
-            
             try {
                 fecha = fmt.parse(fechaStr);
             } catch (Exception ex) {
@@ -874,39 +820,25 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
             }
 
             try {
-
                 cliente_controller.actualizarCliente(
-                    idx,
-                    esEmpresa ? "EMPRESA" : "NATURAL",
-                    nombre,
-                    apellido,
-                    dni,
-                    tel,
-                    email,
-                    direccion,
-                    fecha,
-                    0
+                    idx, esEmpresa ? "EMPRESA" : "NATURAL", nombre, apellido, dni, tel, email, direccion, fecha, 0
                 );
-
             } catch (Exception e) {
-
                 err("Error al guardar: " + e.getMessage(), fila);
                 return;
             }
         }
 
         // 🔥 RECARGAR TABLA
+        filaEditando = -1; // CORRECCIÓN: Cierra la edición para volver a bloquear la fila
         cargarClientes();
 
-        JOptionPane.showMessageDialog(
-            this,
-            "Clientes guardados correctamente"
-        );
+        JOptionPane.showMessageDialog(this, "Cliente actualizado correctamente");
     }
     
      
 // ══════════════════════════════════════════════════════════════════════════
-    //  UTILIDADES  (sin cambios)
+    //  UTILIDADES 
     // ══════════════════════════════════════════════════════════════════════════
     private String safeGet(int r, int c) {
         Object v = modelo.getValueAt(r, c);
@@ -926,6 +858,7 @@ private void aplicarFiltroNumerico(JTextField campo, int limite) {
         lblEmpresa.setText(String.valueOf(emp));
         lblNatural.setText(String.valueOf(nat));
     }
+    
 
     // ══════════════════════════════════════════════════════════════════════════
     //  MAIN

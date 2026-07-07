@@ -1,4 +1,4 @@
- package proyecto.pos.gui;
+package proyecto.pos.gui;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap; 
-import java.util.Map;     
+import java.util.Map;       
 
 import proyecto.pos.config.DatabaseConnection;
 
@@ -53,6 +53,7 @@ public class Caja_GUI extends JFrame {
     private VentaController venta_controller;
     
     private void obtenerPlatosBD() {
+ 
         platos_menu = (ArrayList<Plato>) plato_controller.listarPlatos();
     }//
     
@@ -421,25 +422,28 @@ public class Caja_GUI extends JFrame {
         inferiorResumen.add(panelDesglose, BorderLayout.CENTER);
         inferiorResumen.add(panelAcciones, BorderLayout.SOUTH);
 
+        // --- CÓDIGO CORREGIDO AQUÍ ---
         btnPagar.addActionListener(e -> {
             if (totalAcumulado > 0) {
                 if (tipoAtencionActual.equals("MESA")) {
                     String dni = txtCliente.getText().trim();
                     String nro_mesa = txtMesa.getText().trim();
                     
-                    if (!nro_mesa.isEmpty()) {
-                        System.out.println(mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa)).getNumero_mesa());
-                        if(mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa))== null){
-                            JOptionPane.showMessageDialog(this, "Mesa no encontrada.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
-                            txtMesa.requestFocus();
-                            return;
-                        }
-                    }
-                    else{
+                    if (nro_mesa.isEmpty()) {
                         JOptionPane.showMessageDialog(this, "Debe asignar un número de mesa.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
                         txtMesa.requestFocus();
                         return;
                     }
+
+                    Mesa mesa = mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa));
+                    
+                    if(mesa == null){
+                        JOptionPane.showMessageDialog(this, "Mesa no encontrada. Ingrese un número válido.", "Validación Requerida", JOptionPane.WARNING_MESSAGE);
+                        txtMesa.requestFocus();
+                        return;
+                    }
+                    
+                    System.out.println("Mesa validada y cargada: " + mesa.getNumero_mesa());
 
                     Cliente cliente = null;
                     if (!dni.isEmpty()) {
@@ -457,11 +461,11 @@ public class Caja_GUI extends JFrame {
                         }
                     }
                     
-                    Mesa mesa = mesa_controller.obtenerPorNumeroMesa(Integer.parseInt(nro_mesa));
                     double totalFinal = totalAcumulado;
                     if (reglaDescuentoPorcentaje > 0) totalFinal = totalAcumulado - (totalAcumulado * (reglaDescuentoPorcentaje / 100.0));
                     else if (reglaDescuentoFijo > 0) totalFinal = totalAcumulado - reglaDescuentoFijo;
                     if(totalFinal < 0) totalFinal = 0;
+                    
                     Pago_GUI pago = new Pago_GUI(this, totalFinal, cliente, platos_seleccionados, mesa, conexion);
                     pago.setVisible(true);
                 } 
@@ -643,7 +647,7 @@ public class Caja_GUI extends JFrame {
 
         JPanel grid = new JPanel(new GridLayout(0, 4, 10, 15)); 
         grid.setBackground(Color.WHITE);
-        System.out.println(titulo);
+        //System.out.println(titulo);
         
         for (Plato p : platos) {
             JPanel cardWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -668,7 +672,7 @@ public class Caja_GUI extends JFrame {
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
 
-        System.out.println(getClass().getResource("/img/PiscoSour.png"));
+        //System.out.println(getClass().getResource("/img/PiscoSour.png"));
         JLabel lblImg = new JLabel("", SwingConstants.CENTER);
 
         lblImg.setPreferredSize(new Dimension(150, 120));
@@ -683,7 +687,7 @@ public class Caja_GUI extends JFrame {
 
             String rutaImagen = plato.getImagen();
 
-            System.out.println(rutaImagen);
+            //System.out.println(rutaImagen);
 
             File archivo = new File(rutaImagen);
 

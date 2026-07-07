@@ -18,10 +18,6 @@ import proyecto.pos.config.DatabaseConnection;
 import proyecto.pos.dao.impl.VentaDAOImpl;
 import proyecto.pos.model.Venta;
 
-/**
- * Clase HistorialTransaccionesFrame
- * Muestra el registro completo de ventas y permite visualizar boletas térmicas.
- */
 public class HistorialTransaccionesFrame extends JFrame {
 
     // --- PALETA DE COLORES DISEÑO INTERFAZ ---
@@ -282,7 +278,7 @@ private class BoletaButtonEditor extends DefaultCellEditor {
                 String val = tabla.getValueAt(rowSel, 0).toString();
                 int id = Integer.parseInt(val.replace("TRX-", ""));
                 
-                System.out.println("DEBUG: Intentando abrir boleta para TRX ID: " + id); // Para que verifiques en el output
+               // System.out.println("DEBUG: Intentando abrir boleta para TRX ID: " + id); // Para que verifiques en el output
 
                 // 3. Usamos invokeLater para que el diálogo se abra después de que Swing se refresque
                 SwingUtilities.invokeLater(() -> {

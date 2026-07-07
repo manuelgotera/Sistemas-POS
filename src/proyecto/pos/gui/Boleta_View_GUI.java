@@ -72,7 +72,7 @@ public class Boleta_View_GUI extends JDialog {
 
     if (v != null) {
         StringBuilder sb = new StringBuilder();
-        sb.append("      LA BUENA VIDA RESTOBAR      \n");
+        sb.append("      LA BUENA VIDA    \n");
         sb.append("      RUC: 20601234567            \n");
         sb.append("    Av. Larco 543 - Trujillo      \n");
         sb.append("==================================\n");

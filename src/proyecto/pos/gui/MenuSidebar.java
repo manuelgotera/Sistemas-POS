@@ -36,27 +36,31 @@ public class MenuSidebar extends JPanel {
         JButton btnCajero    = crearBotonMenu("Cajero",             "/img/car.png",       ventanaActiva.equals("Cajero"));
         JButton btnStock     = crearBotonMenu("Artículos y Stock",  "/img/stock.png",         ventanaActiva.equals("Stock"));
         JButton btnHistorial = crearBotonMenu("Historial de Venta","/img/Historial.png",     ventanaActiva.equals("Historial"));
-        JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
-        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/money.png",     ventanaActiva.equals("Gastos"));
+       // JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+       // JButton btnGastos    = crearBotonMenu("Gastos",             "/img/money.png",     ventanaActiva.equals("Gastos"));
         JButton btnClientes  = crearBotonMenu("Clientes",           "/img/ClientesIcon.png",      ventanaActiva.equals("Clientes"));
         JButton btnEmpleados = crearBotonMenu("Empleados",          "/img/empleados.png",     ventanaActiva.equals("Empleados"));
         JButton btnConfig    = crearBotonMenu("Configuración",      "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
         JButton btnPlato    = crearBotonMenu("Add Platos",      "/img/platoIcon.png", ventanaActiva.equals("Platos"));
+        JButton btnMerma   = crearBotonMenu("Merma",      "/img/MermaIcon.png", ventanaActiva.equals("Merma"));
+        JButton btnProveedores   = crearBotonMenu("Proveedores",      "/img/ProveedoresIcon.png", ventanaActiva.equals("Proveedores"));
 
         
         btnCajero   .addActionListener(e -> navegar(new Caja_GUI()));
         btnStock    .addActionListener(e -> navegar(new ArticulosStockFrame()));
         btnHistorial.addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
-        btnReportes .addActionListener(e -> navegar(new ReportesFrame()));
-        btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
+       // btnReportes .addActionListener(e -> navegar(new ReportesFrame()));
+        //btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
         btnClientes .addActionListener(e -> navegar(new ClientesFrame()));
         btnEmpleados.addActionListener(e -> navegar(new EmpleadosFrame()));
         btnConfig   .addActionListener(e -> navegar(new ConfiguracionFrame()));
         btnPlato   .addActionListener(e -> navegar(new PlatosFrame()));
-        
+        btnMerma .addActionListener(e -> navegar(new MermaFrame()));
+        btnProveedores .addActionListener(e -> navegar(new ProveedorFrame()));
 
-        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes,
-                    btnGastos, btnClientes, btnEmpleados, btnConfig, btnPlato);
+
+        agregarMenu(this, btnCajero, btnStock, btnHistorial,
+                    /*btnGastos,*/ btnClientes, btnEmpleados, btnProveedores ,btnConfig, btnPlato, btnMerma);
 
         add(Box.createVerticalGlue());
         add(crearLinea());

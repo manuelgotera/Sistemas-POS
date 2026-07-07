@@ -53,10 +53,11 @@ public class MesaDAOImpl implements MesaDAO {
                     mesa.getCapacidad()
             );
 
-            // estado_mesa
-            ps.setInt(
+            // estado_mesa (CORREGIDO: Convertimos int a String para la BD)
+            String estadoTexto = (mesa.getEstado_mesa() == 1) ? "Disponible" : "Ocupada";
+            ps.setString(
                     3,
-                    mesa.getEstado_mesa()
+                    estadoTexto
             );
 
             ps.executeUpdate();
@@ -157,7 +158,7 @@ public class MesaDAOImpl implements MesaDAO {
     // =====================================================
     @Override
     public Mesa obtenerPorNumeroMesa(int numeroMesa) {
-        System.out.println("ptmrrrrrrrrrrrrrr");
+        System.out.println("Buscando mesa...");
         String sql = """
             SELECT
                 mesa_id,
@@ -192,7 +193,7 @@ public class MesaDAOImpl implements MesaDAO {
 
             e.printStackTrace();
         }
-        System.out.println("xddd");
+        System.out.println("Búsqueda finalizada.");
         return mesa;
     }
 
@@ -226,9 +227,11 @@ public class MesaDAOImpl implements MesaDAO {
                     mesa.getCapacidad()
             );
 
-            ps.setInt(
+            // estado_mesa (CORREGIDO: Convertimos int a String para la BD)
+            String estadoTexto = (mesa.getEstado_mesa() == 1) ? "Disponible" : "Ocupada";
+            ps.setString(
                     3,
-                    mesa.getEstado_mesa()
+                    estadoTexto
             );
 
             ps.setInt(
@@ -264,7 +267,9 @@ public class MesaDAOImpl implements MesaDAO {
                     conexion.prepareStatement(sql)
         ) {
 
-            ps.setInt(1, estado);
+            // CORREGIDO: Convertimos int a String para la BD
+            String estadoTexto = (estado == 1) ? "Disponible" : "Ocupada";
+            ps.setString(1, estadoTexto);
 
             ps.setInt(2, mesaId);
 
@@ -296,12 +301,17 @@ public class MesaDAOImpl implements MesaDAO {
                 rs.getInt("capacidad")
         );
 
-        mesa.setEstado_mesa(
-                rs.getInt("estado_mesa")
-        );
+        // =====================================================
+        // CORRECCIÓN PRINCIPAL DEL ERROR ORA-17059
+        // Leemos el String de Oracle y lo convertimos a int para Java
+        // =====================================================
+        String estadoStr = rs.getString("estado_mesa");
+        if (estadoStr != null && (estadoStr.equalsIgnoreCase("Disponible") || estadoStr.equals("1"))) {
+            mesa.setEstado_mesa(1); // 1 = Disponible
+        } else {
+            mesa.setEstado_mesa(0); // 0 = Ocupada
+        }
 
         return mesa;
     }
-
-
 }

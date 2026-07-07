@@ -20,7 +20,7 @@ import proyecto.pos.dao.interfaces.InsumoDAO;
 import proyecto.pos.dao.impl.InsumoDAOImpl;
 import proyecto.pos.model.Insumo;
 import proyecto.pos.model.Proveedor;
-import proyecto.pos.model.PDFGenerator; // Asegúrate de tener el método generarReporteStock
+import proyecto.pos.model.PDFGenerator; 
 
 public class ArticulosStockFrame extends JFrame {
 
@@ -480,11 +480,14 @@ public class ArticulosStockFrame extends JFrame {
                 String codigoStr = String.valueOf(ins.getInsumoId()); 
                 String proveedorNom = ins.getProveedor() != null ? ins.getProveedor().getNombre() : "N/A";
                 
+                // --- CAMBIO CLAVE AQUÍ: Asignamos la categoría real ---
+                String categoriaNom = ins.getCategoria() != null ? ins.getCategoria() : "Sin Categoría";
+                
                 // NOTA: Los campos que no existen en tu BD Oracle se rellenan con valores por defecto
                 agregarFila(
                     codigoStr, 
                     ins.getNombre(), 
-                    "Sin Categoría", // Falta en BD
+                    categoriaNom, // <- Ahora toma el dato real
                     ins.getUnidadMedida(), 
                     proveedorNom, 
                     ins.getCosto(), 
@@ -651,8 +654,9 @@ public class ArticulosStockFrame extends JFrame {
         RowFilter<DefaultTableModel, Object> filtroTexto = texto.isEmpty()
                 ? null : RowFilter.regexFilter("(?i)" + Pattern.quote(texto), COL_CODIGO, COL_NOMBRE, COL_PROVEEDOR);
 
+        // --- CAMBIO CLAVE AQUÍ: "(?i)" ignora si está en mayúscula o minúscula ---
         RowFilter<DefaultTableModel, Object> filtroCategoria = categoria.equals("Todas las categorías")
-                ? null : RowFilter.regexFilter("^" + Pattern.quote(categoria) + "$", COL_CATEGORIA);
+                ? null : RowFilter.regexFilter("(?i)^" + Pattern.quote(categoria) + "$", COL_CATEGORIA);
 
         if (filtroTexto != null && filtroCategoria != null) {
             sorter.setRowFilter(RowFilter.andFilter(java.util.Arrays.asList(filtroTexto, filtroCategoria)));

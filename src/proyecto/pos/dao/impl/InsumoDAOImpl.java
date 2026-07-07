@@ -21,7 +21,8 @@ public class InsumoDAOImpl implements InsumoDAO {
 
     @Override
     public void insertar(Insumo insumo) {
-        String sql = "INSERT INTO insumos (nombre_insumo, unidad_medida, stock_minimo_alerta, proveedor_id, costo, stock) VALUES (?, ?, ?, ?, ?, ?)";
+        // Agregada la columna 'categoria' al final
+        String sql = "INSERT INTO insumos (nombre_insumo, unidad_medida, stock_minimo_alerta, proveedor_id, costo, stock, categoria) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, insumo.getNombre());
@@ -30,6 +31,7 @@ public class InsumoDAOImpl implements InsumoDAO {
             ps.setInt(4, insumo.getProveedor().getId());
             ps.setFloat(5, insumo.getCosto());
             ps.setFloat(6, insumo.getCantidad());
+            ps.setString(7, insumo.getCategoria()); // <- Guardamos la categoría
 
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -63,6 +65,9 @@ public class InsumoDAOImpl implements InsumoDAO {
                 insumo.setCosto(rs.getFloat("costo"));
                 insumo.setCantidad(rs.getFloat("stock"));
                 insumo.setProveedor(proveedor);
+                
+                // ---> ¡AQUÍ ESTÁ LA LÍNEA QUE FALTABA! <---
+                insumo.setCategoria(rs.getString("categoria"));
 
                 lista.add(insumo);
             }
@@ -99,6 +104,7 @@ public class InsumoDAOImpl implements InsumoDAO {
                     insumo.setCosto(rs.getFloat("costo"));
                     insumo.setCantidad(rs.getFloat("stock"));
                     insumo.setProveedor(proveedor);
+                    insumo.setCategoria(rs.getString("categoria"));
                 }
             }
         } catch (SQLException e) {
@@ -128,7 +134,7 @@ public class InsumoDAOImpl implements InsumoDAO {
         String sql = "UPDATE insumos SET proveedor_id = ? WHERE insumo_id = ?";
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, proveedor_id); // CORREGIDO: de setDouble a setInt
+            ps.setInt(1, proveedor_id); 
             ps.setInt(2, insumoId);
 
             ps.executeUpdate();
@@ -181,12 +187,13 @@ public class InsumoDAOImpl implements InsumoDAO {
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
-        } // CORREGIDO: Se cerró el catch correctamente
-    } // CORREGIDO: Se cerró el método correctamente
+        } 
+    } 
 
     @Override
     public void actualizarCompleto(Insumo insumo) {
-        String sql = "UPDATE insumos SET nombre_insumo=?, unidad_medida=?, stock_minimo_alerta=?, proveedor_id=?, costo=?, stock=? WHERE insumo_id=?";
+        // Agregado 'categoria=?' para que se actualice al editar
+        String sql = "UPDATE insumos SET nombre_insumo=?, unidad_medida=?, stock_minimo_alerta=?, proveedor_id=?, costo=?, stock=?, categoria=? WHERE insumo_id=?";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setString(1, insumo.getNombre());
             ps.setString(2, insumo.getUnidadMedida());
@@ -194,7 +201,8 @@ public class InsumoDAOImpl implements InsumoDAO {
             ps.setInt(4, insumo.getProveedor().getId());
             ps.setFloat(5, insumo.getCosto());
             ps.setFloat(6, insumo.getCantidad());
-            ps.setInt(7, insumo.getInsumoId());
+            ps.setString(7, insumo.getCategoria()); // <- Actualizamos la categoría
+            ps.setInt(8, insumo.getInsumoId()); // <- Ahora el ID es el parámetro 8
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
