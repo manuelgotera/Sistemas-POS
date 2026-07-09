@@ -1,0 +1,46 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package proyecto.pos.service;
+
+import proyecto.pos.dao.impl.AsistenciaTurnoDAOImpl;
+import proyecto.pos.dao.interfaces.AsistenciaTurnoDAO;
+import proyecto.pos.model.AsistenciaTurno;
+
+import java.sql.Connection;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ *
+ * @author HP
+ */
+public class AsistenciaTurnoService {
+
+    private final AsistenciaTurnoDAO dao;
+
+    public AsistenciaTurnoService(Connection conexion) {
+        this.dao = new AsistenciaTurnoDAOImpl(conexion);
+    }
+
+    public void registrarEntrada(int empleadoId) {
+        dao.registrarEntrada(empleadoId);
+    }
+
+    public void registrarSalida(int empleadoId) {
+        dao.registrarSalida(empleadoId);
+    }
+
+    public List<AsistenciaTurno> listarPorRangoFecha(LocalDate desde, LocalDate hasta) {
+        return dao.listarPorRangoFecha(desde, hasta);
+    }
+
+    public List<AsistenciaTurno> listarPorEmpleadoYRango(int empleadoId, LocalDate desde, LocalDate hasta) {
+        return dao.listarPorEmpleadoYRango(empleadoId, desde, hasta);
+    }
+
+    public List<AsistenciaTurno> listarTardanzasEInasistencias(LocalDate desde, LocalDate hasta) {
+        return dao.listarTardanzasEInasistencias(desde, hasta);
+    }
+}
