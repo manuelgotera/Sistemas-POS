@@ -1,0 +1,289 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/JFrame.java to edit this template
+ */
+package proyecto.pos.gui;
+
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.controller.AsistenciaTurnoController;
+import proyecto.pos.model.AsistenciaTurno;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+/**
+ * HU-15: Controlar la asistencia y horarios del personal.
+ * Usa la misma paleta de colores que EmpleadosFrame.java.
+ *
+ * @author HP
+ */
+public class AsistenciaFrame extends JFrame {
+
+    // — Paleta (copiada de EmpleadosFrame.java) —
+    private static final Color AZUL         = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO   = new Color(232, 241, 255);
+    private static final Color FONDO        = new Color(246, 248, 251);
+    private static final Color BORDE        = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE  = new Color(105, 113, 128);
+    private static final Color VERDE_BG     = new Color(225, 245, 238);
+    private static final Color VERDE_TEXT   = new Color(15, 110, 86);
+    private static final Color ROJO_BG      = new Color(255, 235, 238);
+    private static final Color ROJO_TEXT    = new Color(180, 30, 50);
+
+    private final AsistenciaTurnoController controller;
+
+    private JTextField txtIdEmpleado;
+    private JTextField txtDesde;
+    private JTextField txtHasta;
+    private JTable tabla;
+    private DefaultTableModel modelo;
+
+    public AsistenciaFrame() {
+        Connection conexion = new DatabaseConnection().conectar();
+        this.controller = new AsistenciaTurnoController(conexion);
+
+        setTitle("Control de Asistencia y Horarios del Personal");
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setSize(1050, 580);
+        setLocationRelativeTo(null);
+        getContentPane().setBackground(FONDO);
+        setLayout(new BorderLayout(10, 10));
+
+        add(construirEncabezado(), BorderLayout.NORTH);
+        add(construirPanelCentral(), BorderLayout.CENTER);
+        add(construirPanelBotones(), BorderLayout.SOUTH);
+    }
+
+    private JPanel construirEncabezado() {
+        JPanel panelTitulo = new JPanel(new BorderLayout());
+        panelTitulo.setBackground(AZUL);
+        panelTitulo.setBorder(new EmptyBorder(14, 20, 14, 20));
+        JLabel lbl = new JLabel("Asistencia y Horarios del Personal");
+        lbl.setForeground(Color.WHITE);
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 18));
+        panelTitulo.add(lbl, BorderLayout.WEST);
+
+        JPanel panelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        panelFiltros.setBackground(FONDO);
+        panelFiltros.setBorder(new EmptyBorder(8, 15, 8, 15));
+
+        panelFiltros.add(crearEtiqueta("ID Empleado (opcional):"));
+        txtIdEmpleado = crearCampo(5);
+        panelFiltros.add(txtIdEmpleado);
+
+        panelFiltros.add(crearEtiqueta("Desde:"));
+        txtDesde = crearCampo(10);
+        txtDesde.setText(LocalDate.now().withDayOfMonth(1).toString());
+        panelFiltros.add(txtDesde);
+
+        panelFiltros.add(crearEtiqueta("Hasta:"));
+        txtHasta = crearCampo(10);
+        txtHasta.setText(LocalDate.now().toString());
+        panelFiltros.add(txtHasta);
+
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.add(panelTitulo, BorderLayout.NORTH);
+        contenedor.add(panelFiltros, BorderLayout.SOUTH);
+        return contenedor;
+    }
+
+    private JLabel crearEtiqueta(String texto) {
+        JLabel lbl = new JLabel(texto);
+        lbl.setForeground(TEXTO_SUAVE);
+        lbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        return lbl;
+    }
+
+    private JTextField crearCampo(int columnas) {
+        JTextField campo = new JTextField(columnas);
+        campo.setBorder(BorderFactory.createLineBorder(BORDE));
+        return campo;
+    }
+
+    private JScrollPane construirPanelCentral() {
+        modelo = new DefaultTableModel(
+            new Object[]{"ID", "Empleado", "Fecha", "Entrada", "Salida", "Estado"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) { return false; }
+        };
+        tabla = new JTable(modelo);
+        tabla.setRowHeight(26);
+        tabla.getTableHeader().setBackground(AZUL_CLARO);
+        tabla.getTableHeader().setForeground(AZUL);
+        tabla.setGridColor(BORDE);
+
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setBorder(new EmptyBorder(0, 15, 0, 15));
+        return scroll;
+    }
+
+    private JPanel construirPanelBotones() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 12));
+        panel.setBackground(FONDO);
+
+        JButton btnEntrada   = botonEstilo("Registrar Entrada", VERDE_BG, VERDE_TEXT);
+        JButton btnSalida    = botonEstilo("Registrar Salida", AZUL_CLARO, AZUL);
+        JButton btnHistorial = botonEstilo("Consultar Historial", AZUL_CLARO, AZUL);
+        JButton btnTardanzas = botonEstilo("Tardanzas / Inasistencias", ROJO_BG, ROJO_TEXT);
+        JButton btnReporte   = botonEstilo("Generar Reporte (CSV)", AZUL_CLARO, AZUL);
+
+        btnEntrada.addActionListener(e -> registrarEntrada());
+        btnSalida.addActionListener(e -> registrarSalida());
+        btnHistorial.addActionListener(e -> consultarHistorial());
+        btnTardanzas.addActionListener(e -> verTardanzasInasistencias());
+        btnReporte.addActionListener(e -> generarReporteCSV());
+
+        panel.add(btnEntrada);
+        panel.add(btnSalida);
+        panel.add(btnHistorial);
+        panel.add(btnTardanzas);
+        panel.add(btnReporte);
+
+        return panel;
+    }
+
+    private JButton botonEstilo(String texto, Color fondo, Color textoColor) {
+        JButton btn = new JButton(texto);
+        btn.setBackground(fondo);
+        btn.setForeground(textoColor);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createLineBorder(BORDE));
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        return btn;
+    }
+
+    // ---------- acciones ----------
+    private void registrarEntrada() {
+        Integer id = leerIdEmpleadoObligatorio();
+        if (id == null) return;
+        try {
+            controller.registrarEntrada(id);
+            JOptionPane.showMessageDialog(this, "Entrada registrada correctamente.");
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo registrar la entrada: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void registrarSalida() {
+        Integer id = leerIdEmpleadoObligatorio();
+        if (id == null) return;
+        try {
+            controller.registrarSalida(id);
+            JOptionPane.showMessageDialog(this, "Salida registrada correctamente.");
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void consultarHistorial() {
+        LocalDate desde = leerFecha(txtDesde.getText());
+        LocalDate hasta = leerFecha(txtHasta.getText());
+        if (desde == null || hasta == null) return;
+
+        String texto = txtIdEmpleado.getText().trim();
+        List<AsistenciaTurno> lista;
+        if (texto.isEmpty()) {
+            lista = controller.listarPorRangoFecha(desde, hasta);
+        } else {
+            lista = controller.listarPorEmpleadoYRango(Integer.parseInt(texto), desde, hasta);
+        }
+        cargarTabla(lista);
+    }
+
+    private void verTardanzasInasistencias() {
+        LocalDate desde = leerFecha(txtDesde.getText());
+        LocalDate hasta = leerFecha(txtHasta.getText());
+        if (desde == null || hasta == null) return;
+
+        List<AsistenciaTurno> lista = controller.listarTardanzasEInasistencias(desde, hasta);
+        cargarTabla(lista);
+        if (lista.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No se encontraron tardanzas ni inasistencias en el rango indicado.");
+        }
+    }
+
+    private void generarReporteCSV() {
+        LocalDate desde = leerFecha(txtDesde.getText());
+        LocalDate hasta = leerFecha(txtHasta.getText());
+        if (desde == null || hasta == null) return;
+
+        List<AsistenciaTurno> lista = controller.listarPorRangoFecha(desde, hasta);
+        cargarTabla(lista);
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File("reporte_asistencia.csv"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        try (FileWriter fw = new FileWriter(chooser.getSelectedFile())) {
+            fw.write("ID,EMPLEADO,FECHA,ENTRADA,SALIDA,ESTADO\n");
+            for (AsistenciaTurno a : lista) {
+                fw.write(a.getAsistenciaId() + ","
+                        + nombreCompleto(a) + ","
+                        + a.getFecha() + ","
+                        + a.getEntrada() + ","
+                        + a.getSalida() + ","
+                        + a.calcularEstado() + "\n");
+            }
+            JOptionPane.showMessageDialog(this, "Reporte generado correctamente.");
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error al generar el reporte: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // ---------- utilitarios ----------
+    private static final DateTimeFormatter FMT_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    private void cargarTabla(List<AsistenciaTurno> lista) {
+        modelo.setRowCount(0);
+        for (AsistenciaTurno a : lista) {
+            modelo.addRow(new Object[]{
+                a.getAsistenciaId() == 0 ? "-" : a.getAsistenciaId(),
+                nombreCompleto(a),
+                a.getFecha(),
+                a.getEntrada() != null ? a.getEntrada().format(FMT_HORA) : "-",
+                a.getSalida() != null ? a.getSalida().format(FMT_HORA) : "-",
+                a.calcularEstado()
+            });
+        }
+    }
+
+    private String nombreCompleto(AsistenciaTurno a) {
+        if (a.getEmpleado() == null) return "-";
+        return a.getEmpleado().getNombre() + " " + a.getEmpleado().getApellidos();
+    }
+
+    private Integer leerIdEmpleadoObligatorio() {
+        try {
+            return Integer.parseInt(txtIdEmpleado.getText().trim());
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Ingresa un ID de empleado valido.",
+                    "Dato invalido", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+    }
+
+    private LocalDate leerFecha(String texto) {
+        try {
+            return LocalDate.parse(texto.trim());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Formato de fecha invalido. Usa yyyy-mm-dd.",
+                    "Dato invalido", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new AsistenciaFrame().setVisible(true));
+    }
+}
