@@ -1,0 +1,56 @@
+package proyecto.pos.dao.interfaces;
+
+import proyecto.pos.model.SubReceta;
+import java.util.List;
+
+/**
+ * Interface para operaciones DAO de Sub-Recetas
+ * Ubicación: proyecto.pos.dao.interfaces.SubRecetaDAO
+ */
+public interface SubRecetaDAO {
+    
+    /**
+     * Inserta una nueva sub-receta en la base de datos
+     */
+    void insertar(SubReceta subReceta);
+    
+    /**
+     * Agrega un insumo al detalle de una sub-receta
+     */
+    void agregarInsumoADetalle(int subrecetaId, int insumoId, float cantidadRequerida);
+    
+    /**
+     * Obtiene una sub-receta completa por su ID
+     */
+    SubReceta obtenerPorId(int subrecetaId);
+    
+    /**
+     * Lista todas las sub-recetas
+     */
+    List<SubReceta> listar();
+    
+    /**
+     * Actualiza el costo unitario de una sub-receta
+     */
+    void actualizarCostoUnitario(int subrecetaId, float nuevoCostoUnitario);
+    
+    /**
+     * NUEVO: Elimina una sub-receta por ID
+     */
+    void eliminar(int subrecetaId);
+    
+    /**
+     * NUEVO: Busca sub-recetas por nombre
+     */
+    List<SubReceta> buscarPorNombre(String nombre);
+    
+    /**
+     * NUEVO: Obtiene el costo unitario actual de una sub-receta
+     */
+    float obtenerCostoUnitario(int subrecetaId);
+    
+    /**
+     * NUEVO: Actualiza todos los campos de una sub-receta
+     */
+    void actualizar(SubReceta subReceta);
+}
