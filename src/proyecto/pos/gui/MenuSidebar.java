@@ -2,24 +2,34 @@ package proyecto.pos.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
+import java.sql.Connection;
 import javax.swing.*;
 import javax.swing.border.*;
 
 public class MenuSidebar extends JPanel {
 
-    private static final Color AZUL        = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO  = new Color(232, 241, 255);
-    private static final Color SIDEBAR     = new Color(250, 251, 253);
-    private static final Color BORDE       = new Color(225, 229, 236);
-    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
-    private static final Color ROJO        = new Color(220, 53, 69);
+    private static final Color AZUL       = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO = new Color(232, 241, 255);
+    private static final Color SIDEBAR    = new Color(250, 251, 253);
+    private static final Color BORDE      = new Color(225, 229, 236);
+    private static final Color TEXTO_SUAVE= new Color(105, 113, 128);
+    private static final Color ROJO       = new Color(220, 53, 69);
+    private static final Color VERDE      = new Color(40, 167, 69);
+    private static final Color NARANJA    = new Color(255, 159, 64);
 
     private JFrame parentFrame;
     private String ventanaActiva;
+    private Connection conexion;
+    
+    // Frames para Sub-Recetas y Producción
+    private SubRecetaFrame subRecetaFrame;
+    private ProduccionFrame produccionFrame;
 
-    public MenuSidebar(JFrame parentFrame, String ventanaActiva) {
-        this.parentFrame   = parentFrame;
-        this.ventanaActiva = ventanaActiva;
+    public MenuSidebar(JFrame parentFrame, String ventanaActiva, Connection conexion) {
+        this.parentFrame    = parentFrame;
+        this.ventanaActiva  = ventanaActiva;
+        this.conexion       = conexion;
         initComponents();
     }
 
@@ -33,34 +43,101 @@ public class MenuSidebar extends JPanel {
         add(crearLinea());
         add(Box.createVerticalStrut(34));
 
-        // ── Botones de navegación ─────────────────────────────────────────────
-        JButton btnCajero      = crearBotonMenu("Cajero",              "/img/carrito.png",       ventanaActiva.equals("Cajero"));
-        JButton btnStock       = crearBotonMenu("Artículos y Stock",   "/img/stock.png",         ventanaActiva.equals("Stock"));
-        JButton btnHistorial   = crearBotonMenu("Historial de Trans.", "/img/Historial.png",     ventanaActiva.equals("Historial"));
-        JButton btnReportes    = crearBotonMenu("Reportes",            "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
-        JButton btnGastos      = crearBotonMenu("Gastos",              "/img/billetera.png",     ventanaActiva.equals("Gastos"));
-        JButton btnClientes    = crearBotonMenu("Clientes",            "/img/clientes.png",      ventanaActiva.equals("Clientes"));
-        JButton btnEmpleados   = crearBotonMenu("Empleados",           "/img/empleados.png",     ventanaActiva.equals("Empleados"));
-        JButton btnProveedores = crearBotonMenu("Proveedores",         "/img/empleados.png",     ventanaActiva.equals("Proveedores"));
-        JButton btnPlatos      = crearBotonMenu("Platos",              "/img/platos.png",        ventanaActiva.equals("Platos"));
-        JButton btnConfig      = crearBotonMenu("Configuración",       "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
+        // Botones del menú original
+        JButton btnCajero    = crearBotonMenu("Cajero",             "/img/carrito.png",       ventanaActiva.equals("Cajero"));
+        JButton btnStock     = crearBotonMenu("Artículos y Stock",  "/img/stock.png",         ventanaActiva.equals("Stock"));
+        JButton btnHistorial = crearBotonMenu("Historial de Trans.","/img/Historial.png",     ventanaActiva.equals("Historial"));
+        JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+        JButton btnGastos    = crearBotonMenu("Gastos",             "/img/billetera.png",     ventanaActiva.equals("Gastos"));
+        JButton btnClientes  = crearBotonMenu("Clientes",           "/img/clientes.png",      ventanaActiva.equals("Clientes"));
+        JButton btnEmpleados = crearBotonMenu("Empleados",          "/img/empleados.png",     ventanaActiva.equals("Empleados"));
+        JButton btnConfig    = crearBotonMenu("Configuración",      "/img/configuracion.png", ventanaActiva.equals("Configuracion"));
 
-        // ── Acciones ─────────────────────────────────────────────────────────
-        btnCajero     .addActionListener(e -> navegar(new Caja_GUI()));
-        btnStock      .addActionListener(e -> navegar(new ArticulosStockFrame()));
-        btnHistorial  .addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
-        btnReportes   .addActionListener(e -> navegar(new ReportesFrame()));
-        btnGastos     .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
-        btnClientes   .addActionListener(e -> navegar(new ClientesFrame()));
-        btnEmpleados  .addActionListener(e -> navegar(new EmpleadosFrame()));
-        btnProveedores.addActionListener(e -> navegar(new ProveedorFrame()));
-        btnPlatos     .addActionListener(e -> navegar(new PlatosFrame()));
-        btnConfig     .addActionListener(e -> navegar(new ConfiguracionFrame()));
+        // NUEVOS BOTONES - SUB-RECETAS Y PRODUCCIÓN
+        JButton btnSubRecetas = crearBotonMenu("📋 Sub-Recetas",    null,                     ventanaActiva.equals("SubRecetas"));
+        JButton btnProduccion = crearBotonMenu("⚙️ Producción",      null,                     ventanaActiva.equals("Produccion"));
 
-        agregarMenu(this,
-                btnCajero, btnStock, btnHistorial, btnReportes,
-                btnGastos, btnClientes, btnEmpleados, btnProveedores,
-                btnPlatos, btnConfig);
+        // Acciones botones originales
+        btnCajero.addActionListener(e -> {
+            try {
+                navegar(new Caja_GUI());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnStock.addActionListener(e -> {
+            try {
+                navegar(new ArticulosStockFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnHistorial.addActionListener(e -> {
+            try {
+                navegar(new HistorialTransaccionesFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnReportes.addActionListener(e -> {
+            try {
+                navegar(new ReportesFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnGastos.addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
+        
+        btnClientes.addActionListener(e -> {
+            try {
+                navegar(new ClientesFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnEmpleados.addActionListener(e -> {
+            try {
+                navegar(new EmpleadosFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+        
+        btnConfig.addActionListener(e -> {
+            try {
+                navegar(new ConfiguracionFrame());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parentFrame, "Error: " + ex.getMessage());
+            }
+        });
+
+        // ACCIONES NUEVOS BOTONES
+        btnSubRecetas.addActionListener(e -> abrirSubRecetas());
+        btnProduccion.addActionListener(e -> abrirProduccion());
+
+        // Agregar botones al panel
+        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnReportes,
+                    btnGastos, btnClientes, btnEmpleados, btnConfig);
+        
+        // Separador antes de nuevas opciones
+        add(Box.createVerticalStrut(14));
+        add(crearLinea());
+        add(Box.createVerticalStrut(14));
+        
+        JLabel lblProduccion = new JLabel("PRODUCCIÓN");
+        lblProduccion.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lblProduccion.setForeground(TEXTO_SUAVE);
+        lblProduccion.setAlignmentX(Component.CENTER_ALIGNMENT);
+        add(lblProduccion);
+        add(Box.createVerticalStrut(7));
+        
+        // Agregar nuevos botones
+        agregarMenu(this, btnSubRecetas, btnProduccion);
 
         add(Box.createVerticalGlue());
         add(crearLinea());
@@ -72,6 +149,52 @@ public class MenuSidebar extends JPanel {
 
         agregarMenu(this, btnSalir);
         add(Box.createVerticalStrut(18));
+    }
+
+    /**
+     * Abre SubRecetaFrame (crea una nueva instancia o muestra la existente)
+     */
+    private void abrirSubRecetas() {
+        try {
+            if (conexion == null) {
+                JOptionPane.showMessageDialog(parentFrame, "❌ Error: No hay conexión a la base de datos", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (subRecetaFrame == null || !subRecetaFrame.isVisible()) {
+                subRecetaFrame = new SubRecetaFrame(conexion);
+            } else {
+                subRecetaFrame.setVisible(true);
+                subRecetaFrame.toFront();
+                subRecetaFrame.requestFocus();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parentFrame, "❌ Error al abrir Sub-Recetas: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * Abre ProduccionFrame (crea una nueva instancia o muestra la existente)
+     */
+    private void abrirProduccion() {
+        try {
+            if (conexion == null) {
+                JOptionPane.showMessageDialog(parentFrame, "❌ Error: No hay conexión a la base de datos", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (produccionFrame == null || !produccionFrame.isVisible()) {
+                produccionFrame = new ProduccionFrame(conexion);
+            } else {
+                produccionFrame.setVisible(true);
+                produccionFrame.toFront();
+                produccionFrame.requestFocus();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parentFrame, "❌ Error al abrir Producción: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }
 
     private void navegar(JFrame nuevaVentana) {
@@ -139,8 +262,6 @@ public class MenuSidebar extends JPanel {
         boton.setFocusPainted(false);
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         boton.setFont(new Font("Segoe UI", seleccionado ? Font.BOLD : Font.PLAIN, 14));
-        boton.setContentAreaFilled(false);
-        boton.setOpaque(true);
 
         if (seleccionado) {
             boton.setBackground(AZUL_CLARO);
@@ -171,24 +292,25 @@ public class MenuSidebar extends JPanel {
         try {
             java.net.URL imgURL = MenuSidebar.class.getResource(path);
             if (imgURL != null) {
-                Image img = new ImageIcon(imgURL).getImage()
-                        .getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                Image img = new ImageIcon(imgURL).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
                 return new ImageIcon(img);
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.err.println("Error cargando icono: " + path);
+        }
         return null;
     }
 
     public static class RoundedBorder extends AbstractBorder {
         private final Color color;
         private final int   arc;
-
-        public RoundedBorder(Color color, int arc) {
-            this.color = color;
-            this.arc   = arc;
+        
+        public RoundedBorder(Color color, int arc) { 
+            this.color = color; 
+            this.arc = arc; 
         }
-
-        @Override
+        
+        @Override 
         public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -196,10 +318,18 @@ public class MenuSidebar extends JPanel {
             g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
             g2.dispose();
         }
-
-        @Override public Insets getBorderInsets(Component c) { return new Insets(1, 1, 1, 1); }
-        @Override public Insets getBorderInsets(Component c, Insets insets) {
-            insets.left = 1; insets.right = 1; insets.top = 1; insets.bottom = 1;
+        
+        @Override 
+        public Insets getBorderInsets(Component c) { 
+            return new Insets(1, 1, 1, 1); 
+        }
+        
+        @Override 
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1; 
+            insets.right = 1; 
+            insets.top = 1; 
+            insets.bottom = 1;
             return insets;
         }
     }
