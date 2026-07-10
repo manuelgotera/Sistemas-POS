@@ -1,0 +1,331 @@
+package proyecto.pos.gui;
+
+import proyecto.pos.config.DatabaseConnection; // Importamos tu clase de conexión
+import proyecto.pos.controller.SubRecetaController;
+import proyecto.pos.model.SubReceta;
+import proyecto.pos.model.SubRecetaDetalle;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * Frame para gestionar Sub-Recetas
+ * Ubicación: proyecto.pos.gui.SubRecetaFrame
+ */
+public class SubRecetaFrame extends JFrame {
+    
+    private SubRecetaController controller;
+    private JTable tablaSubRecetas;
+    private DefaultTableModel modeloTabla;
+    private JTextField txtBuscar;
+    private JTextArea txtDetalles;
+
+    public SubRecetaFrame(Connection conexion) {
+        this.controller = new SubRecetaController(conexion);
+        initGUI();
+        cargarSubRecetas();
+    }
+
+    private void initGUI() {
+        setTitle("Gestión de Sub-Recetas");
+        setSize(1000, 700);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+
+        // Panel Superior - Búsqueda y Botones
+        JPanel panelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panelSuperior.setBorder(BorderFactory.createTitledBorder("Búsqueda y Acciones"));
+        
+        panelSuperior.add(new JLabel("Buscar:"));
+        txtBuscar = new JTextField(20);
+        panelSuperior.add(txtBuscar);
+        
+        JButton btnBuscar = new JButton("🔍 Buscar");
+        btnBuscar.addActionListener(e -> buscarSubRecetas());
+        panelSuperior.add(btnBuscar);
+        
+        JButton btnRefrescar = new JButton("🔄 Refrescar");
+        btnRefrescar.addActionListener(e -> cargarSubRecetas());
+        panelSuperior.add(btnRefrescar);
+        
+        JButton btnCrear = new JButton("➕ Crear Sub-Receta");
+        btnCrear.addActionListener(e -> abrirDialogoCrear());
+        panelSuperior.add(btnCrear);
+        
+        JButton btnReporte = new JButton("📄 Reporte");
+        btnReporte.addActionListener(e -> generarReporte());
+        panelSuperior.add(btnReporte);
+
+        // Panel Centro - Tabla de Sub-Recetas
+        JPanel panelCentro = new JPanel(new BorderLayout());
+        panelCentro.setBorder(BorderFactory.createTitledBorder("Sub-Recetas"));
+        
+        modeloTabla = new DefaultTableModel(
+            new String[]{"ID", "Nombre", "Unidad", "Rendimiento", "Costo Unitario", "Insumos"}, 
+            0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        tablaSubRecetas = new JTable(modeloTabla);
+        tablaSubRecetas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tablaSubRecetas.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2) {
+                    mostrarDetalle();
+                }
+            }
+        });
+        
+        JScrollPane scrollTabla = new JScrollPane(tablaSubRecetas);
+        panelCentro.add(scrollTabla, BorderLayout.CENTER);
+        
+        // Panel Derecha - Detalles y Acciones
+        JPanel panelDerecha = new JPanel(new BorderLayout());
+        panelDerecha.setBorder(BorderFactory.createTitledBorder("Detalles"));
+        panelDerecha.setPreferredSize(new Dimension(300, 0));
+        
+        txtDetalles = new JTextArea();
+        txtDetalles.setEditable(false);
+        txtDetalles.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        JScrollPane scrollDetalles = new JScrollPane(txtDetalles);
+        panelDerecha.add(scrollDetalles, BorderLayout.CENTER);
+        
+        JPanel panelBotonesdDerecha = new JPanel(new GridLayout(3, 1, 5, 5));
+        
+        JButton btnDetalle = new JButton("Ver Detalle");
+        btnDetalle.addActionListener(e -> mostrarDetalle());
+        panelBotonesdDerecha.add(btnDetalle);
+        
+        JButton btnAgregarInsumo = new JButton("Agregar Insumo");
+        btnAgregarInsumo.addActionListener(e -> agregarInsumo());
+        panelBotonesdDerecha.add(btnAgregarInsumo);
+        
+        JButton btnEliminar = new JButton("❌ Eliminar");
+        btnEliminar.setForeground(Color.RED);
+        btnEliminar.addActionListener(e -> eliminarSubReceta());
+        panelBotonesdDerecha.add(btnEliminar);
+        
+        panelDerecha.add(panelBotonesdDerecha, BorderLayout.SOUTH);
+
+        // Agregar paneles al frame
+        add(panelSuperior, BorderLayout.NORTH);
+        add(panelCentro, BorderLayout.CENTER);
+        add(panelDerecha, BorderLayout.EAST);
+
+        setVisible(true);
+    }
+
+    private void cargarSubRecetas() {
+        List<SubReceta> lista = controller.listarTodasLasSubRecetas();
+        modeloTabla.setRowCount(0);
+        
+        for (SubReceta sr : lista) {
+            modeloTabla.addRow(new Object[]{
+                sr.getSubrecetaId(),
+                sr.getNombre(),
+                sr.getUnidadMedida(),
+                String.format("%.2f", sr.getRendimientoLote()),
+                String.format("S/ %.2f", sr.getCostoUnitario()),
+                sr.getDetalle().size()
+            });
+        }
+    }
+
+    private void buscarSubRecetas() {
+        String busqueda = txtBuscar.getText();
+        if (busqueda.isEmpty()) {
+            cargarSubRecetas();
+            return;
+        }
+        
+        List<SubReceta> lista = controller.buscarPorNombre(busqueda);
+        modeloTabla.setRowCount(0);
+        
+        for (SubReceta sr : lista) {
+            modeloTabla.addRow(new Object[]{
+                sr.getSubrecetaId(),
+                sr.getNombre(),
+                sr.getUnidadMedida(),
+                String.format("%.2f", sr.getRendimientoLote()),
+                String.format("S/ %.2f", sr.getCostoUnitario()),
+                sr.getDetalle().size()
+            });
+        }
+    }
+
+    private void abrirDialogoCrear() {
+        JDialog dialog = new JDialog(this, "Crear Sub-Receta", true);
+        dialog.setLayout(new GridLayout(4, 2, 10, 10));
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+
+        dialog.add(new JLabel("Nombre:"));
+        JTextField txtNombre = new JTextField();
+        dialog.add(txtNombre);
+
+        dialog.add(new JLabel("Unidad de Medida:"));
+        JComboBox<String> cmbUnidad = new JComboBox<>(new String[]{"LITROS", "KILOS"});
+        dialog.add(cmbUnidad);
+
+        dialog.add(new JLabel("Rendimiento de Lote:"));
+        JTextField txtRendimiento = new JTextField();
+        dialog.add(txtRendimiento);
+
+        dialog.add(new JLabel(""));
+        JButton btnGuardar = new JButton("Guardar");
+        btnGuardar.addActionListener(e -> {
+            try {
+                String nombre = txtNombre.getText();
+                String unidad = (String) cmbUnidad.getSelectedItem();
+                float rendimiento = Float.parseFloat(txtRendimiento.getText());
+
+                if (controller.crearSubReceta(nombre, unidad, rendimiento)) {
+                    JOptionPane.showMessageDialog(dialog, "✅ Sub-Receta creada exitosamente");
+                    dialog.dispose();
+                    cargarSubRecetas();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "❌ Error al crear sub-receta", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "❌ El rendimiento debe ser un número", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(btnGuardar);
+
+        dialog.setVisible(true);
+    }
+
+    private void mostrarDetalle() {
+        int fila = tablaSubRecetas.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "❌ Selecciona una sub-receta", "Advertencia", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int subrecetaId = (int) modeloTabla.getValueAt(fila, 0);
+        String reporte = controller.obtenerReporteCosto(subrecetaId);
+        txtDetalles.setText(reporte);
+    }
+
+    private void agregarInsumo() {
+        int fila = tablaSubRecetas.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "❌ Selecciona una sub-receta", "Advertencia", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int subrecetaId = (int) modeloTabla.getValueAt(fila, 0);
+
+        JDialog dialog = new JDialog(this, "Agregar Insumo", true);
+        dialog.setLayout(new GridLayout(3, 2, 10, 10));
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+
+        dialog.add(new JLabel("ID Insumo:"));
+        JTextField txtInsumoId = new JTextField();
+        dialog.add(txtInsumoId);
+
+        dialog.add(new JLabel("Cantidad Requerida:"));
+        JTextField txtCantidad = new JTextField();
+        dialog.add(txtCantidad);
+
+        dialog.add(new JLabel(""));
+        JButton btnAgregar = new JButton("Agregar");
+        btnAgregar.addActionListener(e -> {
+            try {
+                int insumoId = Integer.parseInt(txtInsumoId.getText());
+                float cantidad = Float.parseFloat(txtCantidad.getText());
+
+                if (controller.agregarInsumo(subrecetaId, insumoId, cantidad)) {
+                    JOptionPane.showMessageDialog(dialog, "✅ Insumo agregado exitosamente");
+                    dialog.dispose();
+                    cargarSubRecetas();
+                    mostrarDetalle();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "❌ Error al agregar insumo", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "❌ Valores inválidos", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        dialog.add(btnAgregar);
+
+        dialog.setVisible(true);
+    }
+
+    private void eliminarSubReceta() {
+        int fila = tablaSubRecetas.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "❌ Selecciona una sub-receta", "Advertencia", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int subrecetaId = (int) modeloTabla.getValueAt(fila, 0);
+        String nombre = (String) modeloTabla.getValueAt(fila, 1);
+
+        int respuesta = JOptionPane.showConfirmDialog(this,
+            "¿Estás seguro de que quieres eliminar: " + nombre + "?",
+            "Confirmar eliminación",
+            JOptionPane.YES_NO_OPTION);
+
+        if (respuesta == JOptionPane.YES_OPTION) {
+            JOptionPane.showMessageDialog(this, "❌ Eliminar no está implementado aún en este GUI", "Info", JOptionPane.INFORMATION_MESSAGE);
+            // TODO: Implementar en Controller
+        }
+    }
+
+    private void generarReporte() {
+        String reporte = controller.obtenerResumen();
+        JDialog dialog = new JDialog(this, "Reporte de Sub-Recetas", true);
+        dialog.setSize(600, 400);
+        dialog.setLocationRelativeTo(this);
+        
+        JTextArea txtReporte = new JTextArea(reporte);
+        txtReporte.setEditable(false);
+        txtReporte.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        
+        JScrollPane scrollPane = new JScrollPane(txtReporte);
+        dialog.add(scrollPane);
+        dialog.setVisible(true);
+    }
+
+    // ==========================================
+    // MÉTODO MAIN INTEGRADO CON TU BASE DE DATOS ORACLE
+    // ==========================================
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Sincronizar apariencia con el sistema operativo
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                
+                // Instanciar tu conexión de Oracle
+                DatabaseConnection dbConfig = new DatabaseConnection();
+                Connection conexionActive = dbConfig.conectar();
+                
+                if (conexionActive != null) {
+                    // Inicializar el Frame con la conexión activa
+                    new SubRecetaFrame(conexionActive);
+                } else {
+                    throw new Exception("El método conectar() retornó null.");
+                }
+                
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, 
+                    "⚠️ No se pudo inicializar SubRecetaFrame de forma aislada.\n" +
+                    "Asegúrate de que Oracle SQL Developer/DB esté activo.\n\n" +
+                    "Error: " + e.getMessage(), 
+                    "Error de Conexión", 
+                    JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
+            }
+        });
+    }
+}
