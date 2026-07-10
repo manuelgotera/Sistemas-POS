@@ -20,6 +20,7 @@ public class Cliente extends Persona {
     private int puntosFideldiad;
     private String direccion; 
     private Date fecha_registro;
+    private String estado;
     
     public Cliente(){
         
@@ -72,6 +73,14 @@ public class Cliente extends Persona {
 
     public Date getFecha_registro() {
         return fecha_registro;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
     
    @Override
