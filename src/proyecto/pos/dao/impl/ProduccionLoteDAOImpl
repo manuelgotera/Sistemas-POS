@@ -1,0 +1,277 @@
+package proyecto.pos.dao.impl;
+
+import proyecto.pos.dao.interfaces.ProduccionLoteDAO;
+import proyecto.pos.model.ProduccionLote;
+import proyecto.pos.model.SubReceta;
+
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Implementación DAO para Producción de Lotes
+ * Ubicación: proyecto.pos.dao.impl.ProduccionLoteDAOImpl
+ * 
+ * Implementa el registro de produccion diaria de sub-recetas:
+ * - Al registrar cuanto se produjo, descuenta los insumos base del stock.
+ * - Recalcula el costo_unitario de la sub-receta usando el costo ACTUAL
+ */
+public class ProduccionLoteDAOImpl implements ProduccionLoteDAO {
+
+    private Connection conexion;
+
+    public ProduccionLoteDAOImpl(Connection conexion) {
+        this.conexion = conexion;
+    }
+
+    @Override
+    public void registrarProduccion(ProduccionLote produccion) {
+        int subrecetaId = produccion.getSubReceta().getSubrecetaId();
+        float cantidadProducida = produccion.getCantidadProducida();
+
+        String sqlDetalle = "SELECT sd.insumo_id, sd.cantidad_requerida, i.costo, i.stock, i.nombre_insumo " +
+                             "FROM sub_receta_detalle sd " +
+                             "JOIN insumos i ON i.insumo_id = sd.insumo_id " +
+                             "WHERE sd.subreceta_id = ?";
+
+        String sqlRendimiento = "SELECT rendimiento_lote FROM sub_recetas WHERE subreceta_id = ?";
+
+        String sqlDescontarStock = "UPDATE insumos SET stock = stock - ? WHERE insumo_id = ?";
+
+        String sqlInsertProduccion = "INSERT INTO produccion_lotes " +
+                                      "(subreceta_id, fecha, cantidad_producida, costo_lote) " +
+                                      "VALUES (?, TRUNC(SYSDATE), ?, ?)";
+
+        String sqlActualizarCostoSubreceta = "UPDATE sub_recetas SET costo_unitario = ?, " +
+                                              "fecha_actualizacion = SYSTIMESTAMP WHERE subreceta_id = ?";
+
+        try {
+            conexion.setAutoCommit(false);
+
+            // 1) Rendimiento estandar del lote
+            float rendimientoLote = 0f;
+            try (PreparedStatement ps = conexion.prepareStatement(sqlRendimiento)) {
+                ps.setInt(1, subrecetaId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        rendimientoLote = rs.getFloat("rendimiento_lote");
+                    } else {
+                        throw new SQLException("No existe la sub-receta con ID: " + subrecetaId);
+                    }
+                }
+            }
+            if (rendimientoLote <= 0) {
+                throw new SQLException("La sub-receta no tiene un rendimiento de lote valido");
+            }
+
+            float factorEscala = cantidadProducida / rendimientoLote;
+
+            // 2) Descontar insumos base del stock, proporcional a lo producido,
+            //    y de paso acumular el costo real de este lote y el costo del
+            //    lote ESTANDAR (para recalcular el costo unitario actualizado)
+            float costoLoteProducido = 0f;
+            float costoLoteEstandar = 0f;
+
+            try (PreparedStatement psDetalle = conexion.prepareStatement(sqlDetalle);
+                 PreparedStatement psDescuento = conexion.prepareStatement(sqlDescontarStock)) {
+
+                psDetalle.setInt(1, subrecetaId);
+                try (ResultSet rs = psDetalle.executeQuery()) {
+                    while (rs.next()) {
+                        float cantidadRequeridaEstandar = rs.getFloat("cantidad_requerida");
+                        float costoInsumo = rs.getFloat("costo");
+                        float stockActual = rs.getFloat("stock");
+                        int insumoId = rs.getInt("insumo_id");
+                        String nombreInsumo = rs.getString("nombre_insumo");
+
+                        float cantidadADescontar = cantidadRequeridaEstandar * factorEscala;
+
+                        if (stockActual < cantidadADescontar) {
+                            throw new SQLException("Stock insuficiente de '" + nombreInsumo +
+                                    "'. Necesitas " + cantidadADescontar + " y solo hay " + stockActual);
+                        }
+
+                        psDescuento.setFloat(1, cantidadADescontar);
+                        psDescuento.setInt(2, insumoId);
+                        psDescuento.addBatch();
+
+                        costoLoteProducido += cantidadADescontar * costoInsumo;
+                        costoLoteEstandar += cantidadRequeridaEstandar * costoInsumo;
+                    }
+                }
+                psDescuento.executeBatch();
+            }
+
+            // 3) Registrar la produccion de hoy
+            try (PreparedStatement ps = conexion.prepareStatement(sqlInsertProduccion, new String[]{"PRODUCCION_ID"})) {
+                ps.setInt(1, subrecetaId);
+                ps.setFloat(2, cantidadProducida);
+                ps.setFloat(3, costoLoteProducido);
+                ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        produccion.setProduccionId(rs.getInt(1));
+                    }
+                }
+            }
+            produccion.setCostoLote(costoLoteProducido);
+
+            // 4) Recalcular el costo unitario de la sub-receta con los costos
+            //    ACTUALES de los insumos
+            float nuevoCostoUnitario = costoLoteEstandar / rendimientoLote;
+            try (PreparedStatement ps = conexion.prepareStatement(sqlActualizarCostoSubreceta)) {
+                ps.setFloat(1, nuevoCostoUnitario);
+                ps.setInt(2, subrecetaId);
+                ps.executeUpdate();
+            }
+            if (produccion.getSubReceta() != null) {
+                produccion.getSubReceta().setCostoUnitario(nuevoCostoUnitario);
+            }
+
+            conexion.commit();
+
+        } catch (SQLException ex) {
+            try {
+                conexion.rollback();
+            } catch (SQLException rollbackEx) {
+                throw new RuntimeException("Error al hacer rollback de la produccion", rollbackEx);
+            }
+            throw new RuntimeException("Error al registrar produccion de la sub-receta: " + subrecetaId, ex);
+        } finally {
+            try {
+                conexion.setAutoCommit(true);
+            } catch (SQLException ex) {
+                throw new RuntimeException("Error al restaurar autocommit", ex);
+            }
+        }
+    }
+
+    @Override
+    public List<ProduccionLote> listarPorRangoFecha(LocalDate desde, LocalDate hasta) {
+        return listar(0, desde, hasta);
+    }
+
+    @Override
+    public List<ProduccionLote> listarPorSubRecetaYRango(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        return listar(subrecetaId, desde, hasta);
+    }
+
+    @Override
+    public ProduccionLote obtenerPorId(int produccionId) {
+        ProduccionLote produccion = null;
+
+        String sql = "SELECT p.produccion_id, p.fecha, p.cantidad_producida, p.costo_lote, p.fecha_registro, " +
+                     "s.subreceta_id, s.nombre, s.unidad_medida, s.rendimiento_lote, s.costo_unitario " +
+                     "FROM produccion_lotes p " +
+                     "JOIN sub_recetas s ON s.subreceta_id = p.subreceta_id " +
+                     "WHERE p.produccion_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, produccionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    produccion = mapearProduccion(rs);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener producción: " + produccionId, ex);
+        }
+
+        return produccion;
+    }
+
+    @Override
+    public float obtenerTotalProducido(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        String sql = "SELECT SUM(cantidad_producida) as total FROM produccion_lotes " +
+                     "WHERE subreceta_id = ? AND fecha BETWEEN ? AND ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, subrecetaId);
+            ps.setDate(2, Date.valueOf(desde));
+            ps.setDate(3, Date.valueOf(hasta));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getFloat("total");
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener total producido", ex);
+        }
+
+        return 0f;
+    }
+
+    @Override
+    public float obtenerCostoTotal(LocalDate desde, LocalDate hasta) {
+        String sql = "SELECT SUM(costo_lote) as total FROM produccion_lotes " +
+                     "WHERE fecha BETWEEN ? AND ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setDate(1, Date.valueOf(desde));
+            ps.setDate(2, Date.valueOf(hasta));
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getFloat("total");
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener costo total", ex);
+        }
+
+        return 0f;
+    }
+
+    private List<ProduccionLote> listar(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        List<ProduccionLote> lista = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder(
+            "SELECT p.produccion_id, p.fecha, p.cantidad_producida, p.costo_lote, p.fecha_registro, " +
+            "s.subreceta_id, s.nombre, s.unidad_medida, s.rendimiento_lote, s.costo_unitario " +
+            "FROM produccion_lotes p " +
+            "JOIN sub_recetas s ON s.subreceta_id = p.subreceta_id " +
+            "WHERE p.fecha BETWEEN ? AND ? "
+        );
+        if (subrecetaId > 0) sql.append("AND p.subreceta_id = ? ");
+        sql.append("ORDER BY p.fecha DESC");
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql.toString())) {
+            ps.setDate(1, Date.valueOf(desde));
+            ps.setDate(2, Date.valueOf(hasta));
+            if (subrecetaId > 0) ps.setInt(3, subrecetaId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearProduccion(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar producciones", ex);
+        }
+
+        return lista;
+    }
+
+    private ProduccionLote mapearProduccion(ResultSet rs) throws SQLException {
+        ProduccionLote p = new ProduccionLote();
+        p.setProduccionId(rs.getInt("produccion_id"));
+        p.setFecha(rs.getDate("fecha").toLocalDate());
+        p.setCantidadProducida(rs.getFloat("cantidad_producida"));
+        p.setCostoLote(rs.getFloat("costo_lote"));
+        Timestamp ts = rs.getTimestamp("fecha_registro");
+        if (ts != null) p.setFechaRegistro(ts.toLocalDateTime());
+
+        SubReceta sr = new SubReceta();
+        sr.setSubrecetaId(rs.getInt("subreceta_id"));
+        sr.setNombre(rs.getString("nombre"));
+        sr.setUnidadMedida(rs.getString("unidad_medida"));
+        sr.setRendimientoLote(rs.getFloat("rendimiento_lote"));
+        sr.setCostoUnitario(rs.getFloat("costo_unitario"));
+        p.setSubReceta(sr);
+
+        return p;
+    }
+}
