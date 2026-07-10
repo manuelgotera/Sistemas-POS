@@ -1,0 +1,267 @@
+package proyecto.pos.dao.impl;
+
+import proyecto.pos.dao.interfaces.SubRecetaDAO;
+import proyecto.pos.model.Insumo;
+import proyecto.pos.model.SubReceta;
+import proyecto.pos.model.SubRecetaDetalle;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Implementación DAO para Sub-Recetas
+ * Ubicación: proyecto.pos.dao.impl.SubRecetaDAOImpl
+ */
+public class SubRecetaDAOImpl implements SubRecetaDAO {
+
+    private Connection conexion;
+
+    public SubRecetaDAOImpl(Connection conexion) {
+        this.conexion = conexion;
+    }
+
+    @Override
+    public void insertar(SubReceta subReceta) {
+        String sql = "INSERT INTO sub_recetas (nombre, unidad_medida, rendimiento_lote, costo_unitario) " +
+                     "VALUES (?, ?, ?, ?)";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql, new String[]{"SUBRECETA_ID"})) {
+            ps.setString(1, subReceta.getNombre());
+            ps.setString(2, subReceta.getUnidadMedida());
+            ps.setFloat(3, subReceta.getRendimientoLote());
+            ps.setFloat(4, subReceta.getCostoUnitario());
+            ps.executeUpdate();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    subReceta.setSubrecetaId(rs.getInt(1));
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al insertar sub-receta: " + subReceta.getNombre(), ex);
+        }
+    }
+
+    @Override
+    public void agregarInsumoADetalle(int subrecetaId, int insumoId, float cantidadRequerida) {
+        String sql = "INSERT INTO sub_receta_detalle (subreceta_id, insumo_id, cantidad_requerida) " +
+                     "VALUES (?, ?, ?)";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, subrecetaId);
+            ps.setInt(2, insumoId);
+            ps.setFloat(3, cantidadRequerida);
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al agregar insumo a la sub-receta: " + subrecetaId, ex);
+        }
+    }
+
+    @Override
+    public SubReceta obtenerPorId(int subrecetaId) {
+        SubReceta subReceta = null;
+
+        String sqlCabecera = "SELECT subreceta_id, nombre, unidad_medida, rendimiento_lote, " +
+                              "costo_unitario, fecha_actualizacion FROM sub_recetas WHERE subreceta_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sqlCabecera)) {
+            ps.setInt(1, subrecetaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    subReceta = mapearCabecera(rs);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener sub-receta: " + subrecetaId, ex);
+        }
+
+        if (subReceta != null) {
+            subReceta.setDetalle(obtenerDetalle(subrecetaId));
+        }
+
+        return subReceta;
+    }
+
+    @Override
+    public List<SubReceta> listar() {
+        List<SubReceta> lista = new ArrayList<>();
+        String sql = "SELECT subreceta_id, nombre, unidad_medida, rendimiento_lote, " +
+                     "costo_unitario, fecha_actualizacion FROM sub_recetas ORDER BY nombre";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                lista.add(mapearCabecera(rs));
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar sub-recetas", ex);
+        }
+
+        for (SubReceta sr : lista) {
+            sr.setDetalle(obtenerDetalle(sr.getSubrecetaId()));
+        }
+
+        return lista;
+    }
+
+    @Override
+    public void actualizarCostoUnitario(int subrecetaId, float nuevoCostoUnitario) {
+        String sql = "UPDATE sub_recetas SET costo_unitario = ?, fecha_actualizacion = SYSTIMESTAMP " +
+                     "WHERE subreceta_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setFloat(1, nuevoCostoUnitario);
+            ps.setInt(2, subrecetaId);
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al actualizar costo unitario de la sub-receta: " + subrecetaId, ex);
+        }
+    }
+
+    @Override
+    public void eliminar(int subrecetaId) {
+        String sqlEliminarDetalle = "DELETE FROM sub_receta_detalle WHERE subreceta_id = ?";
+        String sqlEliminarSubReceta = "DELETE FROM sub_recetas WHERE subreceta_id = ?";
+
+        try {
+            conexion.setAutoCommit(false);
+
+            // Primero eliminar el detalle
+            try (PreparedStatement ps = conexion.prepareStatement(sqlEliminarDetalle)) {
+                ps.setInt(1, subrecetaId);
+                ps.executeUpdate();
+            }
+
+            // Luego eliminar la sub-receta
+            try (PreparedStatement ps = conexion.prepareStatement(sqlEliminarSubReceta)) {
+                ps.setInt(1, subrecetaId);
+                ps.executeUpdate();
+            }
+
+            conexion.commit();
+        } catch (SQLException ex) {
+            try {
+                conexion.rollback();
+            } catch (SQLException rollbackEx) {
+                throw new RuntimeException("Error en rollback", rollbackEx);
+            }
+            throw new RuntimeException("Error al eliminar sub-receta: " + subrecetaId, ex);
+        } finally {
+            try {
+                conexion.setAutoCommit(true);
+            } catch (SQLException ex) {
+                throw new RuntimeException("Error al restaurar autocommit", ex);
+            }
+        }
+    }
+
+    @Override
+    public List<SubReceta> buscarPorNombre(String nombre) {
+        List<SubReceta> lista = new ArrayList<>();
+        String sql = "SELECT subreceta_id, nombre, unidad_medida, rendimiento_lote, " +
+                     "costo_unitario, fecha_actualizacion FROM sub_recetas " +
+                     "WHERE UPPER(nombre) LIKE UPPER(?) ORDER BY nombre";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, "%" + nombre + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearCabecera(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al buscar sub-receta por nombre: " + nombre, ex);
+        }
+
+        for (SubReceta sr : lista) {
+            sr.setDetalle(obtenerDetalle(sr.getSubrecetaId()));
+        }
+
+        return lista;
+    }
+
+    @Override
+    public float obtenerCostoUnitario(int subrecetaId) {
+        String sql = "SELECT costo_unitario FROM sub_recetas WHERE subreceta_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, subrecetaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getFloat("costo_unitario");
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener costo unitario: " + subrecetaId, ex);
+        }
+
+        return 0f;
+    }
+
+    @Override
+    public void actualizar(SubReceta subReceta) {
+        String sql = "UPDATE sub_recetas SET nombre = ?, unidad_medida = ?, " +
+                     "rendimiento_lote = ?, costo_unitario = ?, fecha_actualizacion = SYSTIMESTAMP " +
+                     "WHERE subreceta_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, subReceta.getNombre());
+            ps.setString(2, subReceta.getUnidadMedida());
+            ps.setFloat(3, subReceta.getRendimientoLote());
+            ps.setFloat(4, subReceta.getCostoUnitario());
+            ps.setInt(5, subReceta.getSubrecetaId());
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al actualizar sub-receta: " + subReceta.getSubrecetaId(), ex);
+        }
+    }
+
+    private List<SubRecetaDetalle> obtenerDetalle(int subrecetaId) {
+        List<SubRecetaDetalle> lista = new ArrayList<>();
+        String sql = "SELECT d.detalle_id, d.subreceta_id, d.cantidad_requerida, " +
+                     "i.insumo_id, i.nombre_insumo, i.unidad_medida, i.costo, i.stock " +
+                     "FROM sub_receta_detalle d " +
+                     "JOIN insumos i ON i.insumo_id = d.insumo_id " +
+                     "WHERE d.subreceta_id = ?";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, subrecetaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    SubRecetaDetalle d = new SubRecetaDetalle();
+                    d.setDetalleId(rs.getInt("detalle_id"));
+                    d.setSubrecetaId(rs.getInt("subreceta_id"));
+                    d.setCantidadRequerida(rs.getFloat("cantidad_requerida"));
+
+                    Insumo insumo = new Insumo();
+                    insumo.setInsumoId(rs.getInt("insumo_id"));
+                    insumo.setNombre(rs.getString("nombre_insumo"));
+                    insumo.setUnidadMedida(rs.getString("unidad_medida"));
+                    insumo.setCosto(rs.getFloat("costo"));
+                    insumo.setCantidad(rs.getFloat("stock"));
+                    d.setInsumo(insumo);
+
+                    lista.add(d);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener detalle de sub-receta: " + subrecetaId, ex);
+        }
+        return lista;
+    }
+
+    private SubReceta mapearCabecera(ResultSet rs) throws SQLException {
+        SubReceta sr = new SubReceta();
+        sr.setSubrecetaId(rs.getInt("subreceta_id"));
+        sr.setNombre(rs.getString("nombre"));
+        sr.setUnidadMedida(rs.getString("unidad_medida"));
+        sr.setRendimientoLote(rs.getFloat("rendimiento_lote"));
+        sr.setCostoUnitario(rs.getFloat("costo_unitario"));
+        Timestamp ts = rs.getTimestamp("fecha_actualizacion");
+        if (ts != null) {
+            sr.setFechaActualizacion(ts.toLocalDateTime());
+        }
+        return sr;
+    }
+}
