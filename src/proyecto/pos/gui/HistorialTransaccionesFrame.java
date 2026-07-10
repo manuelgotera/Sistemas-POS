@@ -2,6 +2,7 @@ package proyecto.pos.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.Connection;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -11,6 +12,8 @@ import javax.swing.Timer;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
+
+import proyecto.pos.config.DatabaseConnection;
 
 public class HistorialTransaccionesFrame extends JFrame {
 
@@ -95,7 +98,12 @@ public class HistorialTransaccionesFrame extends JFrame {
     private JLabel lblVentaTotales;
     private JLabel lblBruto;
 
+    // Conexión a la base de datos, usada por MenuSidebar para abrir
+    // las pantallas de Sub-Recetas y Producción
+    private Connection conexion;
+
     public HistorialTransaccionesFrame() {
+        conexion = new DatabaseConnection().conectar();
         configurarVentana();
         construirInterfaz();
         cargarDatosDemo();
@@ -115,7 +123,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         root.setBackground(FONDO);
         setContentPane(root);
         // ── USA MenuSidebar igual──
-        root.add(new MenuSidebar(this, "Historial"), BorderLayout.WEST);
+       root.add(new MenuSidebar(this, "Historial", conexion), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
