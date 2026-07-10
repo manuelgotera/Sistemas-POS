@@ -1,0 +1,143 @@
+package proyecto.pos.controller;
+
+import proyecto.pos.dao.impl.SubRecetaDAOImpl;
+import proyecto.pos.dao.interfaces.SubRecetaDAO;
+import proyecto.pos.model.SubReceta;
+import proyecto.pos.model.SubRecetaDetalle;
+import proyecto.pos.service.SubRecetaService;
+import java.sql.Connection;
+import java.util.List;
+
+/**
+ * Controlador para gestionar Sub-Recetas
+ * Ubicación: proyecto.pos.controller.SubRecetaController
+ * 
+ * Coordina la interacción entre la GUI y el Service
+ */
+public class SubRecetaController {
+
+    private SubRecetaService subRecetaService;
+    private SubRecetaDAO subRecetaDAO;
+
+    /**
+     * Constructor que recibe la conexión a la BD
+     */
+    public SubRecetaController(Connection conexion) {
+        this.subRecetaDAO = new SubRecetaDAOImpl(conexion);
+        this.subRecetaService = new SubRecetaService(subRecetaDAO);
+    }
+
+    /**
+     * Crea una nueva sub-receta
+     * @return true si se creó exitosamente
+     */
+    public boolean crearSubReceta(String nombre, String unidadMedida, float rendimientoLote) {
+        try {
+            subRecetaService.crearSubReceta(nombre, unidadMedida, rendimientoLote);
+            return true;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Agrega un insumo a una sub-receta
+     */
+    public boolean agregarInsumo(int subrecetaId, int insumoId, float cantidad) {
+        try {
+            subRecetaService.agregarInsumoASubReceta(subrecetaId, insumoId, cantidad);
+            return true;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene una sub-receta
+     */
+    public SubReceta obtenerSubReceta(int subrecetaId) {
+        try {
+            return subRecetaService.obtenerSubReceta(subrecetaId);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Lista todas las sub-recetas
+     */
+    public List<SubReceta> listarTodasLasSubRecetas() {
+        return subRecetaService.listarTodasLasSubRecetas();
+    }
+
+    /**
+     * Busca sub-recetas por nombre
+     */
+    public List<SubReceta> buscarPorNombre(String nombre) {
+        return subRecetaService.buscarPorNombre(nombre);
+    }
+
+    /**
+     * Busca sub-recetas por unidad de medida
+     */
+    public List<SubReceta> buscarPorUnidad(String unidad) {
+        return subRecetaService.buscarPorUnidad(unidad);
+    }
+
+    /**
+     * Obtiene el costo unitario
+     */
+    public float obtenerCostoUnitario(int subrecetaId) {
+        try {
+            return subRecetaService.calcularCostoUnitario(subrecetaId);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return 0f;
+        }
+    }
+
+    /**
+     * Obtiene los insumos de una sub-receta
+     */
+    public List<SubRecetaDetalle> obtenerInsumos(int subrecetaId) {
+        try {
+            return subRecetaService.obtenerInsumosDeSubReceta(subrecetaId);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene un reporte de costos
+     */
+    public String obtenerReporteCosto(int subrecetaId) {
+        try {
+            return subRecetaService.obtenerReporteCosto(subrecetaId);
+        } catch (IllegalArgumentException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Obtiene un resumen de todas las sub-recetas
+     */
+    public String obtenerResumen() {
+        return subRecetaService.obtenerResumenSubRecetas();
+    }
+
+    /**
+     * Valida una sub-receta
+     */
+    public boolean validarSubReceta(int subrecetaId) {
+        try {
+            return subRecetaService.validarSubReceta(subrecetaId);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return false;
+        }
+    }
+}
