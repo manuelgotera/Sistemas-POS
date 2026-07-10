@@ -1,0 +1,50 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+package proyecto.pos.model;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+public class ProduccionLote {
+
+    private int produccionId;
+    private SubReceta subReceta;
+    private LocalDate fecha;
+    private float cantidadProducida;
+    private float costoLote;
+    private LocalDateTime fechaRegistro;
+
+    public ProduccionLote() {
+    }
+
+    public ProduccionLote(SubReceta subReceta, float cantidadProducida) {
+        this.subReceta = subReceta;
+        this.cantidadProducida = cantidadProducida;
+    }
+
+    public int getProduccionId() { return produccionId; }
+    public void setProduccionId(int produccionId) { this.produccionId = produccionId; }
+
+    public SubReceta getSubReceta() { return subReceta; }
+    public void setSubReceta(SubReceta subReceta) { this.subReceta = subReceta; }
+
+    public LocalDate getFecha() { return fecha; }
+    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
+
+    public float getCantidadProducida() { return cantidadProducida; }
+    public void setCantidadProducida(float cantidadProducida) { this.cantidadProducida = cantidadProducida; }
+
+    public float getCostoLote() { return costoLote; }
+    public void setCostoLote(float costoLote) { this.costoLote = costoLote; }
+
+    public LocalDateTime getFechaRegistro() { return fechaRegistro; }
+    public void setFechaRegistro(LocalDateTime fechaRegistro) { this.fechaRegistro = fechaRegistro; }
+
+    public float factorEscala() {
+        if (subReceta == null || subReceta.getRendimientoLote() <= 0) return 0f;
+        return cantidadProducida / subReceta.getRendimientoLote();
+    }
+}
