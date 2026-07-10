@@ -1,0 +1,244 @@
+package proyecto.pos.service;
+
+import proyecto.pos.dao.interfaces.SubRecetaDAO;
+import proyecto.pos.model.SubReceta;
+import proyecto.pos.model.SubRecetaDetalle;
+import proyecto.pos.model.Insumo;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Servicio de negocio para gestionar Sub-Recetas
+ * Valida datos y coordina operaciones complejas
+ */
+public class SubRecetaService {
+
+    private SubRecetaDAO subRecetaDAO;
+
+    public SubRecetaService(SubRecetaDAO subRecetaDAO) {
+        this.subRecetaDAO = subRecetaDAO;
+    }
+
+    /**
+     * Crea una nueva sub-receta con validaciones
+     */
+    public void crearSubReceta(String nombre, String unidadMedida, float rendimientoLote) 
+            throws IllegalArgumentException {
+        
+        // Validaciones
+        if (nombre == null || nombre.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre de la sub-receta no puede estar vacío");
+        }
+        
+        if (unidadMedida == null || unidadMedida.trim().isEmpty()) {
+            throw new IllegalArgumentException("La unidad de medida es requerida");
+        }
+        
+        if (!unidadMedida.equalsIgnoreCase("LITROS") && !unidadMedida.equalsIgnoreCase("KILOS")) {
+            throw new IllegalArgumentException("La unidad debe ser LITROS o KILOS");
+        }
+        
+        if (rendimientoLote <= 0) {
+            throw new IllegalArgumentException("El rendimiento de lote debe ser mayor a 0");
+        }
+
+        SubReceta subReceta = new SubReceta(nombre.trim(), unidadMedida.toUpperCase(), rendimientoLote);
+        subRecetaDAO.insertar(subReceta);
+    }
+
+    /**
+     * Agrega un insumo a una sub-receta existente
+     */
+    public void agregarInsumoASubReceta(int subrecetaId, int insumoId, float cantidadRequerida) 
+            throws IllegalArgumentException {
+        
+        if (subrecetaId <= 0) {
+            throw new IllegalArgumentException("ID de sub-receta inválido");
+        }
+        
+        if (insumoId <= 0) {
+            throw new IllegalArgumentException("ID de insumo inválido");
+        }
+        
+        if (cantidadRequerida <= 0) {
+            throw new IllegalArgumentException("La cantidad requerida debe ser mayor a 0");
+        }
+
+        // Verificar que la sub-receta existe
+        SubReceta sr = subRecetaDAO.obtenerPorId(subrecetaId);
+        if (sr == null) {
+            throw new IllegalArgumentException("No existe sub-receta con ID: " + subrecetaId);
+        }
+
+        // Verificar que el insumo no esté duplicado
+        boolean yaExiste = sr.getDetalle().stream()
+                .anyMatch(d -> d.getInsumo() != null && d.getInsumo().getInsumoId() == insumoId);
+        
+        if (yaExiste) {
+            throw new IllegalArgumentException("Este insumo ya está agregado a la sub-receta");
+        }
+
+        subRecetaDAO.agregarInsumoADetalle(subrecetaId, insumoId, cantidadRequerida);
+    }
+
+    /**
+     * Obtiene una sub-receta completa por ID
+     */
+    public SubReceta obtenerSubReceta(int subrecetaId) throws IllegalArgumentException {
+        if (subrecetaId <= 0) {
+            throw new IllegalArgumentException("ID de sub-receta inválido");
+        }
+
+        SubReceta subReceta = subRecetaDAO.obtenerPorId(subrecetaId);
+        if (subReceta == null) {
+            throw new IllegalArgumentException("No existe sub-receta con ID: " + subrecetaId);
+        }
+        
+        return subReceta;
+    }
+
+    /**
+     * Lista todas las sub-recetas
+     */
+    public List<SubReceta> listarTodasLasSubRecetas() {
+        return subRecetaDAO.listar();
+    }
+
+    /**
+     * Busca sub-recetas por nombre (búsqueda parcial, case-insensitive)
+     */
+    public List<SubReceta> buscarPorNombre(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return listarTodasLasSubRecetas();
+        }
+
+        String nombreBusqueda = nombre.trim().toLowerCase();
+        return subRecetaDAO.listar().stream()
+                .filter(sr -> sr.getNombre().toLowerCase().contains(nombreBusqueda))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Busca sub-recetas por unidad de medida
+     */
+    public List<SubReceta> buscarPorUnidad(String unidad) {
+        if (unidad == null || unidad.trim().isEmpty()) {
+            return listarTodasLasSubRecetas();
+        }
+
+        String unidadBusqueda = unidad.trim().toUpperCase();
+        return subRecetaDAO.listar().stream()
+                .filter(sr -> sr.getUnidadMedida().equals(unidadBusqueda))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Calcula el costo unitario actual de una sub-receta
+     * (suma de costos de insumos / rendimiento del lote)
+     */
+    public float calcularCostoUnitario(int subrecetaId) throws IllegalArgumentException {
+        SubReceta sr = obtenerSubReceta(subrecetaId);
+        return sr.calcularCostoUnitario();
+    }
+
+    /**
+     * Actualiza solo el costo unitario (se usa cuando hay cambios de precios)
+     */
+    public void actualizarCostoUnitario(int subrecetaId, float nuevoCosto) 
+            throws IllegalArgumentException {
+        
+        if (subrecetaId <= 0) {
+            throw new IllegalArgumentException("ID de sub-receta inválido");
+        }
+        
+        if (nuevoCosto < 0) {
+            throw new IllegalArgumentException("El costo no puede ser negativo");
+        }
+
+        SubReceta sr = obtenerSubReceta(subrecetaId);
+        subRecetaDAO.actualizarCostoUnitario(subrecetaId, nuevoCosto);
+    }
+
+    /**
+     * Obtiene todos los insumos de una sub-receta
+     */
+    public List<SubRecetaDetalle> obtenerInsumosDeSubReceta(int subrecetaId) 
+            throws IllegalArgumentException {
+        SubReceta sr = obtenerSubReceta(subrecetaId);
+        return sr.getDetalle();
+    }
+
+    /**
+     * Obtiene información del costo de una sub-receta
+     */
+    public String obtenerReporteCosto(int subrecetaId) throws IllegalArgumentException {
+        SubReceta sr = obtenerSubReceta(subrecetaId);
+        
+        StringBuilder reporte = new StringBuilder();
+        reporte.append("=== REPORTE DE COSTO ===\n");
+        reporte.append("Sub-Receta: ").append(sr.getNombre()).append("\n");
+        reporte.append("Rendimiento: ").append(sr.getRendimientoLote()).append(" ").append(sr.getUnidadMedida()).append("\n");
+        reporte.append("Costo Unitario: S/ ").append(String.format("%.2f", sr.getCostoUnitario())).append("\n\n");
+        
+        reporte.append("--- DESGLOSE DE INSUMOS ---\n");
+        float totalCosto = 0;
+        
+        for (SubRecetaDetalle detalle : sr.getDetalle()) {
+            Insumo insumo = detalle.getInsumo();
+            if (insumo != null) {
+                float costoInsumo = detalle.getCantidadRequerida() * insumo.getCosto();
+                totalCosto += costoInsumo;
+                reporte.append(insumo.getNombre()).append(": ")
+                       .append(detalle.getCantidadRequerida()).append(" ")
+                       .append(insumo.getUnidadMedida())
+                       .append(" x S/ ").append(String.format("%.2f", insumo.getCosto()))
+                       .append(" = S/ ").append(String.format("%.2f", costoInsumo))
+                       .append("\n");
+            }
+        }
+        
+        reporte.append("\nCosto Total del Lote: S/ ").append(String.format("%.2f", totalCosto)).append("\n");
+        reporte.append("Costo por Unidad: S/ ").append(String.format("%.2f", sr.getCostoUnitario())).append("\n");
+        
+        return reporte.toString();
+    }
+
+    /**
+     * Valida si una sub-receta tiene todos sus insumos necesarios
+     */
+    public boolean validarSubReceta(int subrecetaId) throws IllegalArgumentException {
+        SubReceta sr = obtenerSubReceta(subrecetaId);
+        
+        if (sr.getDetalle().isEmpty()) {
+            throw new IllegalArgumentException("La sub-receta no tiene insumos asignados");
+        }
+        
+        if (sr.getRendimientoLote() <= 0) {
+            throw new IllegalArgumentException("El rendimiento de lote no es válido");
+        }
+        
+        return true;
+    }
+
+    /**
+     * Obtiene información resumida de todas las sub-recetas
+     */
+    public String obtenerResumenSubRecetas() {
+        List<SubReceta> lista = listarTodasLasSubRecetas();
+        
+        StringBuilder resumen = new StringBuilder();
+        resumen.append("=== RESUMEN DE SUB-RECETAS ===\n");
+        resumen.append("Total de sub-recetas: ").append(lista.size()).append("\n\n");
+        
+        for (SubReceta sr : lista) {
+            resumen.append(String.format("%-30s | Rendimiento: %6.2f %-6s | Costo: S/ %8.2f | Insumos: %d\n",
+                    sr.getNombre(),
+                    sr.getRendimientoLote(),
+                    sr.getUnidadMedida(),
+                    sr.getCostoUnitario(),
+                    sr.getDetalle().size()));
+        }
+        
+        return resumen.toString();
+    }
+}
