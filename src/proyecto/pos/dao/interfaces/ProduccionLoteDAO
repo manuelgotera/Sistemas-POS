@@ -1,0 +1,43 @@
+package proyecto.pos.dao.interfaces;
+
+import proyecto.pos.model.ProduccionLote;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Interface para operaciones DAO de Producción de Lotes
+ * Ubicación: proyecto.pos.dao.interfaces.ProduccionLoteDAO
+ */
+public interface ProduccionLoteDAO {
+    
+    /**
+     * Registra una nueva producción de lote
+     * Descuenta insumos, registra la producción y actualiza costos
+     */
+    void registrarProduccion(ProduccionLote produccion);
+    
+    /**
+     * Lista todas las producciones en un rango de fechas
+     */
+    List<ProduccionLote> listarPorRangoFecha(LocalDate desde, LocalDate hasta);
+    
+    /**
+     * Lista producciones de una sub-receta en un rango de fechas
+     */
+    List<ProduccionLote> listarPorSubRecetaYRango(int subrecetaId, LocalDate desde, LocalDate hasta);
+    
+    /**
+     * NUEVO: Obtiene una producción específica por ID
+     */
+    ProduccionLote obtenerPorId(int produccionId);
+    
+    /**
+     * NUEVO: Obtiene la producción total de una sub-receta en un rango
+     */
+    float obtenerTotalProducido(int subrecetaId, LocalDate desde, LocalDate hasta);
+    
+    /**
+     * NUEVO: Obtiene el costo total de producción en un rango
+     */
+    float obtenerCostoTotal(LocalDate desde, LocalDate hasta);
+}
