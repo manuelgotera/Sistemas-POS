@@ -1,32 +1,49 @@
 package proyecto.pos.gui;
 
+import com.formdev.flatlaf.FlatLightLaf;
 import java.awt.*;
-import java.awt.event.*;
 import java.io.File;
+import java.sql.Connection;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.filechooser.*;
-import javax.swing.table.*;
-import javax.swing.text.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
+
+import proyecto.pos.config.DatabaseConnection;
 
 public class ConfiguracionFrame extends JFrame {
 
+    // Componentes Perfil
     private JTextField txtNombreTienda, txtTelefono, txtWhatsapp, txtRuc;
     private JTextArea txtDireccion;
+    
+    // Componentes Impuestos/Recibo
     private JCheckBox chkIgv;
     private JTextField txtDescMax, txtFormatoNum, txtMargen;
     private JComboBox<String> cbRedondeo;
 
+    // Conexión a la base de datos, usada por MenuSidebar para abrir
+    // las pantallas de Sub-Recetas y Producción
+    private Connection conexion;
+
     public ConfiguracionFrame() {
+        conexion = new DatabaseConnection().conectar();
         configurarVentana();
         initComponents();
     }
 
     private void configurarVentana() {
+        FlatLightLaf.setup();
         setTitle("Sistema de Caja - Configuración");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
         setSize(1180, 720); 
         setMinimumSize(new Dimension(1000, 620)); 
         setLocationRelativeTo(null);
@@ -36,13 +53,15 @@ public class ConfiguracionFrame extends JFrame {
     private void initComponents() {
         setLayout(new BorderLayout());
 
-        // --- 1. SIDEBAR ---
-        add(new MenuSidebar(this, "Configuracion"), BorderLayout.WEST);
+        // --- 1. SIDEBAR (AHORA USANDO LA CLASE MenuSidebar) ---
+        // Nota: Según tu clase MenuSidebar, la validación activa espera "Configuracion" (sin tilde)
+       add(new MenuSidebar(this, "Configuracion", conexion), BorderLayout.WEST);
 
         // --- 2. ÁREA CENTRAL ---
         JPanel areaCentro = new JPanel(new BorderLayout());
         areaCentro.setBackground(Color.WHITE);
 
+        // CABECERA CENTRAL (Con el reloj)
         JPanel cabeceraCompleta = new JPanel();
         cabeceraCompleta.setLayout(new BoxLayout(cabeceraCompleta, BoxLayout.Y_AXIS));
         cabeceraCompleta.setBackground(Color.WHITE);
@@ -68,6 +87,7 @@ public class ConfiguracionFrame extends JFrame {
         JPanel panelPerfil = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         panelPerfil.setBackground(Color.WHITE);
 
+        // Reloj en tiempo real
         JLabel lblHora = new JLabel();
         lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
@@ -80,6 +100,7 @@ public class ConfiguracionFrame extends JFrame {
         JLabel lblUsuario = new JLabel("<html><b>Manuel Gotera</b><br><font color='gray'>Administrador</font></html>");
         lblUsuario.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
+        // Se usa MenuSidebar para redimensionar el avatar
         JLabel lblAvatar = new JLabel(MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 40, 40));
         lblAvatar.setPreferredSize(new Dimension(40, 40));
         lblAvatar.setBackground(Color.LIGHT_GRAY);
@@ -99,6 +120,7 @@ public class ConfiguracionFrame extends JFrame {
 
         areaCentro.add(cabeceraCompleta, BorderLayout.NORTH);
 
+        // CONTENIDO PRINCIPAL DE CONFIGURACIÓN (TABS)
         JPanel panelContenido = new JPanel(new BorderLayout());
         panelContenido.setBackground(new Color(248, 249, 251));
         panelContenido.setBorder(new EmptyBorder(20, 30, 20, 30));
@@ -108,6 +130,8 @@ public class ConfiguracionFrame extends JFrame {
         areaCentro.add(panelContenido, BorderLayout.CENTER);
         add(areaCentro, BorderLayout.CENTER);
     }
+
+    // --- MÉTODOS DE CONTENIDO DE CONFIGURACIÓN ---
 
     private JTabbedPane crearTabs() {
         JTabbedPane tabs = new JTabbedPane();
@@ -432,5 +456,9 @@ public class ConfiguracionFrame extends JFrame {
             File fichero = fileChooser.getSelectedFile();
             JOptionPane.showMessageDialog(this, "Logo cargado: " + fichero.getName());
         }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new ConfiguracionFrame().setVisible(true));
     }
 }
