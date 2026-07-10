@@ -25,13 +25,14 @@ public class PlatoDAOImpl implements PlatoDAO{
 
     @Override
     public void insertar(Plato plato) {
-        String sql = "INSERT INTO platos_menu (categoria_id, nombre_plato, precio_venta, disponible)"
-                + "VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO platos_menu (categoria_id, nombre_plato, precio_venta, disponible, imagen)"
+                + "VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
             ps.setInt(1,plato.getCategoria().getCategoriaId());
             ps.setString(2, plato.getNombre());
             ps.setFloat(3, plato.getPrecio());
             ps.setInt(4, plato.getDisponible());
+            ps.setString(5, plato.getImagen());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error al insertar plato", e);
@@ -55,7 +56,9 @@ public class PlatoDAOImpl implements PlatoDAO{
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
+//        for (Plato p : lista){
+//            System.out.println(p.toString());
+//        }
         return lista;
     }
 
@@ -80,6 +83,26 @@ public class PlatoDAOImpl implements PlatoDAO{
     }
     
     @Override
+    public Plato obtenerPorNombre(String nombre) {
+        String sql = "SELECT p.*, c.* FROM platos_menu p JOIN categorias_menu c "+
+                "ON p.categoria_id = c.categoria_id WHERE nombre_plato = ?";
+        Plato plato = null;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, nombre);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    plato = mapearPlato(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return plato;
+    }
+    
+    @Override
     public void actualizarPrecio(int platoId, float precio) {
         String sql = "UPDATE platos_menu SET precio_venta = ? WHERE plato_id = ?";
 
@@ -91,6 +114,8 @@ public class PlatoDAOImpl implements PlatoDAO{
             e.printStackTrace();
         }
     }
+    
+    
     
     @Override
     public void actualizarDisponibilidad(int platoId, int disponible) {
@@ -132,13 +157,52 @@ public class PlatoDAOImpl implements PlatoDAO{
         }
     }
     
+    
+    public List<CategoriaMenu> listarCategorias() {
+        List<CategoriaMenu> lista = new ArrayList<>();
+        String sql = "SELECT * FROM categorias_menu";
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(mapearCategoriaMenu(rs));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+//        for (CategoriaMenu cm : lista){
+//            System.out.println(cm.toString());
+//        }
+        return lista;
+    }
+    
+    public CategoriaMenu obtenerCategoriaPorId(int id) {
+        String sql = "SELECT * FROM categorias_menu";
+        CategoriaMenu cm = null;
+
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    cm = mapearCategoriaMenu(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return cm;
+    }
+    
     private Plato mapearPlato(ResultSet rs) throws SQLException {
         Plato plato = new Plato();
         plato.setPlatoId(rs.getInt("plato_id"));
         plato.setNombre(rs.getString("nombre_plato"));
         plato.setPrecio(rs.getFloat("precio_venta"));
         plato.setDisponible(rs.getInt("disponible"));
-
+        plato.setImagen(rs.getString("imagen"));
         CategoriaMenu cm = new CategoriaMenu();
         cm.setCategoriaId(rs.getInt("categoria_id"));
         cm.setNombre(rs.getString("nombre_categoria"));
@@ -147,7 +211,12 @@ public class PlatoDAOImpl implements PlatoDAO{
         return plato;
     }
 
-    public List<CategoriaMenu> listarCategorias() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    private CategoriaMenu mapearCategoriaMenu(ResultSet rs) throws SQLException{
+        CategoriaMenu cm = new CategoriaMenu();
+        cm.setCategoriaId(rs.getInt("categoria_id"));
+        cm.setNombre(rs.getString("nombre_categoria"));
+        return cm;
     }
+    
+    
 }
