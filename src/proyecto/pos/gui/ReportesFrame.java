@@ -1,15 +1,45 @@
 package proyecto.pos.gui;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.text.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.sql.Connection;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
-import javax.swing.*;
-import javax.swing.border.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.border.AbstractBorder;
+import javax.swing.border.EmptyBorder;
 
 public class ReportesFrame extends JFrame {
 
+    // --- COLORES ---
     private static final Color AZUL = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO = new Color(232, 241, 255);
     private static final Color FONDO = new Color(246, 248, 251);
     private static final Color BORDE = new Color(225, 229, 236);
     private static final Color TEXTO = new Color(30, 37, 48);
@@ -32,12 +62,20 @@ public class ReportesFrame extends JFrame {
     private int[] metodosPago = {18, 21, 15};
     private int totalTransacciones = 54;
 
-    private KpiCard cardTransacciones, cardVentas, cardGastos, cardUtilidad;
+    private KpiCard cardTransacciones;
+    private KpiCard cardVentas;
+    private KpiCard cardGastos;
+    private KpiCard cardUtilidad;
+
     private LineChartPanel graficoLinea;
     private BarChartPanel graficoBarras;
     private DonutChartPanel graficoDonut;
 
-    private JButton tabIngresos, tabGastos, tabComparacion, btnFiltroPeriodo;
+    private JButton tabIngresos;
+    private JButton tabGastos;
+    private JButton tabComparacion;
+    private JButton btnFiltroPeriodo;
+    private Connection conexion;
 
     public ReportesFrame() {
         configurarVentana();
@@ -56,9 +94,14 @@ public class ReportesFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        root.add(new MenuSidebar(this, "Reportes"), BorderLayout.WEST);
+
+        // --- SIDEBAR UNIFICADO ---
+        root.add(new MenuSidebar(this, "Reportes", conexion), BorderLayout.WEST);
+        
         root.add(crearContenido(), BorderLayout.CENTER);
     }
+
+    // ─── CONTENIDO PRINCIPAL ──────────────────────────────────────────────────────
 
     private JPanel crearContenido() {
         JPanel contenedor = new JPanel(new BorderLayout());
@@ -108,7 +151,7 @@ public class ReportesFrame extends JFrame {
         tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
         tarjeta.setBackground(Color.WHITE);
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
-                new MenuSidebar.RoundedBorder(BORDE, 12),
+                new RoundedBorder(BORDE, 12),
                 new EmptyBorder(6, 14, 6, 14)
         ));
         tarjeta.setPreferredSize(new Dimension(110, 40));
@@ -133,11 +176,12 @@ public class ReportesFrame extends JFrame {
         JPanel tarjeta = new JPanel(new BorderLayout(8, 0));
         tarjeta.setBackground(Color.WHITE);
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
-                new MenuSidebar.RoundedBorder(BORDE, 12),
+                new RoundedBorder(BORDE, 12),
                 new EmptyBorder(6, 10, 6, 12)
         ));
         tarjeta.setPreferredSize(new Dimension(150, 40));
 
+        // Se usa MenuSidebar para redimensionar el icono
         JLabel avatar = new JLabel(MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 28, 28));
         avatar.setPreferredSize(new Dimension(28, 28));
 
@@ -166,7 +210,7 @@ public class ReportesFrame extends JFrame {
         RoundedPanel panel = new RoundedPanel(Color.WHITE, 14);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createCompoundBorder(
-                new MenuSidebar.RoundedBorder(BORDE, 14),
+                new RoundedBorder(BORDE, 14),
                 new EmptyBorder(14, 14, 14, 14)
         ));
 
@@ -175,6 +219,7 @@ public class ReportesFrame extends JFrame {
         JPanel tabs = crearTabs();
 
         graficoLinea = new LineChartPanel("Ingresos diarios", dias, ingresos, AZUL);
+
         JPanel graficosInferiores = crearGraficosInferiores();
 
         estirar(acciones, 42);
@@ -204,7 +249,7 @@ public class ReportesFrame extends JFrame {
         JButton btnImprimir = crearBotonSecundario("Exportar reporte", "/img/imprimir.png", 170);
 
         btnFiltroPeriodo.addActionListener(e -> mostrarFiltroPeriodo());
-        btnImprimir.addActionListener(e -> JOptionPane.showMessageDialog(this, "Exportación de reporte pendiente de conectar."));
+        btnImprimir.addActionListener(e -> mostrarPendiente("Exportación de reporte pendiente de conectar."));
 
         panel.add(btnFiltroPeriodo, BorderLayout.WEST);
         panel.add(btnImprimir, BorderLayout.EAST);
@@ -220,6 +265,7 @@ public class ReportesFrame extends JFrame {
         double totalGastos = sumar(gastos);
         double utilidad = totalIngresos - totalGastos;
 
+        // Se usa MenuSidebar para redimensionar los iconos
         cardTransacciones = new KpiCard(
                 MenuSidebar.redimensionarIcono("/img/carrito.png", 22, 22),
                 "Total transacciones",
@@ -309,11 +355,11 @@ public class ReportesFrame extends JFrame {
         if (activo) {
             boton.setBackground(AZUL);
             boton.setForeground(Color.WHITE);
-            boton.setBorder(new MenuSidebar.RoundedBorder(AZUL, 10));
+            boton.setBorder(new RoundedBorder(AZUL, 10));
         } else {
             boton.setBackground(Color.WHITE);
             boton.setForeground(new Color(88, 96, 110));
-            boton.setBorder(new MenuSidebar.RoundedBorder(BORDE, 10));
+            boton.setBorder(new RoundedBorder(BORDE, 10));
         }
     }
 
@@ -330,7 +376,9 @@ public class ReportesFrame extends JFrame {
 
         graficoBarras = new BarChartPanel(
                 "Ingresos vs Gastos",
-                dias, ingresos, gastos
+                dias,
+                ingresos,
+                gastos
         );
 
         panel.add(graficoDonut);
@@ -341,6 +389,7 @@ public class ReportesFrame extends JFrame {
 
     private JButton crearBotonSecundario(String texto, String iconPath, int ancho) {
         JButton boton = new JButton(texto);
+        // Se usa MenuSidebar para redimensionar el icono
         boton.setIcon(MenuSidebar.redimensionarIcono(iconPath, 16, 16));
         boton.setIconTextGap(8);
         boton.setPreferredSize(new Dimension(ancho, 38));
@@ -349,11 +398,18 @@ public class ReportesFrame extends JFrame {
         boton.setFont(new Font("Segoe UI", Font.BOLD, 12));
         boton.setFocusPainted(false);
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        boton.setBorder(new MenuSidebar.RoundedBorder(AZUL, 10));
+        boton.setBorder(new RoundedBorder(AZUL, 10));
 
         boton.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { boton.setBackground(new Color(244, 248, 255)); }
-            @Override public void mouseExited(MouseEvent e) { boton.setBackground(Color.WHITE); }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                boton.setBackground(new Color(244, 248, 255));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                boton.setBackground(Color.WHITE);
+            }
         });
 
         return boton;
@@ -367,14 +423,31 @@ public class ReportesFrame extends JFrame {
     }
 
     private void mostrarFiltroPeriodo() {
-        String[] opciones = {"Hoy", "Últimos 7 días", "Últimos 30 días", "Este mes"};
-        String seleccion = (String) JOptionPane.showInputDialog(this, "Seleccione el periodo:", "Filtrar periodo",
-                JOptionPane.PLAIN_MESSAGE, null, opciones, periodoActual);
-        if (seleccion != null) aplicarPeriodoDemo(seleccion);
+        String[] opciones = {
+            "Hoy",
+            "Últimos 7 días",
+            "Últimos 30 días",
+            "Este mes"
+        };
+
+        String seleccion = (String) JOptionPane.showInputDialog(
+                this,
+                "Seleccione el periodo del reporte:",
+                "Filtrar periodo",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                opciones,
+                periodoActual
+        );
+
+        if (seleccion != null) {
+            aplicarPeriodoDemo(seleccion);
+        }
     }
 
     private void aplicarPeriodoDemo(String periodo) {
         periodoActual = periodo;
+
         switch (periodo) {
             case "Hoy":
                 dias = new String[]{"08:00", "10:00", "12:00", "14:00", "16:00", "18:00"};
@@ -383,6 +456,7 @@ public class ReportesFrame extends JFrame {
                 metodosPago = new int[]{8, 5, 4};
                 totalTransacciones = 17;
                 break;
+
             case "Últimos 30 días":
                 dias = new String[]{"Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Hoy"};
                 ingresos = new double[]{6200, 7100, 8400, 7600, 9100, 10300};
@@ -390,6 +464,7 @@ public class ReportesFrame extends JFrame {
                 metodosPago = new int[]{70, 83, 61};
                 totalTransacciones = 214;
                 break;
+
             case "Este mes":
                 dias = new String[]{"01-05", "06-10", "11-15", "16-20", "21-25", "26-30"};
                 ingresos = new double[]{5300, 6900, 8100, 7400, 9500, 11200};
@@ -397,6 +472,7 @@ public class ReportesFrame extends JFrame {
                 metodosPago = new int[]{86, 92, 73};
                 totalTransacciones = 251;
                 break;
+
             default:
                 dias = new String[]{"10 Nov", "11 Nov", "12 Nov", "13 Nov", "14 Nov", "15 Nov"};
                 ingresos = new double[]{1200, 2100, 800, 1050, 3600, 4350};
@@ -424,22 +500,549 @@ public class ReportesFrame extends JFrame {
     }
 
     private void actualizarGraficos() {
-        graficoDonut.setData(new String[]{"Efectivo", "Tarjeta", "Yape / QR"}, metodosPago);
+        graficoDonut.setData(
+                new String[]{"Efectivo", "Tarjeta", "Yape / QR"},
+                metodosPago
+        );
+
         graficoBarras.setData(dias, ingresos, gastos);
-        cambiarTab(tabActual);
+
+        if (tabActual.equals("ingresos")) {
+            graficoLinea.setData("Ingresos diarios", dias, ingresos, AZUL);
+        } else if (tabActual.equals("gastos")) {
+            graficoLinea.setData("Gastos diarios", dias, gastos, ROJO);
+        } else {
+            graficoLinea.setData("Utilidad diaria", dias, calcularUtilidadDiaria(), VERDE);
+        }
     }
 
     private double sumar(double[] datos) {
-        double total = 0; for (double dato : datos) total += dato; return total;
+        double total = 0;
+        for (double dato : datos) {
+            total += dato;
+        }
+        return total;
     }
 
     private double[] calcularUtilidadDiaria() {
         double[] utilidad = new double[ingresos.length];
-        for (int i = 0; i < ingresos.length; i++) utilidad[i] = ingresos[i] - gastos[i];
+
+        for (int i = 0; i < ingresos.length; i++) {
+            utilidad[i] = ingresos[i] - gastos[i];
+        }
+
         return utilidad;
     }
 
-    private String soles(double monto) { return "S/ " + formato.format(monto); }
+    private String soles(double monto) {
+        return "S/ " + formato.format(monto);
+    }
+
+    private void mostrarPendiente(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje, "Reportes", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public static void main(String[] args) {
+        activarVisual();
+        SwingUtilities.invokeLater(() -> new ReportesFrame().setVisible(true));
+    }
+
+    private static void activarVisual() {
+        try {
+            UIManager.setLookAndFeel("com.formdev.flatlaf.FlatLightLaf");
+        } catch (Exception e) {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ignored) {
+            }
+        }
+
+        System.setProperty("awt.useSystemAAFontSettings", "on");
+        System.setProperty("swing.aatext", "true");
+    }
+
+    private static class KpiCard extends RoundedPanel {
+
+        private JLabel lblValor;
+
+        public KpiCard(ImageIcon icono, String titulo, String valor, Color colorPrincipal, Color colorFondoIcono) {
+            super(Color.WHITE, 12);
+            setLayout(new BorderLayout(12, 0));
+            setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedBorder(BORDE, 12),
+                    new EmptyBorder(12, 14, 12, 14)
+            ));
+
+            JPanel circulo = new CircleIconPanel(icono, colorFondoIcono);
+            circulo.setPreferredSize(new Dimension(46, 46));
+
+            JPanel textos = new JPanel();
+            textos.setOpaque(false);
+            textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
+
+            JLabel lblTitulo = new JLabel(titulo);
+            lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblTitulo.setForeground(colorPrincipal);
+
+            lblValor = new JLabel(valor);
+            lblValor.setFont(new Font("Segoe UI", Font.BOLD, 17));
+            lblValor.setForeground(colorPrincipal);
+
+            textos.add(Box.createVerticalGlue());
+            textos.add(lblTitulo);
+            textos.add(Box.createVerticalStrut(3));
+            textos.add(lblValor);
+            textos.add(Box.createVerticalGlue());
+
+            add(circulo, BorderLayout.WEST);
+            add(textos, BorderLayout.CENTER);
+        }
+
+        public void setValor(String nuevoValor) {
+            lblValor.setText(nuevoValor);
+            repaint();
+        }
+
+        public void setColorValor(Color color) {
+            lblValor.setForeground(color);
+            repaint();
+        }
+    }
+
+    private static class CircleIconPanel extends JPanel {
+
+        private final ImageIcon icono;
+        private final Color colorFondo;
+
+        public CircleIconPanel(ImageIcon icono, Color colorFondo) {
+            this.icono = icono;
+            this.colorFondo = colorFondo;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = preparar(g);
+
+            int size = Math.min(getWidth(), getHeight()) - 2;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+
+            g2.setColor(colorFondo);
+            g2.fillOval(x, y, size, size);
+
+            if (icono != null) {
+                int ix = (getWidth() - icono.getIconWidth()) / 2;
+                int iy = (getHeight() - icono.getIconHeight()) / 2;
+                icono.paintIcon(this, g2, ix, iy);
+            }
+
+            g2.dispose();
+        }
+    }
+
+    private static class LineChartPanel extends RoundedPanel {
+
+        private String titulo;
+        private String[] labels;
+        private double[] values;
+        private Color lineColor;
+
+        public LineChartPanel(String titulo, String[] labels, double[] values, Color lineColor) {
+            super(Color.WHITE, 12);
+            this.titulo = titulo;
+            this.labels = labels;
+            this.values = values;
+            this.lineColor = lineColor;
+
+            setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedBorder(BORDE, 12),
+                    new EmptyBorder(12, 14, 12, 14)
+            ));
+        }
+
+        public void setData(String titulo, String[] labels, double[] values, Color lineColor) {
+            this.titulo = titulo;
+            this.labels = labels;
+            this.values = values;
+            this.lineColor = lineColor;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            Graphics2D g2 = preparar(g);
+
+            int left = 62;
+            int right = 18;
+            int top = 48;
+            int bottom = 34;
+            int w = getWidth() - left - right;
+            int h = getHeight() - top - bottom;
+
+            g2.setColor(TEXTO);
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2.drawString(titulo, 14, 25);
+
+            double min = obtenerMinimo(values);
+            double max = obtenerMaximo(values);
+
+            if (min > 0) {
+                min = 0;
+            }
+
+            if (max < 0) {
+                max = 0;
+            }
+
+            double rango = max - min;
+
+            if (rango == 0) {
+                rango = 1;
+            }
+
+            double padding = rango * 0.15;
+            min -= padding;
+            max += padding;
+            rango = max - min;
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+
+            for (int i = 0; i <= 5; i++) {
+                int y = top + (h * i / 5);
+                double valor = max - (rango * i / 5);
+
+                g2.setColor(new Color(225, 229, 236));
+                g2.setStroke(new BasicStroke(1));
+                g2.drawLine(left, y, left + w, y);
+
+                g2.setColor(new Color(145, 153, 166));
+                g2.drawString(formatoCorto(valor), 10, y + 4);
+            }
+
+            int yCero = top + (int) ((max - 0) / rango * h);
+
+            if (yCero >= top && yCero <= top + h) {
+                g2.setColor(new Color(180, 187, 198));
+                g2.setStroke(new BasicStroke(1.4f));
+                g2.drawLine(left, yCero, left + w, yCero);
+            }
+
+            g2.setColor(new Color(225, 229, 236));
+            g2.drawLine(left, top, left, top + h);
+            g2.drawLine(left, top + h, left + w, top + h);
+
+            int[] xs = new int[values.length];
+            int[] ys = new int[values.length];
+
+            for (int i = 0; i < values.length; i++) {
+                xs[i] = left + (w * i / (values.length - 1));
+                ys[i] = top + (int) ((max - values[i]) / rango * h);
+            }
+
+            g2.setColor(lineColor);
+            g2.setStroke(new BasicStroke(2));
+
+            for (int i = 0; i < xs.length - 1; i++) {
+                g2.drawLine(xs[i], ys[i], xs[i + 1], ys[i + 1]);
+            }
+
+            for (int i = 0; i < xs.length; i++) {
+                g2.setColor(Color.WHITE);
+                g2.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
+
+                g2.setColor(lineColor);
+                g2.setStroke(new BasicStroke(2));
+                g2.drawOval(xs[i] - 4, ys[i] - 4, 8, 8);
+            }
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            g2.setColor(new Color(145, 153, 166));
+
+            for (int i = 0; i < labels.length; i++) {
+                int textW = g2.getFontMetrics().stringWidth(labels[i]);
+                g2.drawString(labels[i], xs[i] - textW / 2, top + h + 22);
+            }
+
+            int index = Math.min(2, values.length - 1);
+            dibujarTooltip(g2, xs[index], ys[index], values[index]);
+
+            g2.dispose();
+        }
+
+        private void dibujarTooltip(Graphics2D g2, int x, int y, double value) {
+            String linea1 = "Dato seleccionado";
+            String linea2 = "S/ " + new DecimalFormat("#,##0.00").format(value);
+
+            int boxW = 132;
+            int boxH = 48;
+            int bx = Math.min(x + 10, getWidth() - boxW - 12);
+            int by = Math.max(y - 52, 42);
+
+            g2.setColor(new Color(12, 38, 78));
+            g2.fillRoundRect(bx, by, boxW, boxH, 8, 8);
+
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            g2.drawString(linea1, bx + 10, by + 18);
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            g2.setColor(new Color(210, 226, 255));
+            g2.drawString(linea2, bx + 10, by + 35);
+        }
+    }
+
+    private static class DonutChartPanel extends RoundedPanel {
+
+        private final String titulo;
+        private String[] labels;
+        private int[] values;
+        private final Color[] colors;
+
+        public DonutChartPanel(String titulo, String[] labels, int[] values, Color[] colors) {
+            super(Color.WHITE, 12);
+            this.titulo = titulo;
+            this.labels = labels;
+            this.values = values;
+            this.colors = colors;
+
+            setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedBorder(BORDE, 12),
+                    new EmptyBorder(12, 14, 12, 14)
+            ));
+        }
+
+        public void setData(String[] labels, int[] values) {
+            this.labels = labels;
+            this.values = values;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            Graphics2D g2 = preparar(g);
+
+            g2.setColor(TEXTO);
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2.drawString(titulo, 14, 24);
+
+            int total = 0;
+
+            for (int value : values) {
+                total += value;
+            }
+
+            if (total <= 0) {
+                g2.dispose();
+                return;
+            }
+
+            int size = Math.min(125, getHeight() - 62);
+            int x = 28;
+            int y = 52;
+            int start = 90;
+
+            for (int i = 0; i < values.length; i++) {
+                int angle = (int) Math.round(values[i] * 360.0 / total);
+                g2.setColor(colors[i]);
+                g2.fillArc(x, y, size, size, start, -angle);
+                start -= angle;
+            }
+
+            g2.setColor(Color.WHITE);
+            int hole = size / 2;
+            g2.fillOval(x + size / 4, y + size / 4, hole, hole);
+
+            int legendX = x + size + 48;
+            int legendY = y + 12;
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+
+            for (int i = 0; i < labels.length; i++) {
+                int itemY = legendY + i * 28;
+
+                g2.setColor(colors[i]);
+                g2.fillOval(legendX, itemY - 9, 10, 10);
+
+                g2.setColor(TEXTO);
+                g2.drawString(labels[i], legendX + 18, itemY);
+
+                String porcentaje = String.format("%.1f%%", values[i] * 100.0 / total);
+                String texto = values[i] + " (" + porcentaje + ")";
+
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 11));
+                g2.drawString(texto, getWidth() - 105, itemY);
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            }
+
+            g2.dispose();
+        }
+    }
+
+    private static class BarChartPanel extends RoundedPanel {
+
+        private final String titulo;
+        private String[] labels;
+        private double[] ingresos;
+        private double[] gastos;
+
+        public BarChartPanel(String titulo, String[] labels, double[] ingresos, double[] gastos) {
+            super(Color.WHITE, 12);
+            this.titulo = titulo;
+            this.labels = labels;
+            this.ingresos = ingresos;
+            this.gastos = gastos;
+
+            setBorder(BorderFactory.createCompoundBorder(
+                    new RoundedBorder(BORDE, 12),
+                    new EmptyBorder(12, 14, 12, 14)
+            ));
+        }
+
+        public void setData(String[] labels, double[] ingresos, double[] gastos) {
+            this.labels = labels;
+            this.ingresos = ingresos;
+            this.gastos = gastos;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            Graphics2D g2 = preparar(g);
+
+            int left = 56;
+            int right = 18;
+            int top = 45;
+            int bottom = 30;
+            int w = getWidth() - left - right;
+            int h = getHeight() - top - bottom;
+
+            g2.setColor(TEXTO);
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2.drawString(titulo, 14, 24);
+
+            double max = Math.max(obtenerMaximo(ingresos), obtenerMaximo(gastos));
+            max = redondearMaximo(max);
+
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+
+            for (int i = 0; i <= 4; i++) {
+                int y = top + (h * i / 4);
+
+                g2.setColor(new Color(225, 229, 236));
+                g2.drawLine(left, y, left + w, y);
+
+                g2.setColor(new Color(145, 153, 166));
+                double valor = max - (max * i / 4);
+                g2.drawString(formatoCorto(valor), 8, y + 4);
+            }
+
+            int grupos = labels.length;
+            int grupoW = w / grupos;
+            int barW = Math.max(12, grupoW / 5);
+
+            for (int i = 0; i < grupos; i++) {
+                int baseX = left + i * grupoW + grupoW / 2;
+                int baseY = top + h;
+
+                int ingresoH = (int) ((ingresos[i] / max) * h);
+                int gastoH = (int) ((gastos[i] / max) * h);
+
+                g2.setColor(VERDE);
+                g2.fillRoundRect(baseX - barW - 3, baseY - ingresoH, barW, ingresoH, 5, 5);
+
+                g2.setColor(ROJO);
+                g2.fillRoundRect(baseX + 3, baseY - gastoH, barW, gastoH, 5, 5);
+
+                g2.setColor(new Color(145, 153, 166));
+                g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+
+                String label = labels[i];
+                int textW = g2.getFontMetrics().stringWidth(label);
+                g2.drawString(label, baseX - textW / 2, baseY + 20);
+            }
+
+            dibujarLeyenda(g2, getWidth() - 175, 18);
+
+            g2.dispose();
+        }
+
+        private void dibujarLeyenda(Graphics2D g2, int x, int y) {
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+
+            g2.setColor(VERDE);
+            g2.fillRoundRect(x, y, 12, 8, 4, 4);
+            g2.setColor(TEXTO_SUAVE);
+            g2.drawString("Ingresos", x + 17, y + 8);
+
+            g2.setColor(ROJO);
+            g2.fillRoundRect(x + 83, y, 12, 8, 4, 4);
+            g2.setColor(TEXTO_SUAVE);
+            g2.drawString("Gastos", x + 100, y + 8);
+        }
+    }
+
+    private static class RoundedPanel extends JPanel {
+
+        private final Color fondo;
+        private final int arc;
+
+        public RoundedPanel(Color fondo, int arc) {
+            this.fondo = fondo;
+            this.arc = arc;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = preparar(g);
+            g2.setColor(fondo);
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+            g2.dispose();
+
+            super.paintComponent(g);
+        }
+    }
+
+    // Se mantiene esta clase porque los paneles de gráficos (RoundedPanel, KpiCard) dependen fuertemente de ella
+    private static class RoundedBorder extends AbstractBorder {
+
+        private final Color color;
+        private final int arc;
+
+        public RoundedBorder(Color color, int arc) {
+            this.color = color;
+            this.arc = arc;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2 = preparar(g);
+            g2.setColor(color);
+            g2.drawRoundRect(x, y, width - 1, height - 1, arc, arc);
+            g2.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(1, 1, 1, 1);
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c, Insets insets) {
+            insets.left = 1;
+            insets.right = 1;
+            insets.top = 1;
+            insets.bottom = 1;
+            return insets;
+        }
+    }
 
     private static Graphics2D preparar(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
@@ -448,164 +1051,48 @@ public class ReportesFrame extends JFrame {
         return g2;
     }
 
-    private static class KpiCard extends RoundedPanel {
-        private JLabel lblValor;
-        public KpiCard(ImageIcon icono, String titulo, String valor, Color colorPrincipal, Color colorFondoIcono) {
-            super(Color.WHITE, 12);
-            setLayout(new BorderLayout(12, 0));
-            setBorder(BorderFactory.createCompoundBorder(
-                    new MenuSidebar.RoundedBorder(BORDE, 12),
-                    new EmptyBorder(12, 14, 12, 14)
-            ));
+    private static double obtenerMaximo(double[] datos) {
+        double max = datos.length > 0 ? datos[0] : 0;
 
-            JPanel circulo = new CircleIconPanel(icono, colorFondoIcono);
-            circulo.setPreferredSize(new Dimension(46, 46));
-
-            JPanel textos = new JPanel(); textos.setOpaque(false); textos.setLayout(new BoxLayout(textos, BoxLayout.Y_AXIS));
-            JLabel lblTitulo = new JLabel(titulo); lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 12)); lblTitulo.setForeground(colorPrincipal);
-            lblValor = new JLabel(valor); lblValor.setFont(new Font("Segoe UI", Font.BOLD, 17)); lblValor.setForeground(colorPrincipal);
-
-            textos.add(Box.createVerticalGlue()); textos.add(lblTitulo); textos.add(Box.createVerticalStrut(3)); textos.add(lblValor); textos.add(Box.createVerticalGlue());
-            add(circulo, BorderLayout.WEST); add(textos, BorderLayout.CENTER);
+        for (double dato : datos) {
+            if (dato > max) {
+                max = dato;
+            }
         }
-        public void setValor(String nuevoValor) { lblValor.setText(nuevoValor); repaint(); }
-        public void setColorValor(Color color) { lblValor.setForeground(color); repaint(); }
+
+        return max;
     }
 
-    private static class CircleIconPanel extends JPanel {
-        private final ImageIcon icono; private final Color colorFondo;
-        public CircleIconPanel(ImageIcon icono, Color colorFondo) { this.icono = icono; this.colorFondo = colorFondo; setOpaque(false); }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = preparar(g);
-            int size = Math.min(getWidth(), getHeight()) - 2, x = (getWidth() - size) / 2, y = (getHeight() - size) / 2;
-            g2.setColor(colorFondo); g2.fillOval(x, y, size, size);
-            if (icono != null) icono.paintIcon(this, g2, (getWidth() - icono.getIconWidth()) / 2, (getHeight() - icono.getIconHeight()) / 2);
-            g2.dispose();
+    private static double obtenerMinimo(double[] datos) {
+        double min = datos.length > 0 ? datos[0] : 0;
+
+        for (double dato : datos) {
+            if (dato < min) {
+                min = dato;
+            }
         }
+
+        return min;
     }
 
-    private static class LineChartPanel extends RoundedPanel {
-        private String titulo; private String[] labels; private double[] values; private Color lineColor;
-        public LineChartPanel(String titulo, String[] labels, double[] values, Color lineColor) {
-            super(Color.WHITE, 12); this.titulo = titulo; this.labels = labels; this.values = values; this.lineColor = lineColor;
-            setBorder(BorderFactory.createCompoundBorder(new MenuSidebar.RoundedBorder(BORDE, 12), new EmptyBorder(12, 14, 12, 14)));
-        }
-        public void setData(String titulo, String[] labels, double[] values, Color lineColor) {
-            this.titulo = titulo; this.labels = labels; this.values = values; this.lineColor = lineColor; repaint();
-        }
-        @Override protected void paintComponent(Graphics g) {
-            super.paintComponent(g); Graphics2D g2 = preparar(g);
-            int left = 62, right = 18, top = 48, bottom = 34, w = getWidth() - left - right, h = getHeight() - top - bottom;
-            g2.setColor(TEXTO); g2.setFont(new Font("Segoe UI", Font.BOLD, 13)); g2.drawString(titulo, 14, 25);
-            double min = obtenerMinimo(values), max = obtenerMaximo(values);
-            if (min > 0) min = 0; if (max < 0) max = 0;
-            double rango = max - min; if (rango == 0) rango = 1;
-            double padding = rango * 0.15; min -= padding; max += padding; rango = max - min;
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-
-            for (int i = 0; i <= 5; i++) {
-                int y = top + (h * i / 5); double valor = max - (rango * i / 5);
-                g2.setColor(new Color(225, 229, 236)); g2.setStroke(new BasicStroke(1)); g2.drawLine(left, y, left + w, y);
-                g2.setColor(new Color(145, 153, 166)); g2.drawString(formatoCorto(valor), 10, y + 4);
-            }
-            int yCero = top + (int) ((max - 0) / rango * h);
-            if (yCero >= top && yCero <= top + h) { g2.setColor(new Color(180, 187, 198)); g2.setStroke(new BasicStroke(1.4f)); g2.drawLine(left, yCero, left + w, yCero); }
-            g2.setColor(new Color(225, 229, 236)); g2.drawLine(left, top, left, top + h); g2.drawLine(left, top + h, left + w, top + h);
-
-            int[] xs = new int[values.length], ys = new int[values.length];
-            for (int i = 0; i < values.length; i++) { xs[i] = left + (w * i / (values.length - 1)); ys[i] = top + (int) ((max - values[i]) / rango * h); }
-            g2.setColor(lineColor); g2.setStroke(new BasicStroke(2));
-            for (int i = 0; i < xs.length - 1; i++) g2.drawLine(xs[i], ys[i], xs[i + 1], ys[i + 1]);
-            for (int i = 0; i < xs.length; i++) {
-                g2.setColor(Color.WHITE); g2.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
-                g2.setColor(lineColor); g2.setStroke(new BasicStroke(2)); g2.drawOval(xs[i] - 4, ys[i] - 4, 8, 8);
-            }
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10)); g2.setColor(new Color(145, 153, 166));
-            for (int i = 0; i < labels.length; i++) { int textW = g2.getFontMetrics().stringWidth(labels[i]); g2.drawString(labels[i], xs[i] - textW / 2, top + h + 22); }
-            int index = Math.min(2, values.length - 1); dibujarTooltip(g2, xs[index], ys[index], values[index]);
-            g2.dispose();
-        }
-        private void dibujarTooltip(Graphics2D g2, int x, int y, double value) {
-            String linea1 = "Dato seleccionado", linea2 = "S/ " + new DecimalFormat("#,##0.00").format(value);
-            int boxW = 132, boxH = 48, bx = Math.min(x + 10, getWidth() - boxW - 12), by = Math.max(y - 52, 42);
-            g2.setColor(new Color(12, 38, 78)); g2.fillRoundRect(bx, by, boxW, boxH, 8, 8);
-            g2.setColor(Color.WHITE); g2.setFont(new Font("Segoe UI", Font.BOLD, 10)); g2.drawString(linea1, bx + 10, by + 18);
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10)); g2.setColor(new Color(210, 226, 255)); g2.drawString(linea2, bx + 10, by + 35);
-        }
+    private static double redondearMaximo(double max) {
+        if (max <= 0) { return 1000; }
+        if (max <= 1000) { return 1000; }
+        if (max <= 2000) { return 2000; }
+        if (max <= 3000) { return 3000; }
+        if (max <= 4000) { return 4000; }
+        if (max <= 5000) { return 5000; }
+        return Math.ceil(max / 1000.0) * 1000;
     }
 
-    private static class DonutChartPanel extends RoundedPanel {
-        private final String titulo; private String[] labels; private int[] values; private final Color[] colors;
-        public DonutChartPanel(String titulo, String[] labels, int[] values, Color[] colors) {
-            super(Color.WHITE, 12); this.titulo = titulo; this.labels = labels; this.values = values; this.colors = colors;
-            setBorder(BorderFactory.createCompoundBorder(new MenuSidebar.RoundedBorder(BORDE, 12), new EmptyBorder(12, 14, 12, 14)));
-        }
-        public void setData(String[] labels, int[] values) { this.labels = labels; this.values = values; repaint(); }
-        @Override protected void paintComponent(Graphics g) {
-            super.paintComponent(g); Graphics2D g2 = preparar(g);
-            g2.setColor(TEXTO); g2.setFont(new Font("Segoe UI", Font.BOLD, 13)); g2.drawString(titulo, 14, 24);
-            int total = 0; for (int value : values) total += value; if (total <= 0) { g2.dispose(); return; }
-            int size = Math.min(125, getHeight() - 62), x = 28, y = 52, start = 90;
-            for (int i = 0; i < values.length; i++) {
-                int angle = (int) Math.round(values[i] * 360.0 / total);
-                g2.setColor(colors[i]); g2.fillArc(x, y, size, size, start, -angle); start -= angle;
-            }
-            g2.setColor(Color.WHITE); int hole = size / 2; g2.fillOval(x + size / 4, y + size / 4, hole, hole);
-            int legendX = x + size + 48, legendY = y + 12; g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            for (int i = 0; i < labels.length; i++) {
-                int itemY = legendY + i * 28; g2.setColor(colors[i]); g2.fillOval(legendX, itemY - 9, 10, 10);
-                g2.setColor(TEXTO); g2.drawString(labels[i], legendX + 18, itemY);
-                String porcentaje = String.format("%.1f%%", values[i] * 100.0 / total), texto = values[i] + " (" + porcentaje + ")";
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 11)); g2.drawString(texto, getWidth() - 105, itemY); g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            }
-            g2.dispose();
-        }
-    }
+    private static String formatoCorto(double valor) {
+        double abs = Math.abs(valor);
+        String signo = valor < 0 ? "-" : "";
 
-    private static class BarChartPanel extends RoundedPanel {
-        private final String titulo; private String[] labels; private double[] ingresos, gastos;
-        public BarChartPanel(String titulo, String[] labels, double[] ingresos, double[] gastos) {
-            super(Color.WHITE, 12); this.titulo = titulo; this.labels = labels; this.ingresos = ingresos; this.gastos = gastos;
-            setBorder(BorderFactory.createCompoundBorder(new MenuSidebar.RoundedBorder(BORDE, 12), new EmptyBorder(12, 14, 12, 14)));
+        if (abs >= 1000) {
+            return signo + String.format("%.0fk", abs / 1000.0);
         }
-        public void setData(String[] labels, double[] ingresos, double[] gastos) { this.labels = labels; this.ingresos = ingresos; this.gastos = gastos; repaint(); }
-        @Override protected void paintComponent(Graphics g) {
-            super.paintComponent(g); Graphics2D g2 = preparar(g);
-            int left = 56, right = 18, top = 45, bottom = 30, w = getWidth() - left - right, h = getHeight() - top - bottom;
-            g2.setColor(TEXTO); g2.setFont(new Font("Segoe UI", Font.BOLD, 13)); g2.drawString(titulo, 14, 24);
-            double max = Math.max(obtenerMaximo(ingresos), obtenerMaximo(gastos)); max = redondearMaximo(max);
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
-            for (int i = 0; i <= 4; i++) {
-                int y = top + (h * i / 4); g2.setColor(new Color(225, 229, 236)); g2.drawLine(left, y, left + w, y);
-                g2.setColor(new Color(145, 153, 166)); double valor = max - (max * i / 4); g2.drawString(formatoCorto(valor), 8, y + 4);
-            }
-            int grupos = labels.length, grupoW = w / grupos, barW = Math.max(12, grupoW / 5);
-            for (int i = 0; i < grupos; i++) {
-                int baseX = left + i * grupoW + grupoW / 2, baseY = top + h, ingresoH = (int) ((ingresos[i] / max) * h), gastoH = (int) ((gastos[i] / max) * h);
-                g2.setColor(VERDE); g2.fillRoundRect(baseX - barW - 3, baseY - ingresoH, barW, ingresoH, 5, 5);
-                g2.setColor(ROJO); g2.fillRoundRect(baseX + 3, baseY - gastoH, barW, gastoH, 5, 5);
-                g2.setColor(new Color(145, 153, 166)); g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
-                String label = labels[i]; int textW = g2.getFontMetrics().stringWidth(label); g2.drawString(label, baseX - textW / 2, baseY + 20);
-            }
-            dibujarLeyenda(g2, getWidth() - 175, 18); g2.dispose();
-        }
-        private void dibujarLeyenda(Graphics2D g2, int x, int y) {
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-            g2.setColor(VERDE); g2.fillRoundRect(x, y, 12, 8, 4, 4); g2.setColor(TEXTO_SUAVE); g2.drawString("Ingresos", x + 17, y + 8);
-            g2.setColor(ROJO); g2.fillRoundRect(x + 83, y, 12, 8, 4, 4); g2.setColor(TEXTO_SUAVE); g2.drawString("Gastos", x + 100, y + 8);
-        }
-    }
 
-    private static class RoundedPanel extends JPanel {
-        private final Color fondo; private final int arc;
-        public RoundedPanel(Color fondo, int arc) { this.fondo = fondo; this.arc = arc; setOpaque(false); }
-        @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = preparar(g); g2.setColor(fondo); g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc); g2.dispose(); super.paintComponent(g);
-        }
+        return String.valueOf((int) valor);
     }
-
-    private static double obtenerMaximo(double[] datos) { double max = datos.length > 0 ? datos[0] : 0; for (double dato : datos) if (dato > max) max = dato; return max; }
-    private static double obtenerMinimo(double[] datos) { double min = datos.length > 0 ? datos[0] : 0; for (double dato : datos) if (dato < min) min = dato; return min; }
-    private static double redondearMaximo(double max) { if (max <= 5000) return Math.ceil(max / 1000.0) * 1000; return Math.ceil(max / 1000.0) * 1000; }
-    private static String formatoCorto(double valor) { double abs = Math.abs(valor); String signo = valor < 0 ? "-" : ""; if (abs >= 1000) return signo + String.format("%.0fk", abs / 1000.0); return String.valueOf((int) valor); }
 }
