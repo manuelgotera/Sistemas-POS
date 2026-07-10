@@ -1,0 +1,151 @@
+package proyecto.pos.controller;
+
+import proyecto.pos.dao.impl.ProduccionLoteDAOImpl;
+import proyecto.pos.dao.impl.SubRecetaDAOImpl;
+import proyecto.pos.dao.interfaces.ProduccionLoteDAO;
+import proyecto.pos.dao.interfaces.SubRecetaDAO;
+import proyecto.pos.model.ProduccionLote;
+import proyecto.pos.service.ProduccionLoteService;
+import proyecto.pos.service.SubRecetaService;
+import java.sql.Connection;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Controlador para gestionar Producción de Lotes
+ * Ubicación: proyecto.pos.controller.ProduccionLoteController
+ * 
+ * Coordina la interacción entre la GUI y el Service
+ */
+public class ProduccionLoteController {
+
+    private ProduccionLoteService produccionLoteService;
+    private ProduccionLoteDAO produccionLoteDAO;
+    private SubRecetaDAO subRecetaDAO;
+    private SubRecetaService subRecetaService;
+
+    /**
+     * Constructor que recibe la conexión a la BD
+     */
+    public ProduccionLoteController(Connection conexion) {
+        this.subRecetaDAO = new SubRecetaDAOImpl(conexion);
+        this.produccionLoteDAO = new ProduccionLoteDAOImpl(conexion);
+        this.subRecetaService = new SubRecetaService(subRecetaDAO);
+        this.produccionLoteService = new ProduccionLoteService(produccionLoteDAO, subRecetaService);
+    }
+
+    /**
+     * Registra una nueva producción
+     * @return true si se registró exitosamente
+     */
+    public boolean registrarProduccion(int subrecetaId, float cantidadProducida) {
+        try {
+            produccionLoteService.registrarProduccion(subrecetaId, cantidadProducida);
+            return true;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene producciones por rango de fechas
+     */
+    public List<ProduccionLote> obtenerProduccionesPorRango(LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.obtenerProduccionesPorRango(desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene producciones de una sub-receta en un rango
+     */
+    public List<ProduccionLote> obtenerProduccionesPorSubReceta(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.obtenerProduccionesPorSubReceta(subrecetaId, desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene las producciones del día actual
+     */
+    public List<ProduccionLote> obtenerProduccionesDelDia() {
+        return produccionLoteService.obtenerProduccionesDelDia();
+    }
+
+    /**
+     * Obtiene el total producido en un rango
+     */
+    public float obtenerTotalProducido(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.obtenerTotalProducido(subrecetaId, desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return 0f;
+        }
+    }
+
+    /**
+     * Obtiene el costo total en un rango
+     */
+    public float obtenerCostoTotal(LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.obtenerCostoTotalProduccion(desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return 0f;
+        }
+    }
+
+    /**
+     * Genera reporte de producción
+     */
+    public String generarReporte(LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.generarReporteProduccion(desde, hasta);
+        } catch (IllegalArgumentException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Genera reporte de una sub-receta
+     */
+    public String generarReporteSubReceta(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.generarReporteProduccionSubReceta(subrecetaId, desde, hasta);
+        } catch (IllegalArgumentException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Obtiene promedio de producción diaria
+     */
+    public float obtenerPromedioProduccionDiaria(int subrecetaId, LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.obtenerPromedioProduccionDiaria(subrecetaId, desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return 0f;
+        }
+    }
+
+    /**
+     * Verifica si existen producciones en un rango
+     */
+    public boolean existenProducciones(LocalDate desde, LocalDate hasta) {
+        try {
+            return produccionLoteService.existenProduccionesEnRango(desde, hasta);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            return false;
+        }
+    }
+}
