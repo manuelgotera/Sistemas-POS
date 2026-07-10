@@ -17,8 +17,28 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.*;
 import proyecto.pos.model.CategoriaMenu;
 import proyecto.pos.model.Plato;
+import java.sql.Connection;
+import java.util.ArrayList;
+import proyecto.pos.config.DatabaseConnection;
+import proyecto.pos.controller.InsumoController;
+import proyecto.pos.controller.PlatoController;
+import proyecto.pos.controller.RecetaController;
+import proyecto.pos.model.Insumo;
+import proyecto.pos.model.Receta;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class PlatosFrame extends JFrame {
+    
+    private Connection Conexion;
+    private PlatoController plato_controller;
+    private InsumoController insumo_controller;
+    private RecetaController receta_controller;
+    private ArrayList<Plato> platos;
+    private ArrayList<CategoriaMenu> categorias;
+    private ArrayList<Insumo> insumos;
+    
+    
 
     // ─── COLORES ─────────────────────────────────────────────────────────────
     private static final Color AZUL         = new Color(26, 83, 160);
@@ -47,9 +67,7 @@ public class PlatosFrame extends JFrame {
     private static final int COL_ULTIMA_MOD = 5;
     private static final int COL_POPULAR    = 6;
     private static final int COL_ACCIONES   = 7;
-
-    private static final String[] CATEGORIAS = {"Todos","Entradas","Segundos","Postres","Bebidas"};
-
+    
     // ─── COMPONENTES ─────────────────────────────────────────────────────────
     private JTable tabla;
     private DefaultTableModel modeloTabla;
@@ -71,23 +89,40 @@ public class PlatosFrame extends JFrame {
     private JLabel   lblPreviewImagen;          // miniatura en el formulario
     private JButton  btnSeleccionarImagen;
     private String   rutaImagenSeleccionada = null;   // ruta en disco
+    private Connection conexion;
 
-    private int nextId = 106;
-
-    // Recetas en memoria
-    private final Map<Integer, List<String[]>> recetasPorPlato      = new HashMap<>();
-    // Descripciones en memoria (se muestran en el dialog de receta)
-    private final Map<Integer, String>         descripcionesPorPlato = new HashMap<>();
-    // Imágenes en memoria: idPlato → ruta del archivo
-    private final Map<Integer, String>         imagenesPorPlato      = new HashMap<>();
-
+    
+    
     public PlatosFrame() {
+        DatabaseConnection db = new DatabaseConnection();
+        Connection conexion = db.conectar();
+        plato_controller = new PlatoController(conexion);
+        receta_controller = new RecetaController(conexion);
+        insumo_controller = new InsumoController(conexion);
+        obtenerPlatos();
+        obtenerCategorias();
         configurarVentana();
         construirInterfaz();
         cargarDatosDemo();
         actualizarFooter();
     }
-
+    
+    private void obtenerPlatos(){
+        platos = (ArrayList<Plato>) plato_controller.listarPlatos();
+    }
+    
+    private void obtenerCategorias(){
+        categorias = (ArrayList<CategoriaMenu>) plato_controller.listarCategorias();
+    }
+    
+    private void obtenerInsumos(){
+        insumos = (ArrayList<Insumo>) insumo_controller.listarInsumos();
+    }
+    
+    private ArrayList<Receta> obtenerRecetas(int plato_id){
+        return (ArrayList<Receta>) receta_controller.listarRecetaPorPlato(plato_id);
+    }
+    
     private void configurarVentana() {
         setTitle("Gestión de Platos");
         setSize(1200, 720);
@@ -100,7 +135,7 @@ public class PlatosFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        root.add(new MenuSidebar(this, "Platos"), BorderLayout.WEST);
+        root.add(new MenuSidebar(this, "Platos ", conexion), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
@@ -256,9 +291,10 @@ public class PlatosFrame extends JFrame {
         // Categoría
         form.add(crearLabel("Categoría"));
         form.add(Box.createVerticalStrut(5));
-        cboCategoriaForm = new JComboBox<>(new String[]{
-            "Seleccionar Categoría","Entradas","Segundos","Postres","Bebidas"
-        });
+        cboCategoriaForm = new JComboBox<>();
+        for(CategoriaMenu cm : categorias){
+            cboCategoriaForm.addItem(cm.getNombre());
+        }
         cboCategoriaForm.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         cboCategoriaForm.setBackground(Color.WHITE);
         cboCategoriaForm.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
@@ -381,16 +417,92 @@ public class PlatosFrame extends JFrame {
 
     // ── Abre el JFileChooser y carga la imagen en el preview ──────────────────
     private void seleccionarImagen() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Seleccionar imagen del plato");
-        chooser.setFileFilter(new FileNameExtensionFilter(
-                "Imágenes (JPG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
-        chooser.setAcceptAllFileFilterUsed(false);
 
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File archivo = chooser.getSelectedFile();
-            rutaImagenSeleccionada = archivo.getAbsolutePath();
-            mostrarPreviewImagen(rutaImagenSeleccionada, lblPreviewImagen);
+        JFileChooser chooser = new JFileChooser();
+
+        chooser.setDialogTitle(
+                "Seleccionar imagen del plato"
+        );
+
+        chooser.setFileFilter(
+                new FileNameExtensionFilter(
+                        "Imágenes",
+                        "jpg",
+                        "jpeg",
+                        "png",
+                        "gif"
+                )
+        );
+
+        int resultado =
+                chooser.showOpenDialog(this);
+
+        if (resultado ==
+                JFileChooser.APPROVE_OPTION) {
+
+            try {
+
+                File archivoOriginal =
+                        chooser.getSelectedFile();
+
+                // =========================
+                // CARPETA DESTINO
+                // =========================
+                File carpeta =
+                        new File(System.getProperty("user.home") + "\\Downloads\\POS_imagenes");
+
+                if (!carpeta.exists()) {
+
+                    carpeta.mkdirs();
+                }
+
+                // =========================
+                // NOMBRE ÚNICO
+                // =========================
+                String nombreArchivo =
+                        archivoOriginal.getName();
+
+                // =========================
+                // ARCHIVO DESTINO
+                // =========================
+                File archivoDestino =
+                        new File(
+                                carpeta,
+                                nombreArchivo
+                        );
+
+                // =========================
+                // COPIAR IMAGEN
+                // =========================
+                Files.copy(
+                        archivoOriginal.toPath(),
+                        archivoDestino.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                );
+
+                // =========================
+                // GUARDAR RUTA
+                // =========================
+                rutaImagenSeleccionada =
+                        archivoDestino.getPath();
+
+                // =========================
+                // PREVIEW
+                // =========================
+                mostrarPreviewImagen(
+                        rutaImagenSeleccionada,
+                        lblPreviewImagen
+                );
+
+            } catch (Exception ex) {
+
+                ex.printStackTrace();
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Error al guardar imagen"
+                );
+            }
         }
     }
 
@@ -469,7 +581,10 @@ public class PlatosFrame extends JFrame {
         JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         filtros.setOpaque(false);
         filtros.setBorder(new EmptyBorder(12, 0, 0, 0));
-        for (String cat : CATEGORIAS) filtros.add(crearBotonCategoria(cat, filtros));
+        for (CategoriaMenu cat : categorias){
+            String cat_nombre = cat.getNombre();
+            filtros.add(crearBotonCategoria(cat_nombre, filtros));
+        }
 
         wrapper.add(top,     BorderLayout.NORTH);
         wrapper.add(filtros, BorderLayout.CENTER);
@@ -491,7 +606,10 @@ public class PlatosFrame extends JFrame {
             categoriaActiva = categoria;
             aplicarFiltros();
             contenedor.removeAll();
-            for (String cat : CATEGORIAS) contenedor.add(crearBotonCategoria(cat, contenedor));
+            for (CategoriaMenu cat : categorias){
+                String cat_nombre = cat.getNombre();
+                contenedor.add(crearBotonCategoria(cat_nombre, contenedor));
+            }
             contenedor.revalidate();
             contenedor.repaint();
         });
@@ -615,37 +733,15 @@ public class PlatosFrame extends JFrame {
 
     private void cargarDatosDemo() {
         String hoy = new SimpleDateFormat("dd/MM/yyyy").format(new Date());
-        agregarFila(101, "Arroz con Pollo",  "Segundos", 15.00f, true,  hoy, 2);
-        agregarFila(102, "Ceviche",          "Entradas", 18.00f, true,  hoy, 2);
-        agregarFila(103, "Inka Kola",        "Bebidas",   5.00f, true,  hoy, 1);
-        agregarFila(104, "Tallarín Saltado", "Segundos", 14.50f, false, hoy, 2);
-        agregarFila(105, "Tres Leches",      "Postres",  10.00f, true,  hoy, 3);
-
-        recetasPorPlato.put(101, new ArrayList<>(Arrays.asList(
-            new String[]{"Pollo entero",   "300","g"},
-            new String[]{"Arroz",          "200","g"},
-            new String[]{"Ají amarillo",   "2",  "unid"},
-            new String[]{"Caldo de pollo", "250","ml"}
-        )));
-        recetasPorPlato.put(102, new ArrayList<>(Arrays.asList(
-            new String[]{"Pescado fresco", "250","g"},
-            new String[]{"Limón",          "6",  "unid"},
-            new String[]{"Cebolla roja",   "1",  "unid"},
-            new String[]{"Ají limo",       "1",  "unid"},
-            new String[]{"Cilantro",       "10", "g"}
-        )));
-        recetasPorPlato.put(105, new ArrayList<>(Arrays.asList(
-            new String[]{"Bizcocho",        "150","g"},
-            new String[]{"Leche evaporada", "200","ml"},
-            new String[]{"Crema de leche",  "100","ml"},
-            new String[]{"Azúcar",          "50", "g"}
-        )));
-
-        descripcionesPorPlato.put(101, "Arroz cocido con trozos de pollo guisado en salsa de ají amarillo y verduras.");
-        descripcionesPorPlato.put(102, "Pescado fresco marinado en limón con cebolla, ají limo y cilantro.");
-        descripcionesPorPlato.put(103, "Bebida gaseosa de sabor característico peruano.");
-        descripcionesPorPlato.put(104, "Tallarines salteados con carne, tomate, cebolla y sillao.");
-        descripcionesPorPlato.put(105, "Bizcocho bañado en tres tipos de leche con crema chantilly.");
+        obtenerPlatos();
+        
+        for (Plato p : platos){
+            boolean disponibilidad = false;
+            if (p.getDisponible() == 1) {
+                disponibilidad = true; 
+            }
+            agregarFila(p.getPlatoId(),p.getNombre(), p.getCategoria().getNombre(), p.getPrecio(), disponibilidad, hoy,0);
+        }
     }
 
     private void agregarFila(int id, String nombre, String categoria,
@@ -665,10 +761,9 @@ public class PlatosFrame extends JFrame {
         String nombre    = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_NOMBRE));
         String categoria = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_CATEGORIA));
         String precio    = String.valueOf(modeloTabla.getValueAt(filaModelo, COL_PRECIO));
-        String descActual = descripcionesPorPlato.getOrDefault(idPlato, "");
+        //String descActual = descripcionesPorPlato.getOrDefault(idPlato, "");
 
-        List<String[]> receta = recetasPorPlato.getOrDefault(idPlato, new ArrayList<>());
-
+        ArrayList<Receta> recetas_plato = obtenerRecetas(idPlato);
         JDialog dialog = new JDialog(this, "Receta: " + nombre, true);
         dialog.setSize(500, 640);
         dialog.setLocationRelativeTo(this);
@@ -719,7 +814,7 @@ public class PlatosFrame extends JFrame {
         lblTitDesc.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblTitDesc.setForeground(TEXTO);
 
-        JTextArea txtDescDialog = new JTextArea(descActual);
+        JTextArea txtDescDialog = new JTextArea("xd");
         txtDescDialog.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         txtDescDialog.setForeground(TEXTO);
         txtDescDialog.setLineWrap(true);
@@ -736,26 +831,98 @@ public class PlatosFrame extends JFrame {
         secDescripcion.add(scrollDescDlg, BorderLayout.CENTER);
 
         // ── Tabla de ingredientes ─────────────────────────────────────────────
-        String[] colsRec = {"Ingrediente","Cantidad","Unidad"};
-        DefaultTableModel modeloReceta = new DefaultTableModel(colsRec, 0) {
-            public boolean isCellEditable(int r, int c) { return true; }
+        // =========================
+        // COLUMNAS
+        // =========================
+        String[] columnas = {
+                "ID_INSUMO",
+                "INSUMO",
+                "CANTIDAD",
+                "UNIDAD"
         };
-        for (String[] ing : receta)
-            modeloReceta.addRow(new Object[]{ing[0], ing[1], ing[2]});
 
-        JTable tablaReceta = new JTable(modeloReceta);
+        // =========================
+        // MODELO
+        // =========================
+        DefaultTableModel modeloReceta =
+                new DefaultTableModel(columnas, 0) {
+
+            @Override
+            public boolean isCellEditable(
+                    int fila,
+                    int columna
+            ) {
+
+                // ID NO editable
+                return columna != 0;
+            }
+        };
+
+        // =========================
+        // TABLA
+        // =========================
+        JTable tablaReceta =
+                new JTable(modeloReceta);
+
+        // =========================
+        // ESTILOS
+        // =========================
         tablaReceta.setRowHeight(36);
-        tablaReceta.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        tablaReceta.setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.PLAIN,
+                        12
+                )
+        );
+
         tablaReceta.setShowVerticalLines(false);
+
         tablaReceta.setShowHorizontalLines(true);
-        tablaReceta.setGridColor(new Color(235, 238, 244));
-        tablaReceta.setSelectionBackground(AZUL_CLARO);
-        tablaReceta.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tablaReceta.getTableHeader().setBackground(new Color(248, 249, 252));
-        tablaReceta.getTableHeader().setForeground(TEXTO_SUAVE);
-        tablaReceta.getColumnModel().getColumn(0).setPreferredWidth(190);
-        tablaReceta.getColumnModel().getColumn(1).setPreferredWidth(80);
-        tablaReceta.getColumnModel().getColumn(2).setPreferredWidth(80);
+
+        tablaReceta.setGridColor(
+                new Color(235, 238, 244)
+        );
+
+        tablaReceta.setSelectionBackground(
+                new Color(220, 235, 255)
+        );
+
+        // =========================
+        // HEADER
+        // =========================
+        tablaReceta.getTableHeader().setFont(
+                new Font(
+                        "Segoe UI",
+                        Font.BOLD,
+                        12
+                )
+        );
+
+        tablaReceta.getTableHeader().setBackground(
+                new Color(248, 249, 252)
+        );
+
+        tablaReceta.getTableHeader().setForeground(
+                new Color(80, 80, 80)
+        );
+
+        // =========================
+        // OCULTAR ID
+        // =========================
+        TableColumn columnaId =
+                tablaReceta
+                .getColumnModel()
+                .getColumn(0);
+
+        columnaId.setMinWidth(0);
+        columnaId.setMaxWidth(0);
+        columnaId.setPreferredWidth(0);
+        columnaId.setWidth(0);
+
+        // =========================
+        // TAMAÑOS VISIBLES
 
         JScrollPane scrollRec = new JScrollPane(tablaReceta);
         scrollRec.setBorder(new MenuSidebar.RoundedBorder(BORDE, 8));
@@ -791,11 +958,26 @@ public class PlatosFrame extends JFrame {
         lblAgregar.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblAgregar.setForeground(TEXTO_SUAVE);
 
-        JTextField txtIngNombre   = new JTextField();
+        for (Receta r : recetas_plato){
+            modeloReceta.addRow(
+                new Object[]{
+                    r.getInsumo().getInsumoId(),
+                    r.getInsumo().getNombre(),
+                    r.getCantidad_requerida(),
+                    r.getInsumo().getUnidadMedida()
+                }
+            );
+        }
+        
+        JComboBox<String> cbIngredientes = new JComboBox<>();
+        obtenerInsumos();
+        for(Insumo i : insumos){
+            cbIngredientes.addItem(i.getNombre());
+        }
         JTextField txtIngCantidad = new JTextField();
         JTextField txtIngUnidad   = new JTextField();
+        cbIngredientes.setPreferredSize(new Dimension(200, 35));
 
-        estilizarCampoReceta(txtIngNombre,   "Ingrediente");
         estilizarCampoReceta(txtIngCantidad, "Cant.");
         estilizarCampoReceta(txtIngUnidad,   "Unidad");
         txtIngCantidad.setPreferredSize(new Dimension(60, 30));
@@ -810,24 +992,26 @@ public class PlatosFrame extends JFrame {
         btnAgrIng.setBorder(new EmptyBorder(5, 14, 5, 14));
         btnAgrIng.setPreferredSize(new Dimension(40, 30));
         btnAgrIng.addActionListener(e -> {
-            String n = txtIngNombre.getText().trim();
+            int ingrediente_indice = cbIngredientes.getSelectedIndex();
+            int id = insumos.get(ingrediente_indice).getInsumoId();
+            String n = cbIngredientes.getItemAt(ingrediente_indice);
             String c = txtIngCantidad.getText().trim();
             String u = txtIngUnidad.getText().trim();
+            System.out.println(id);
             if (!n.isEmpty()) {
-                modeloReceta.addRow(new Object[]{n, c, u});
-                txtIngNombre.setText("");
+                modeloReceta.addRow(new Object[]{id,n, c, u});
                 txtIngCantidad.setText("");
                 txtIngUnidad.setText("");
-                txtIngNombre.requestFocus();
+                
             }
         });
 
         JPanel camposIng = new JPanel(new BorderLayout(6, 0));
         camposIng.setOpaque(false);
-        camposIng.add(txtIngNombre, BorderLayout.CENTER);
 
         JPanel derechaIng = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         derechaIng.setOpaque(false);
+        derechaIng.add(cbIngredientes);
         derechaIng.add(txtIngCantidad);
         derechaIng.add(txtIngUnidad);
         derechaIng.add(btnAgrIng);
@@ -850,19 +1034,29 @@ public class PlatosFrame extends JFrame {
                 tablaReceta.getCellEditor().stopCellEditing();
 
             // Guardar ingredientes
-            List<String[]> nuevaReceta = new ArrayList<>();
+            
             for (int i = 0; i < modeloReceta.getRowCount(); i++) {
-                nuevaReceta.add(new String[]{
-                    String.valueOf(modeloReceta.getValueAt(i, 0)),
-                    String.valueOf(modeloReceta.getValueAt(i, 1)),
-                    String.valueOf(modeloReceta.getValueAt(i, 2))
-                });
+                System.out.println(tablaReceta
+                            .getValueAt(i, 0)
+                            .toString());
+                int id_insumo =
+                    Integer.parseInt(
+                            tablaReceta
+                            .getValueAt(i, 0)
+                            .toString()
+                    );
+                Receta nueva_receta = new Receta();
+                Plato p = new Plato();
+                Insumo in = new Insumo();
+                in = insumo_controller.obtenerPorId(id_insumo);
+                p.setPlatoId(idPlato);
+                nueva_receta.setCantidad_requerida(Integer.parseInt(modeloReceta.getValueAt(i,2).toString()));
+                nueva_receta.setPlato(p);
+                nueva_receta.setInsumo(in);
+                receta_controller.registrarReceta(nueva_receta);
+                
             }
-            recetasPorPlato.put(idPlato, nuevaReceta);
-
             // ── Guardar descripción editada en el dialog ── NUEVO ──────────────
-            descripcionesPorPlato.put(idPlato, txtDescDialog.getText().trim());
-
             dialog.dispose();
             mostrarToast("✔  Receta de \"" + nombre + "\" guardada");
         });
@@ -919,55 +1113,195 @@ public class PlatosFrame extends JFrame {
     }
 
     // ─── LÓGICA FORMULARIO ────────────────────────────────────────────────────
-
     private void guardarPlato() {
-        String nombre    = txtNombrePlato.getText().trim();
-        String catSel    = String.valueOf(cboCategoriaForm.getSelectedItem());
-        String precioStr = txtPrecio.getText().replace("S/.", "").replace("S/", "").trim();
 
-        if (nombre.isEmpty() || catSel.equals("Seleccionar Categoría")) {
-            mostrarToast("⚠  Completa nombre y categoría");
+        String nombre      = txtNombrePlato.getText().trim();
+        String catSel      = String.valueOf(cboCategoriaForm.getSelectedItem());
+        String precioStr   = txtPrecio.getText()
+                .replace("S/.", "")
+                .replace("S/", "")
+                .trim();
+
+        if (nombre.isEmpty()
+                || catSel.equals("Seleccionar Categoría")) {
+
+            mostrarToast("⚠ Completa nombre y categoría");
+            return;
+        }
+        float precio = 0f;
+        try {
+            precio = Float.parseFloat(precioStr);
+        } catch (NumberFormatException e) {
+            mostrarToast("⚠ Precio inválido");
+            return;
+        }
+        if (precio <= 0) {
+            mostrarToast("⚠ El precio debe ser mayor a 0");
             return;
         }
 
-        float precio = 0f;
-        try { precio = Float.parseFloat(precioStr); } catch (NumberFormatException ignored) {}
-
         boolean disponible = chkDisponible.isSelected();
         String fecha = new SimpleDateFormat("dd/MM/yyyy").format(new Date());
-        String idStr = txtIdPlato.getText().trim();
-
+        String idStr =txtIdPlato.getText().trim();
         int idEdicion = -1;
-        try { idEdicion = Integer.parseInt(idStr); } catch (NumberFormatException ignored) {}
-
+        try {
+            idEdicion = Integer.parseInt(idStr);
+        } catch (NumberFormatException ignored) {}
+        CategoriaMenu categoriaSeleccionada = null;
+        for (CategoriaMenu c : categorias) {
+            if (c.getNombre().equals(catSel)) {
+                categoriaSeleccionada = c;
+                break;
+            }
+        }
+        if (categoriaSeleccionada == null) {
+            mostrarToast("⚠ Categoría inválida");
+            return;
+        }
+        // =========================
+        // ACTUALIZAR
+        // =========================
         if (idEdicion > 0) {
-            for (int i = 0; i < modeloTabla.getRowCount(); i++) {
-                if (Integer.parseInt(String.valueOf(modeloTabla.getValueAt(i, COL_ID))) == idEdicion) {
-                    modeloTabla.setValueAt(nombre,                             i, COL_NOMBRE);
-                    modeloTabla.setValueAt(catSel,                             i, COL_CATEGORIA);
-                    modeloTabla.setValueAt(String.format("S/ %.2f", precio),   i, COL_PRECIO);
-                    modeloTabla.setValueAt(disponible ? "ACTIVO" : "INACTIVO", i, COL_DISPONIBLE);
-                    modeloTabla.setValueAt(fecha,                              i, COL_ULTIMA_MOD);
-                    // Guardar imagen si se seleccionó una nueva
-                    if (rutaImagenSeleccionada != null)
-                        imagenesPorPlato.put(idEdicion, rutaImagenSeleccionada);
-                    aplicarFiltros();
-                    mostrarToast("✔  Plato actualizado");
-                    limpiarFormulario();
-                    return;
+            try {
+                Plato plato = new Plato();
+                plato.setPlatoId(idEdicion);
+                plato.setNombre(nombre);
+                plato.setPrecio(precio);
+                plato.setCategoria(categoriaSeleccionada);
+                plato.setDisponible(
+                        disponible ? 1 : 0
+                );
+
+                plato_controller.actualizarDisponibilidad(idEdicion, disponible ? 1: 0);
+                plato_controller.actualizarCategoria(idEdicion, categoriaSeleccionada);
+                plato_controller.actualizarNombre(idEdicion, nombre);
+                plato_controller.actualizarPrecio(idEdicion, precio);
+                // ACTUALIZAR TABLA
+                for (int i = 0;
+                     i < modeloTabla.getRowCount();
+                     i++) {
+
+                    int idTabla = Integer.parseInt(
+                            String.valueOf(
+                                    modeloTabla.getValueAt(
+                                            i,
+                                            COL_ID
+                                    )
+                            )
+                    );
+
+                    if (idTabla == idEdicion) {
+
+                        modeloTabla.setValueAt(
+                                nombre,
+                                i,
+                                COL_NOMBRE
+                        );
+
+                        modeloTabla.setValueAt(
+                                catSel,
+                                i,
+                                COL_CATEGORIA
+                        );
+
+                        modeloTabla.setValueAt(
+                                String.format(
+                                        "S/ %.2f",
+                                        precio
+                                ),
+                                i,
+                                COL_PRECIO
+                        );
+
+                        modeloTabla.setValueAt(
+                                disponible
+                                        ? "ACTIVO"
+                                        : "INACTIVO",
+                                i,
+                                COL_DISPONIBLE
+                        );
+
+                        modeloTabla.setValueAt(
+                                fecha,
+                                i,
+                                COL_ULTIMA_MOD
+                        );
+
+                        break;
+                    }
                 }
+
+                
+                aplicarFiltros();
+
+                mostrarToast("✔ Plato actualizado");
+
+                limpiarFormulario();
+
+                return;
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+
+                mostrarToast(
+                        "❌ Error al actualizar"
+                );
+
+                return;
             }
         }
 
-        agregarFila(nextId, nombre, catSel, precio, disponible, fecha, 1);
-        if (rutaImagenSeleccionada != null)
-            imagenesPorPlato.put(nextId, rutaImagenSeleccionada);
-        nextId++;
-        aplicarFiltros();
-        mostrarToast("✔  Plato agregado");
-        limpiarFormulario();
-    }
+        // =========================
+        // INSERTAR NUEVO
+        // =========================
+        try {
 
+            Plato plato = new Plato();
+
+            plato.setNombre(nombre);
+            plato.setPrecio(precio);
+            plato.setCategoria(categoriaSeleccionada);
+            plato.setDisponible(
+                    disponible ? 1 : 0
+            );
+
+            plato_controller.registrarPlato(
+                    nombre,
+                    precio,
+                    categoriaSeleccionada,
+                    disponible ? 1 : 0,
+                    rutaImagenSeleccionada
+            );
+            plato = plato_controller.obtenerPlatoPorNombre(nombre);
+            agregarFila(
+                    plato.getPlatoId(),
+                    plato.getNombre(),
+                    plato.getCategoria().getNombre(),
+                    plato.getPrecio(),
+                    plato.getDisponible()==1, 
+                    "",
+                    1
+            );
+
+
+            aplicarFiltros();
+
+            mostrarToast("✔ Plato agregado");
+
+            limpiarFormulario();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            mostrarToast(
+                    "❌ Error al registrar"
+            );
+        }
+        cargarDatosDemo();
+    }
+        
     private void cargarEnFormulario(int filaModelo) {
         txtIdPlato.setText(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
         txtNombrePlato.setText(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_NOMBRE)));
@@ -981,7 +1315,7 @@ public class PlatosFrame extends JFrame {
 
         // Cargar imagen guardada del plato
         int idCargado = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
-        String ruta = imagenesPorPlato.getOrDefault(idCargado, null);
+        String ruta = plato_controller.obtenerPlatoPorId(idCargado).getImagen();
         rutaImagenSeleccionada = ruta;
         mostrarPreviewImagen(ruta, lblPreviewImagen);
     }
@@ -1007,9 +1341,9 @@ public class PlatosFrame extends JFrame {
         if (op == JOptionPane.YES_OPTION) {
             int id = Integer.parseInt(String.valueOf(modeloTabla.getValueAt(filaModelo, COL_ID)));
             modeloTabla.removeRow(filaModelo);
-            recetasPorPlato.remove(id);
-            descripcionesPorPlato.remove(id);
-            imagenesPorPlato.remove(id);
+            //recetasPorPlato.remove(id);
+            //descripcionesPorPlato.remove(id);
+            //imagenesPorPlato.remove(id);
             aplicarFiltros();
             mostrarToast("✔  Plato eliminado");
         }
