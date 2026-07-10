@@ -9,6 +9,7 @@ import javax.swing.table.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.Connection;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,6 +67,7 @@ public class ProveedorFrame extends JFrame {
     private JLabel                            lblAlerta;
     private JLabel                            lblFooter;
     private JLabel                            lblTotal, lblActivos, lblInactivos;
+    private Connection conexion;
 
     // ══════════════════════════════════════════════════════════════════════════
     public ProveedorFrame() {
@@ -77,8 +79,8 @@ public class ProveedorFrame extends JFrame {
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(PAGE_BG);
+        root.add(new MenuSidebar(this, "Proveedores", conexion), BorderLayout.WEST);
 
-        root.add(new MenuSidebar(this, "Proveedores"), BorderLayout.WEST);
         root.add(buildContenido(), BorderLayout.CENTER);
 
         setContentPane(root);
