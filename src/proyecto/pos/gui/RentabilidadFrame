@@ -1,0 +1,211 @@
+package proyecto.pos.gui;
+
+import proyecto.pos.controller.PlatoController;
+import proyecto.pos.model.RentabilidadDTO;
+import proyecto.pos.config.DatabaseConnection;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.event.TableModelEvent; // Importación explícita para evitar errores de tablas
+import java.awt.*;
+import java.sql.Connection;
+import java.util.List;
+
+public class RentabilidadFrame extends JFrame {
+    private PlatoController platoController;
+    private JTable tablaRentabilidad;
+    private DefaultTableModel modeloTabla;
+    private JComboBox<String> cmbCategoria;
+    private JTextField txtSimularPrecio;
+    private JLabel lblMargenSimulado;
+
+    public RentabilidadFrame(Connection conexion) {
+        this.platoController = new PlatoController(conexion);
+        initGUI();
+        cargarCategorias(conexion);
+        refrescarTabla("TODOS");
+    }
+
+    private void initGUI() {
+        setTitle("HU-17: Panel de Rentabilidad y Margen de Ganancia (Gerencia)");
+        setSize(1050, 600);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout(12, 12));
+
+        // --- PANEL SUPERIOR: FILTROS (Criterio 4) ---
+        JPanel panelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        panelSuperior.setBorder(BorderFactory.createTitledBorder("Filtros de Auditoría"));
+        
+        panelSuperior.add(new JLabel("Filtrar por Categoría:"));
+        cmbCategoria = new JComboBox<>();
+        cmbCategoria.addActionListener(e -> {
+            String cat = (String) cmbCategoria.getSelectedItem();
+            if (cat != null) refrescarTabla(cat);
+        });
+        panelSuperior.add(cmbCategoria);
+        
+        JButton btnRefrescar = new JButton("🔄 Recargar Datos");
+        btnRefrescar.addActionListener(e -> refrescarTabla((String) cmbCategoria.getSelectedItem()));
+        panelSuperior.add(btnRefrescar);
+
+        // --- PANEL CENTRAL: TABLA DE RENTABILIDAD (Criterio 1 y 2) ---
+        modeloTabla = new DefaultTableModel(
+            new String[]{"ID Plato", "Descripción del Menú", "Categoría", "Costo de Insumos (S/)", "Precio Venta (S/)", "Margen (%)", "Estado de Alerta"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4; // Permitir al gerente simular editando directo la celda de precio (Criterio 3)
+            }
+        };
+
+        tablaRentabilidad = new JTable(modeloTabla);
+        tablaRentabilidad.setRowHeight(25);
+        configurarAlertasVisuales(); // Criterio 2
+        
+        // Listener corregido para simulación directa en la tabla (Criterio 3)
+        modeloTabla.addTableModelListener(e -> {
+            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 4) {
+                recalcularMargenFila(e.getFirstRow());
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(tablaRentabilidad);
+
+        // --- PANEL INFERIOR: SIMULADOR DE PRECIOS ESTRATÉGICOS (Criterio 3) ---
+        JPanel panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 12));
+        panelInferior.setBorder(BorderFactory.createTitledBorder("Simulador de Cambios de Precio de Venta"));
+        
+        panelInferior.add(new JLabel("Nuevo Precio Propuesto (S/):"));
+        txtSimularPrecio = new JTextField(8);
+        panelInferior.add(txtSimularPrecio);
+
+        JButton btnCalcular = new JButton("📊 Simular Margen");
+        btnCalcular.addActionListener(e -> calcularSimulacionInferior());
+        panelInferior.add(btnCalcular);
+
+        lblMargenSimulado = new JLabel("Margen Proyectado: -- %");
+        lblMargenSimulado.setFont(new Font("Arial", Font.BOLD, 14));
+        panelInferior.add(lblMargenSimulado);
+
+        add(panelSuperior, BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
+        add(panelInferior, BorderLayout.SOUTH);
+
+        setVisible(true);
+    }
+
+   private void cargarCategorias(Connection conn) {
+        cmbCategoria.addItem("TODOS");
+        
+        // Cargamos las categorías fijas de tu restaurante para evitar fallos 
+        // con la estructura de la tabla CATEGORIAS_MENU en Oracle
+        cmbCategoria.addItem("Ceviches");
+        cmbCategoria.addItem("Entradas");
+        cmbCategoria.addItem("Platos de Fondo");
+        cmbCategoria.addItem("Bebidas");
+        cmbCategoria.addItem("Postres");
+        cmbCategoria.addItem("Otros");
+    }
+
+    private void refrescarTabla(String categoria) {
+        modeloTabla.setRowCount(0);
+        // Obtenemos todos los platos calculados por el controlador
+        List<RentabilidadDTO> lista = platoController.obtenerReporteRentabilidad("TODOS");
+        
+        for (RentabilidadDTO dto : lista) {
+            // Criterio 4: Si se selecciona algo distinto a TODOS, filtramos localmente por coincidencia exacta
+            if (categoria != null && !categoria.equals("TODOS") && !dto.getCategoria().equalsIgnoreCase(categoria)) {
+                continue; // Si no coincide la categoría del plato con el filtro, saltamos al siguiente
+            }
+            
+            modeloTabla.addRow(new Object[]{
+                dto.getPlatoId(),
+                dto.getNombrePlato(),
+                dto.getCategoria(),
+                String.format("%.2f", dto.getCostoInsumos()),
+                dto.getPrecioVenta(),
+                String.format("%.1f", dto.getMargenPorcentaje()),
+                dto.getEstado()
+            });
+        }
+    }
+
+    private void recalcularMargenFila(int fila) {
+        try {
+            double costo = Double.parseDouble(modeloTabla.getValueAt(fila, 3).toString().replace(",", "."));
+            double nuevoPrecio = Double.parseDouble(modeloTabla.getValueAt(fila, 4).toString());
+
+            double nuevoMargen = (nuevoPrecio > 0) ? ((nuevoPrecio - costo) / nuevoPrecio) * 100 : 0;
+            String nuevoEstado = (nuevoMargen >= 30) ? "RENTABLE" : "BAJA RENTABILIDAD";
+
+            modeloTabla.setValueAt(String.format("%.1f", nuevoMargen), fila, 5);
+            modeloTabla.setValueAt(nuevoEstado, fila, 6);
+        } catch (Exception ex) {
+            System.err.println("Error en simulación rápida: " + ex.getMessage());
+        }
+    }
+
+    private void calcularSimulacionInferior() {
+        int filaSel = tablaRentabilidad.getSelectedRow();
+        if (filaSel < 0) {
+            JOptionPane.showMessageDialog(this, "⚠️ Selecciona un plato de la lista primero.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            double costo = Double.parseDouble(modeloTabla.getValueAt(filaSel, 3).toString().replace(",", "."));
+            double precioSimulado = Double.parseDouble(txtSimularPrecio.getText());
+            
+            double margenSimulado = ((precioSimulado - costo) / precioSimulado) * 100;
+            
+            lblMargenSimulado.setText(String.format("Margen Proyectado: %.2f %%", margenSimulado));
+            if (margenSimulado < 30) {
+                lblMargenSimulado.setForeground(Color.RED);
+            } else {
+                lblMargenSimulado.setForeground(new Color(0, 128, 0));
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "❌ Ingresa un precio válido.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void configurarAlertasVisuales() {
+        tablaRentabilidad.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                String estado = table.getValueAt(row, 6).toString();
+                if ("BAJA RENTABILIDAD".equals(estado)) {
+                    c.setBackground(new Color(255, 220, 220)); 
+                    c.setForeground(Color.RED); 
+                } else {
+                    c.setBackground(Color.WHITE);
+                    c.setForeground(Color.BLACK);
+                }
+
+                if (isSelected) {
+                    c.setBackground(table.getSelectionBackground());
+                    c.setForeground(table.getSelectionForeground());
+                }
+                return c;
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                DatabaseConnection db = new DatabaseConnection();
+                Connection conn = db.conectar();
+                if (conn != null) {
+                    new RentabilidadFrame(conn);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+}
