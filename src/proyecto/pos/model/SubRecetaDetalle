@@ -1,0 +1,34 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+package proyecto.pos.model;
+
+public class SubRecetaDetalle {
+
+    private int detalleId;
+    private int subrecetaId;
+    private Insumo insumo;
+    private float cantidadRequerida;
+
+    public SubRecetaDetalle() {
+    }
+
+    public SubRecetaDetalle(Insumo insumo, float cantidadRequerida) {
+        this.insumo = insumo;
+        this.cantidadRequerida = cantidadRequerida;
+    }
+
+    public int getDetalleId() { return detalleId; }
+    public void setDetalleId(int detalleId) { this.detalleId = detalleId; }
+
+    public int getSubrecetaId() { return subrecetaId; }
+    public void setSubrecetaId(int subrecetaId) { this.subrecetaId = subrecetaId; }
+
+    public Insumo getInsumo() { return insumo; }
+    public void setInsumo(Insumo insumo) { this.insumo = insumo; }
+
+    public float getCantidadRequerida() { return cantidadRequerida; }
+    public void setCantidadRequerida(float cantidadRequerida) { this.cantidadRequerida = cantidadRequerida; }
+}
