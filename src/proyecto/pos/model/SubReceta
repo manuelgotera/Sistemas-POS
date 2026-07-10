@@ -1,1 +1,71 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package proyecto.pos.model;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class SubReceta {
+
+    private int subrecetaId;
+    private String nombre;
+    private String unidadMedida; // "LITROS" o "KILOS"
+    private float rendimientoLote;
+    private float costoUnitario; // costo por LITRO/KILO, se recalcula solo
+    private LocalDateTime fechaActualizacion;
+    private List<SubRecetaDetalle> detalle = new ArrayList<>();
+
+    public SubReceta() {
+    }
+
+    public SubReceta(String nombre, String unidadMedida, float rendimientoLote) {
+        this.nombre = nombre;
+        this.unidadMedida = unidadMedida;
+        this.rendimientoLote = rendimientoLote;
+    }
+
+    public int getSubrecetaId() { return subrecetaId; }
+    public void setSubrecetaId(int subrecetaId) { this.subrecetaId = subrecetaId; }
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getUnidadMedida() { return unidadMedida; }
+    public void setUnidadMedida(String unidadMedida) { this.unidadMedida = unidadMedida; }
+
+    public float getRendimientoLote() { return rendimientoLote; }
+    public void setRendimientoLote(float rendimientoLote) { this.rendimientoLote = rendimientoLote; }
+
+    public float getCostoUnitario() { return costoUnitario; }
+    public void setCostoUnitario(float costoUnitario) { this.costoUnitario = costoUnitario; }
+
+    public LocalDateTime getFechaActualizacion() { return fechaActualizacion; }
+    public void setFechaActualizacion(LocalDateTime fechaActualizacion) { this.fechaActualizacion = fechaActualizacion; }
+
+    public List<SubRecetaDetalle> getDetalle() { return detalle; }
+    public void setDetalle(List<SubRecetaDetalle> detalle) { this.detalle = detalle; }
+
+    public float calcularCostoLote() {
+        float total = 0f;
+        for (SubRecetaDetalle d : detalle) {
+            if (d.getInsumo() != null) {
+                total += d.getCantidadRequerida() * d.getInsumo().getCosto();
+            }
+        }
+        return total;
+    }
+
+    public float calcularCostoUnitario() {
+        if (rendimientoLote <= 0) return 0f;
+        return calcularCostoLote() / rendimientoLote;
+    }
+
+    @Override
+    public String toString() {
+        return nombre + " (" + rendimientoLote + " " + unidadMedida + "/lote)";
+    }
+}
 
