@@ -1,0 +1,289 @@
+package proyecto.pos.gui;
+
+import proyecto.pos.config.DatabaseConnection; // Importamos tu clase de conexión
+import proyecto.pos.controller.ProduccionLoteController;
+import proyecto.pos.controller.SubRecetaController;
+import proyecto.pos.model.ProduccionLote;
+import proyecto.pos.model.SubReceta;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.sql.Connection;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Frame para registrar y ver Producción de Lotes
+ * Ubicación: proyecto.pos.gui.ProduccionFrame
+ */
+public class ProduccionFrame extends JFrame {
+    
+    private ProduccionLoteController controller;
+    private SubRecetaController subRecetaController;
+    
+    private JComboBox<SubReceta> cmbSubReceta;
+    private JTextField txtCantidad;
+    private JTable tablaProduccion;
+    private DefaultTableModel modeloTabla;
+    private JTextArea txtReporte;
+    private JSpinner spinnerFechaDesde;
+    private JSpinner spinnerFechaHasta;
+
+    public ProduccionFrame(Connection conexion) {
+        this.controller = new ProduccionLoteController(conexion);
+        this.subRecetaController = new SubRecetaController(conexion);
+        initGUI();
+        cargarProduccionesDelDia();
+    }
+
+    private void initGUI() {
+        setTitle("Registro de Producción de Lotes");
+        setSize(1200, 800);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+
+        // Panel Superior - Registro de Producción
+        JPanel panelRegistro = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panelRegistro.setBorder(BorderFactory.createTitledBorder("Registrar Nueva Producción"));
+
+        panelRegistro.add(new JLabel("Sub-Receta:"));
+        cmbSubReceta = new JComboBox<>();
+        cargarSubRecetas();
+        panelRegistro.add(cmbSubReceta);
+
+        panelRegistro.add(new JLabel("Cantidad Producida:"));
+        txtCantidad = new JTextField(10);
+        panelRegistro.add(txtCantidad);
+
+        JButton btnRegistrar = new JButton("✅ Registrar Producción");
+        btnRegistrar.addActionListener(e -> registrarProduccion());
+        panelRegistro.add(btnRegistrar);
+
+        // Panel Filtros
+        JPanel panelFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panelFiltros.setBorder(BorderFactory.createTitledBorder("Filtros y Reportes"));
+
+        panelFiltros.add(new JLabel("Desde:"));
+        spinnerFechaDesde = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor editorDesde = new JSpinner.DateEditor(spinnerFechaDesde, "yyyy-MM-dd");
+        spinnerFechaDesde.setEditor(editorDesde);
+        spinnerFechaDesde.setPreferredSize(new Dimension(120, 25));
+        panelFiltros.add(spinnerFechaDesde);
+
+        panelFiltros.add(new JLabel("Hasta:"));
+        spinnerFechaHasta = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor editorHasta = new JSpinner.DateEditor(spinnerFechaHasta, "yyyy-MM-dd");
+        spinnerFechaHasta.setEditor(editorHasta);
+        spinnerFechaHasta.setPreferredSize(new Dimension(120, 25));
+        panelFiltros.add(spinnerFechaHasta);
+
+        JButton btnFiltrar = new JButton("🔍 Filtrar");
+        btnFiltrar.addActionListener(e -> filtrarPorFechas());
+        panelFiltros.add(btnFiltrar);
+
+        JButton btnReporte = new JButton("📄 Reporte Completo");
+        btnReporte.addActionListener(e -> generarReporte());
+        panelFiltros.add(btnReporte);
+
+        JButton btnRefrescar = new JButton("🔄 Hoy");
+        btnRefrescar.addActionListener(e -> cargarProduccionesDelDia());
+        panelFiltros.add(btnRefrescar);
+
+        // Panel Centro - Tabla de Producciones
+        JPanel panelCentro = new JPanel(new BorderLayout());
+        panelCentro.setBorder(BorderFactory.createTitledBorder("Histórico de Producciones"));
+
+        modeloTabla = new DefaultTableModel(
+            new String[]{"ID", "Sub-Receta", "Fecha", "Cantidad", "Costo Lote", "Unidad"}, 
+            0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        tablaProduccion = new JTable(modeloTabla);
+        tablaProduccion.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        JScrollPane scrollTabla = new JScrollPane(tablaProduccion);
+        panelCentro.add(scrollTabla, BorderLayout.CENTER);
+
+        // Panel Derecha - Reporte
+        JPanel panelDetalles = new JPanel(new BorderLayout());
+        panelDetalles.setBorder(BorderFactory.createTitledBorder("Reporte"));
+        panelDetalles.setPreferredSize(new Dimension(350, 0));
+
+        txtReporte = new JTextArea();
+        txtReporte.setEditable(false);
+        txtReporte.setFont(new Font("Monospaced", Font.PLAIN, 10));
+        JScrollPane scrollReporte = new JScrollPane(txtReporte);
+        panelDetalles.add(scrollReporte, BorderLayout.CENTER);
+
+        // Agregar paneles
+        add(panelRegistro, BorderLayout.NORTH);
+        
+        JPanel panelAuxiliar = new JPanel(new BorderLayout());
+        panelAuxiliar.add(panelFiltros, BorderLayout.NORTH);
+        panelAuxiliar.add(panelCentro, BorderLayout.CENTER);
+        add(panelAuxiliar, BorderLayout.CENTER);
+        
+        add(panelDetalles, BorderLayout.EAST);
+
+        setVisible(true);
+    }
+
+    private void cargarSubRecetas() {
+        List<SubReceta> lista = subRecetaController.listarTodasLasSubRecetas();
+        cmbSubReceta.removeAllItems();
+        for (SubReceta sr : lista) {
+            cmbSubReceta.addItem(sr);
+        }
+    }
+
+    private void registrarProduccion() {
+        try {
+            SubReceta subReceta = (SubReceta) cmbSubReceta.getSelectedItem();
+            if (subReceta == null) {
+                JOptionPane.showMessageDialog(this, "❌ Selecciona una sub-receta", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            float cantidad = Float.parseFloat(txtCantidad.getText());
+            
+            if (controller.registrarProduccion(subReceta.getSubrecetaId(), cantidad)) {
+                JOptionPane.showMessageDialog(this, "✅ Producción registrada exitosamente");
+                txtCantidad.setText("");
+                cargarProduccionesDelDia();
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Error al registrar producción", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "❌ La cantidad debe ser un número válido", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void cargarProduccionesDelDia() {
+        List<ProduccionLote> lista = controller.obtenerProduccionesDelDia();
+        llenarTabla(lista);
+        
+        String reporte = "=== PRODUCCIONES DEL DÍA ===\n\n";
+        reporte += "Total de registros: " + lista.size() + "\n\n";
+        
+        float totalCantidad = 0;
+        float totalCosto = 0;
+        for (ProduccionLote p : lista) {
+            totalCantidad += p.getCantidadProducida();
+            totalCosto += p.getCostoLote();
+        }
+        
+        reporte += "Total Producido: " + String.format("%.2f", totalCantidad) + "\n";
+        reporte += "Costo Total: S/ " + String.format("%.2f", totalCosto);
+        
+        txtReporte.setText(reporte);
+    }
+
+    private void filtrarPorFechas() {
+        try {
+            java.util.Date dateDesde = (java.util.Date) spinnerFechaDesde.getValue();
+            java.util.Date dateHasta = (java.util.Date) spinnerFechaHasta.getValue();
+            
+            LocalDate desde = dateDesde.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate hasta = dateHasta.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            
+            List<ProduccionLote> lista = controller.obtenerProduccionesPorRango(desde, hasta);
+            llenarTabla(lista);
+            
+            float totalCantidad = 0;
+            float totalCosto = 0;
+            for (ProduccionLote p : lista) {
+                totalCantidad += p.getCantidadProducida();
+                totalCosto += p.getCostoLote();
+            }
+            
+            String reporte = "=== PRODUCCIONES: " + desde + " a " + hasta + " ===\n\n";
+            reporte += "Total de registros: " + lista.size() + "\n";
+            reporte += "Total Producido: " + String.format("%.2f", totalCantidad) + "\n";
+            reporte += "Costo Total: S/ " + String.format("%.2f", totalCosto);
+            
+            txtReporte.setText(reporte);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "❌ Error al filtrar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void generarReporte() {
+        try {
+            java.util.Date dateDesde = (java.util.Date) spinnerFechaDesde.getValue();
+            java.util.Date dateHasta = (java.util.Date) spinnerFechaHasta.getValue();
+            
+            LocalDate desde = dateDesde.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            LocalDate hasta = dateHasta.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            
+            String reporte = controller.generarReporte(desde, hasta);
+            
+            JDialog dialog = new JDialog(this, "Reporte de Producción", true);
+            dialog.setSize(700, 500);
+            dialog.setLocationRelativeTo(this);
+            
+            JTextArea txtReporteDialog = new JTextArea(reporte);
+            txtReporteDialog.setEditable(false);
+            txtReporteDialog.setFont(new Font("Monospaced", Font.PLAIN, 10));
+            
+            JScrollPane scrollPane = new JScrollPane(txtReporteDialog);
+            dialog.add(scrollPane);
+            dialog.setVisible(true);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "❌ Error al generar reporte: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void llenarTabla(List<ProduccionLote> lista) {
+        modeloTabla.setRowCount(0);
+        
+        for (ProduccionLote p : lista) {
+            modeloTabla.addRow(new Object[]{
+                p.getProduccionId(),
+                p.getSubReceta().getNombre(),
+                p.getFecha(),
+                String.format("%.2f", p.getCantidadProducida()),
+                String.format("S/ %.2f", p.getCostoLote()),
+                p.getSubReceta().getUnidadMedida()
+            });
+        }
+    }
+
+    // ==========================================
+    // MÉTODO MAIN INTEGRADO CON TU BASE DE DATOS
+    // ==========================================
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Look and Feel del sistema para mejorar el estilo de la interfaz
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                
+                // Instanciamos tu manejador de BD y solicitamos la conexión directa a Oracle
+                DatabaseConnection dbConfig = new DatabaseConnection();
+                Connection conexionActive = dbConfig.conectar();
+                
+                if (conexionActive != null) {
+                    // Inicializamos el Frame con la conexión activa de Gustavo
+                    new ProduccionFrame(conexionActive);
+                } else {
+                    throw new Exception("El método conectar() de DatabaseConnection retornó null.");
+                }
+                
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, 
+                    "⚠️ No se pudo inicializar ProduccionFrame de forma aislada.\n" +
+                    "Asegúrate de tener Oracle Database activo y el driver ojdbc.jar en tus Librerías.\n\n" +
+                    "Error: " + e.getMessage(), 
+                    "Error Crítico", 
+                    JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
+            }
+        });
+    }
+}
