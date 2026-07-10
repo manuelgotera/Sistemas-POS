@@ -2,6 +2,7 @@ package proyecto.pos.gui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.Connection;
 import java.text.*;
 import java.time.*;
 import java.time.temporal.*;
@@ -51,6 +52,7 @@ public class ArticulosStockFrame extends JFrame {
     private JComboBox<String> cboCategoria;
     private JLabel lblAlerta;
     private JLabel lblFooter;
+    private Connection conexion;
 
     public ArticulosStockFrame() {
         configurarVentana();
@@ -73,7 +75,7 @@ public class ArticulosStockFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-        root.add(new MenuSidebar(this, "Stock"), BorderLayout.WEST);
+        root.add(new MenuSidebar(this, "Clientes", conexion), BorderLayout.WEST);
         root.add(crearContenido(), BorderLayout.CENTER);
     }
 
