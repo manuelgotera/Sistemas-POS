@@ -36,6 +36,9 @@ public class MenuSidebar extends JPanel {
         JButton btnCajero        = crearBotonMenu("Cajero",             "/img/car.png",            ventanaActiva.equals("Cajero"));
         JButton btnStock         = crearBotonMenu("Artículos y Stock",  "/img/stock.png",           ventanaActiva.equals("Stock"));
         JButton btnHistorial     = crearBotonMenu("Historial de Venta", "/img/Historial.png",       ventanaActiva.equals("Historial"));
+        JButton btnPedidos       = crearBotonMenu("Pedidos",            "/img/car.png",             ventanaActiva.equals("Pedidos"));
+        // JButton btnReportes  = crearBotonMenu("Reportes",           "/img/Reporte.png",       ventanaActiva.equals("Reportes"));
+        // JButton btnGastos    = crearBotonMenu("Gastos",             "/img/money.png",     ventanaActiva.equals("Gastos"));
         JButton btnClientes      = crearBotonMenu("Clientes",           "/img/ClientesIcon.png",    ventanaActiva.equals("Clientes"));
         JButton btnEmpleados     = crearBotonMenu("Empleados",          "/img/empleados.png",       ventanaActiva.equals("Empleados"));
         JButton btnConfig        = crearBotonMenu("Configuración",      "/img/configuracion.png",   ventanaActiva.equals("Configuracion"));
@@ -49,6 +52,9 @@ public class MenuSidebar extends JPanel {
         btnCajero      .addActionListener(e -> navegar(new Caja_GUI()));
         btnStock       .addActionListener(e -> navegar(new ArticulosStockFrame()));
         btnHistorial   .addActionListener(e -> navegar(new HistorialTransaccionesFrame()));
+        btnPedidos     .addActionListener(e -> navegar(new PedidosFrame()));
+        // btnReportes .addActionListener(e -> navegar(new ReportesFrame()));
+        // btnGastos   .addActionListener(e -> JOptionPane.showMessageDialog(parentFrame, "Módulo de gastos pendiente de conectar."));
         btnClientes    .addActionListener(e -> navegar(new ClientesFrame()));
         btnEmpleados   .addActionListener(e -> navegar(new EmpleadosFrame()));
         btnConfig      .addActionListener(e -> navegar(new ConfiguracionFrame()));
@@ -58,7 +64,7 @@ public class MenuSidebar extends JPanel {
         btnAjusteMasivo.addActionListener(e -> navegar(new AjusteMasivoFrame()));
         btnCierreErp   .addActionListener(e -> navegar(new CierreCajaERPFrame()));
 
-        agregarMenu(this, btnCajero, btnStock, btnHistorial,
+        agregarMenu(this, btnCajero, btnStock, btnHistorial, btnPedidos,
                     btnClientes, btnEmpleados, btnProveedores, btnConfig,
                     btnPlato, btnMerma, btnAjusteMasivo, btnCierreErp);
 
