@@ -11,10 +11,10 @@ public class DatabaseConnection {
     // Mantiene tu mismo servicio local (asegúrate de que Tableau use localhost o la misma IP)
 // Cambia el ":" final por "/" y escribe xedbc1
 private static final String URL = "jdbc:oracle:thin:@localhost:1521/XEPDB1";    // 1. CAMBIO DE USUARIO: Al usuario unificado con Tableau
-    private static final String USER = "MANU_ANALISTA";
+    private static final String USER = "gustavo_alva";
 
     // 2. CAMBIO DE CONTRASEÑA: La contraseña de ese analista
-    private static final String PASSWORD = "ANALISIS";
+    private static final String PASSWORD = "gustavo456";
 
     public DatabaseConnection() {}
 

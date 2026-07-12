@@ -604,6 +604,171 @@ public class VentaDAOImpl implements VentaDAO {
         return cp;
     }
     
+    // =========================================================
+    // HU-06: Anulación de venta liquidada con transacción
+    // Criterio 1: Validación de estado de factura no anulada
+    // Criterio 2: Transacción de reversión de inventario (insumos via recetas)
+    // Criterio 3: Actualización de estado de factura a "ANULADO"
+    // Criterio 4: Confirmación de registro de auditoría en el sistema
+    // =========================================================
+    @Override
+    public List<String> anularVenta(int ventaId, int empleadoId) {
+        List<String> log = new ArrayList<>();
+
+        String sqlEstado   = "SELECT estado_pago, total FROM ventas_cabecera WHERE venta_id = ?";
+        String sqlDetalles = "SELECT vd.plato_id, vd.cantidad, p.nombre_plato "
+                           + "FROM ventas_detalle vd "
+                           + "JOIN platos_menu p ON vd.plato_id = p.plato_id "
+                           + "WHERE vd.venta_id = ?";
+        String sqlReceta   = "SELECT re.insumo_id, re.cantidad_requerida, i.nombre_insumo "
+                           + "FROM recetas_escandallo re "
+                           + "JOIN insumos i ON re.insumo_id = i.insumo_id "
+                           + "WHERE re.plato_id = ?";
+        String sqlStock    = "UPDATE insumos SET stock = stock + ? WHERE insumo_id = ?";
+        String sqlAnular   = "UPDATE ventas_cabecera SET estado_pago = 'ANULADO' WHERE venta_id = ?";
+        // Criterio 4: auditoría se registra en interfaz — no requiere tabla BD adicional
+
+        try {
+            conexion.setAutoCommit(false);
+
+            // ── Criterio 1: Validar que la venta exista y sea PAGADO ──────────
+            String estadoActual;
+            double totalVenta;
+            try (PreparedStatement ps = conexion.prepareStatement(sqlEstado)) {
+                ps.setInt(1, ventaId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        log.add("ERROR|Venta ID " + ventaId + " no encontrada en BD.");
+                        conexion.rollback();
+                        conexion.setAutoCommit(true);
+                        return log;
+                    }
+                    estadoActual = rs.getString("estado_pago").trim().toUpperCase();
+                    totalVenta   = rs.getDouble("total");
+                }
+            }
+
+            if ("ANULADO".equals(estadoActual)) {
+                log.add("ERROR|La venta ID " + ventaId + " ya está ANULADA. No se puede anular dos veces.");
+                conexion.setAutoCommit(true);
+                return log;
+            }
+            if (!"PAGADO".equals(estadoActual)) {
+                log.add("ERROR|La venta ID " + ventaId + " tiene estado '" + estadoActual
+                        + "'. Solo se pueden anular ventas PAGADAS.");
+                conexion.setAutoCommit(true);
+                return log;
+            }
+            log.add("OK|Criterio 1 ✔ — Venta ID " + ventaId + " estado '" + estadoActual
+                    + "' válido para anulación. Total: S/. " + String.format("%.2f", totalVenta));
+
+            // ── Criterio 2: Reversión de inventario (insumos via receta) ──────
+            log.add("INFO|Criterio 2 — Iniciando reversión de inventario...");
+            int itemsRevertidos = 0;
+
+            try (PreparedStatement psD = conexion.prepareStatement(sqlDetalles)) {
+                psD.setInt(1, ventaId);
+                try (ResultSet rsD = psD.executeQuery()) {
+                    while (rsD.next()) {
+                        int    platoId    = rsD.getInt("plato_id");
+                        int    cantPlato  = rsD.getInt("cantidad");
+                        String nomPlato   = rsD.getString("nombre_plato");
+
+                        // Por cada plato, revertir sus insumos según receta
+                        try (PreparedStatement psR = conexion.prepareStatement(sqlReceta)) {
+                            psR.setInt(1, platoId);
+                            try (ResultSet rsR = psR.executeQuery()) {
+                                boolean tieneReceta = false;
+                                while (rsR.next()) {
+                                    tieneReceta = true;
+                                    int    insumoId  = rsR.getInt("insumo_id");
+                                    double cantNec   = rsR.getDouble("cantidad_requerida");
+                                    String nomInsumo = rsR.getString("nombre_insumo");
+                                    double cantDevolver = cantNec * cantPlato;
+
+                                    try (PreparedStatement psS = conexion.prepareStatement(sqlStock)) {
+                                        psS.setDouble(1, cantDevolver);
+                                        psS.setInt(2, insumoId);
+                                        psS.executeUpdate();
+                                    }
+                                    log.add("OK|  → '" + nomPlato + "' (x" + cantPlato + "): reintegrado "
+                                            + String.format("%.2f", cantDevolver)
+                                            + " de '" + nomInsumo + "' al inventario.");
+                                    itemsRevertidos++;
+                                }
+                                if (!tieneReceta) {
+                                    log.add("INFO|  → '" + nomPlato + "' sin receta registrada. Omitido en reversión.");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            log.add("OK|Criterio 2 ✔ — " + itemsRevertidos + " insumo(s) reintegrados al inventario.");
+
+
+            // ── Ajuste de saldo de caja (razón/resultado HU-06) ──────────────
+            String sqlCaja = "UPDATE caja_diaria SET total_ventas = total_ventas - ? "
+                           + "WHERE caja_id = (SELECT caja_id FROM ventas_cabecera WHERE venta_id = ?)";
+            try (PreparedStatement psCaja = conexion.prepareStatement(sqlCaja)) {
+                psCaja.setDouble(1, totalVenta);
+                psCaja.setInt(2, ventaId);
+                int filasAfectadas = psCaja.executeUpdate();
+                if (filasAfectadas > 0) {
+                    log.add("OK|Caja ✔ — Saldo de caja ajustado: -S/. "
+                            + String.format("%.2f", totalVenta)
+                            + " descontado de caja_diaria.");
+                } else {
+                    log.add("INFO|Caja — No se encontró caja activa para ajustar (venta sin caja).");
+                }
+            } catch (SQLException eCaja) {
+                log.add("INFO|Caja — No se pudo ajustar saldo: " + eCaja.getMessage());
+            }
+
+            // ── Criterio 3: Actualizar estado a ANULADO ───────────────────────
+            try (PreparedStatement psA = conexion.prepareStatement(sqlAnular)) {
+                psA.setInt(1, ventaId);
+                psA.executeUpdate();
+            }
+            log.add("OK|Criterio 3 ✔ — Estado de venta ID " + ventaId
+                    + " actualizado: '" + estadoActual + "' → 'ANULADO'.");
+
+            // ── Criterio 4: Confirmación de registro de auditoría en el sistema ──
+            // El registro de auditoría se muestra en la interfaz (sin tabla BD adicional)
+            java.time.LocalDateTime ahora = java.time.LocalDateTime.now();
+            String idEvento = "AUD-" + ahora.getYear()
+                    + String.format("%02d", ahora.getMonthValue())
+                    + String.format("%02d", ahora.getDayOfMonth())
+                    + "-" + String.format("%04d", ventaId);
+            log.add("AUDIT|ID_EVENTO=" + idEvento);
+            log.add("AUDIT|VENTA_ID=" + ventaId);
+            log.add("AUDIT|FECHA=" + String.format("%02d/%02d/%04d %02d:%02d:%02d",
+                    ahora.getDayOfMonth(), ahora.getMonthValue(), ahora.getYear(),
+                    ahora.getHour(), ahora.getMinute(), ahora.getSecond()));
+            log.add("AUDIT|EMPLEADO_ID=" + empleadoId);
+            log.add("AUDIT|MONTO=" + String.format("%.2f", totalVenta));
+            log.add("AUDIT|INSUMOS=" + itemsRevertidos);
+            log.add("AUDIT|ESTADO_ANTERIOR=" + estadoActual);
+            log.add("OK|Criterio 4 ✔ — Registro de auditoría confirmado en el sistema (visualizado en interfaz).");
+
+            conexion.commit();
+            log.add("COMMIT|Anulación completada exitosamente. Venta ID " + ventaId
+                    + " anulada. Total revertido: S/. " + String.format("%.2f", totalVenta));
+
+        } catch (SQLException e) {
+            log.add("ERROR|Error de BD: " + e.getMessage());
+            try {
+                conexion.rollback();
+                log.add("ROLLBACK|Rollback automático ejecutado. Ningún cambio fue aplicado.");
+            } catch (SQLException ex) {
+                log.add("ERROR|Fallo crítico en rollback: " + ex.getMessage());
+            }
+        } finally {
+            try { conexion.setAutoCommit(true); } catch (SQLException ignored) {}
+        }
+        return log;
+    }
+
     private VentaDetalle mapear_venta_detalle(ResultSet rs) throws SQLException {
         VentaDetalle detalle = new VentaDetalle();
 

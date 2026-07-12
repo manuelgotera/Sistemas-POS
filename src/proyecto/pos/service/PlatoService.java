@@ -6,7 +6,6 @@ import proyecto.pos.dao.impl.PlatoDAOImpl;
 import proyecto.pos.dao.interfaces.PlatoDAO;
 import proyecto.pos.model.CategoriaMenu;
 import proyecto.pos.model.Plato;
-
 public class PlatoService {
 
     private PlatoDAO platoDAO;
@@ -235,5 +234,21 @@ public class PlatoService {
             throw new RuntimeException(
                     "El plato no existe");
         }
+    }
+
+    // =========================================================
+    // HU-05: Ajuste masivo de precios con transacción
+    // =========================================================
+    public List<String> ajusteMasivoPrecios(List<Integer> platoIds, float porcentaje) {
+        if (platoIds == null || platoIds.isEmpty()) {
+            throw new IllegalArgumentException("Debe seleccionar al menos un plato.");
+        }
+        if (porcentaje == 0) {
+            throw new IllegalArgumentException("El porcentaje de ajuste no puede ser 0.");
+        }
+        if (porcentaje < -99 || porcentaje > 1000) {
+            throw new IllegalArgumentException("Porcentaje fuera de rango permitido (-99% a 1000%).");
+        }
+        return platoDAO.ajusteMasivoPrecios(platoIds, porcentaje);
     }
 }

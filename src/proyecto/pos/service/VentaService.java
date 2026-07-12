@@ -396,6 +396,15 @@ public class VentaService {
                 .sum();
     }
     
+    // =====================================================
+    // HU-06: Anulación de venta liquidada
+    // =====================================================
+    public List<String> anularVenta(int ventaId, int empleadoId) {
+        if (ventaId <= 0) throw new IllegalArgumentException("ID de venta inválido.");
+        if (empleadoId <= 0) throw new IllegalArgumentException("ID de empleado inválido.");
+        return ventaDAO.anularVenta(ventaId, empleadoId);
+    }
+
     public void descontarStockPorVenta(
             int platoId,
             int cantidadVendida

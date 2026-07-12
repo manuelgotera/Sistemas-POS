@@ -6,8 +6,11 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.Connection;
 import proyecto.pos.config.DatabaseConnection;
-import proyecto.pos.controller.UsuarioController; // 📌 Importamos tu controlador
-import proyecto.pos.model.Usuario; // 📌 Importamos el modelo si necesitas datos del usuario logueado
+import proyecto.pos.controller.UsuarioController;
+import proyecto.pos.dao.impl.CajaDAOImpl;
+import proyecto.pos.dao.interfaces.CajaDAO;
+import proyecto.pos.model.Caja;
+import proyecto.pos.model.Usuario;
 
 public class LoginFrame extends JFrame {
 
@@ -20,17 +23,18 @@ public class LoginFrame extends JFrame {
     private static final Color AZUL = new Color(26, 35, 126);
     private static final Color FONDO = new Color(240, 242, 245);
     private static final Color CARD = Color.WHITE;
-    
+
     private Connection conexion;
-    private UsuarioController usuarioController; // 📌 Instancia del controlador para validar credenciales
-    
+    private UsuarioController usuarioController;
+    private CajaDAO cajaDAO; // 📌 Para verificar si ya existe una caja abierta antes de pedir apertura
+
     public LoginFrame() {
         DatabaseConnection db = new DatabaseConnection();
         conexion = db.conectar();
-        
-        // 📌 Inicializamos el controlador pasándole la conexión activa
+
         this.usuarioController = new UsuarioController(conexion);
-        
+        this.cajaDAO = new CajaDAOImpl(conexion);
+
         setTitle("Sistema POS - Login");
         setSize(900, 500);
         setLocationRelativeTo(null);
@@ -89,7 +93,7 @@ public class LoginFrame extends JFrame {
         btnNuevoUsuario = new JButton("Nuevo Usuario");
         btnNuevoUsuario.setBounds(60, 220, 220, 38);
         add(btnNuevoUsuario);
-        
+
         btnNuevoUsuario.setBackground(Color.WHITE);
         btnNuevoUsuario.setForeground(new Color(26, 83, 160));
         btnNuevoUsuario.setBorder(BorderFactory.createLineBorder(new Color(26, 83, 160)));
@@ -99,7 +103,7 @@ public class LoginFrame extends JFrame {
         btnOlvido = new JButton("¿Olvidé mi contraseña?");
         btnOlvido.setBounds(60, 270, 220, 38);
         add(btnOlvido);
-        
+
         btnOlvido.setBackground(new Color(18, 65, 128));
         btnOlvido.setForeground(Color.WHITE);
         btnOlvido.setFocusPainted(false);
@@ -128,15 +132,14 @@ public class LoginFrame extends JFrame {
             new RegistrarUsuarioDialog(this, conexion).setVisible(true);
         });
 
-        // Busca esto dentro de tu método initComponents() en LoginFrame.java
         btnOlvido.addActionListener(e -> {
-            // 📌 Cambiamos el mensaje genérico por la apertura de nuestro nuevo diálogo conectado a la BD
             new OlvidePasswordDialog(this, conexion).setVisible(true);
         });
     }
 
     /**
-     * 📌 Lógica modificada para validar credenciales reales en Oracle
+     * Valida credenciales reales en Oracle y, según si ya existe una caja
+     * abierta, decide si ir directo a Caja_GUI o pedir la apertura primero.
      */
     private void validarLogin() {
         String usuarioDigitado = txtUsuario.getText().trim();
@@ -148,32 +151,35 @@ public class LoginFrame extends JFrame {
         }
 
         try {
-            // 1. Buscamos el usuario en la base de datos usando el controlador
             Usuario usuarioBD = usuarioController.obtenerPorUsername(usuarioDigitado);
 
-            // 2. Si el usuario existe, validamos el hash o texto plano de la contraseña
-            // (Si usas encriptación BCrypt, cámbialo aquí por BCrypt.checkpw)
             if (usuarioBD != null && usuarioBD.getPassword().equals(passwordDigitada)) {
-                
-                // 3. Opcional: Validar si el estado de la cuenta es ACTIVO
+
                 if (!"ACTIVO".equalsIgnoreCase(usuarioBD.getEstado())) {
                     JOptionPane.showMessageDialog(this, "El usuario está inactivo. Contacte al administrador.", "Acceso denegado", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
-                // 4. Éxito: Damos la bienvenida e ingresamos al sistema de caja
                 JOptionPane.showMessageDialog(this, "¡Bienvenido al sistema, " + usuarioBD.getUsername() + "!");
-                
-                new Caja_GUI().setVisible(true); // Abre tu panel principal de ventas
-                this.dispose(); // Cierra el login
-                
+
+                // 📌 Verificamos si ya existe una caja abierta antes de decidir a dónde navegar
+                Caja cajaAbierta = cajaDAO.obtenerCajaAbierta();
+
+                if (cajaAbierta == null) {
+                    // No hay caja abierta: pedimos monto inicial antes de entrar a vender
+                    new AperturaCajaFrame(usuarioBD.getEmpleado()).setVisible(true);
+                } else {
+                    // Ya hay una caja abierta (por ejemplo, la dejó abierta otro turno): entra directo
+                    new Caja_GUI().setVisible(true);
+                }
+
+                this.dispose();
+
             } else {
-                // Si el usuario no existe en la BD o la contraseña no coincide
                 JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos", "Error de autenticación", JOptionPane.ERROR_MESSAGE);
             }
 
         } catch (Exception e) {
-            // Captura errores de sintaxis SQL u ORA-XXXX que puedan surgir durante la consulta de login
             JOptionPane.showMessageDialog(this, "Error de conexión con la base de datos: " + e.getMessage(), "Error Crítico", JOptionPane.ERROR_MESSAGE);
         }
     }

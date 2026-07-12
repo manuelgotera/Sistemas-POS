@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.swing.*;
+import static javax.swing.SwingConstants.CENTER;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -20,21 +21,34 @@ import proyecto.pos.model.Venta;
 
 public class HistorialTransaccionesFrame extends JFrame {
 
-    // --- PALETA DE COLORES DISEÑO INTERFAZ ---
-    private static final Color AZUL         = new Color(26, 83, 160);
-    private static final Color AZUL_CLARO   = new Color(232, 241, 255);
-    private static final Color FONDO        = new Color(246, 248, 251);
-    private static final Color BORDE        = new Color(225, 229, 236);
-    private static final Color TEXTO        = new Color(30, 37, 48);
-    private static final Color TEXTO_SUAVE  = new Color(105, 113, 128);
-    private static final Color VERDE        = new Color(40, 167, 69);
-    private static final Color ROJO         = new Color(220, 53, 69);
+    private static final Color AZUL        = new Color(26, 83, 160);
+    private static final Color AZUL_CLARO  = new Color(232, 241, 255);
+    private static final Color FONDO       = new Color(246, 248, 251);
+    private static final Color BORDE       = new Color(225, 229, 236);
+    private static final Color TEXTO       = new Color(30, 37, 48);
+    private static final Color TEXTO_SUAVE = new Color(105, 113, 128);
+    private static final Color VERDE       = new Color(40, 167, 69);
+    private static final Color VERDE_BG    = new Color(225, 245, 238);
+    private static final Color VERDE_TEXT  = new Color(15, 110, 86);
+    private static final Color ROJO        = new Color(220, 53, 69);
 
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private TableRowSorter<DefaultTableModel> sorter;
     private JTextField txtBuscar;
     private JLabel lblFooter;
+
+    // Índices de columnas
+    private static final int COL_TRX      = 0;
+    private static final int COL_FECHA    = 1;
+    private static final int COL_CAJERO   = 2;
+    private static final int COL_MESA     = 3;
+    private static final int COL_SUB      = 4;
+    private static final int COL_IGV      = 5;
+    private static final int COL_TOTAL    = 6;
+    private static final int COL_ESTADO   = 7;
+    private static final int COL_BOLETA   = 8;
+    private static final int COL_ANULAR   = 9;
 
     public HistorialTransaccionesFrame() {
         FlatLightLaf.setup();
@@ -45,8 +59,8 @@ public class HistorialTransaccionesFrame extends JFrame {
 
     private void configurarVentana() {
         setTitle("Historial de Transacciones y Ventas");
-        setSize(1200, 720);
-        setMinimumSize(new Dimension(1000, 620));
+        setSize(1300, 720);
+        setMinimumSize(new Dimension(1100, 620));
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -55,18 +69,13 @@ public class HistorialTransaccionesFrame extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(FONDO);
         setContentPane(root);
-
-        // Sidebar lateral
         root.add(new MenuSidebar(this, "Historial"), BorderLayout.WEST);
 
-        // Contenedor principal
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setBackground(FONDO);
         contenedor.setBorder(new EmptyBorder(26, 28, 24, 28));
-
-        contenedor.add(crearHeader(), BorderLayout.NORTH);
+        contenedor.add(crearHeader(),      BorderLayout.NORTH);
         contenedor.add(crearPanelTabla(), BorderLayout.CENTER);
-
         root.add(contenedor, BorderLayout.CENTER);
     }
 
@@ -83,7 +92,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
         titulo.setForeground(Color.BLACK);
 
-        JLabel subtitulo = new JLabel("Visualiza, busca y genera boletas de los pedidos realizados");
+        JLabel subtitulo = new JLabel("Visualiza, busca, genera boletas y anula ventas liquidadas");
         subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitulo.setForeground(TEXTO_SUAVE);
 
@@ -93,11 +102,9 @@ public class HistorialTransaccionesFrame extends JFrame {
 
         JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         derecha.setOpaque(false);
-        
         JLabel lblUsuario = new JLabel("<html><b>Manuel Gotera</b><br><font color='gray'>Cajero</font></html>");
         lblUsuario.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         JLabel lblAvatar = new JLabel(MenuSidebar.redimensionarIcono("/img/perfilPedro.jpg", 36, 36));
-
         derecha.add(lblUsuario);
         derecha.add(lblAvatar);
 
@@ -121,13 +128,12 @@ public class HistorialTransaccionesFrame extends JFrame {
         lblListado.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblListado.setForeground(TEXTO);
 
-        barraTop.add(lblListado, BorderLayout.WEST);
+        barraTop.add(lblListado,    BorderLayout.WEST);
         barraTop.add(crearBuscador(), BorderLayout.EAST);
 
-        panel.add(barraTop, BorderLayout.NORTH);
+        panel.add(barraTop,          BorderLayout.NORTH);
         panel.add(crearTablaScroll(), BorderLayout.CENTER);
-        panel.add(crearFooter(), BorderLayout.SOUTH);
-
+        panel.add(crearFooter(),      BorderLayout.SOUTH);
         return panel;
     }
 
@@ -138,32 +144,30 @@ public class HistorialTransaccionesFrame extends JFrame {
         panel.setBorder(BorderFactory.createCompoundBorder(
                 new MenuSidebar.RoundedBorder(BORDE, 10),
                 new EmptyBorder(0, 10, 0, 10)));
-
         JLabel icono = new JLabel("🔍");
         txtBuscar = new JTextField();
         txtBuscar.setBorder(null);
         txtBuscar.putClientProperty("JTextField.placeholderText", "Buscar por TRX, Cajero o Estado...");
-        
         txtBuscar.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e)  { aplicarFiltro(); }
             public void removeUpdate(DocumentEvent e)  { aplicarFiltro(); }
             public void changedUpdate(DocumentEvent e) { aplicarFiltro(); }
         });
-
-        panel.add(icono, BorderLayout.WEST);
+        panel.add(icono,    BorderLayout.WEST);
         panel.add(txtBuscar, BorderLayout.CENTER);
         return panel;
     }
 
     private JScrollPane crearTablaScroll() {
         String[] columnas = {
-            "Código TRX", "Fecha / Hora", "Cajero", "Mesa", "Subtotal", "IGV", "Monto Total", "Acción"
+            "Código TRX", "Fecha / Hora", "Cajero", "Mesa",
+            "Subtotal", "IGV", "Monto Total", "Estado", "Boleta", "Anular"
         };
 
         modeloTabla = new DefaultTableModel(columnas, 0) {
             @Override
-            public boolean isCellEditable(int r, int c) { 
-                return c == 7; // Solo la columna "Acción" es clickable
+            public boolean isCellEditable(int r, int c) {
+                return c == COL_BOLETA || c == COL_ANULAR;
             }
         };
 
@@ -181,17 +185,49 @@ public class HistorialTransaccionesFrame extends JFrame {
         sorter = new TableRowSorter<>(modeloTabla);
         tabla.setRowSorter(sorter);
 
-        // Renderizadores
+        // Renderizadores texto centrado
         DefaultTableCellRenderer centro = new DefaultTableCellRenderer();
         centro.setHorizontalAlignment(SwingConstants.CENTER);
-        
-        for (int i = 0; i < 7; i++) {
-            if (i != 2) tabla.getColumnModel().getColumn(i).setCellRenderer(centro);
+        for (int i = 0; i < COL_ESTADO; i++) {
+            if (i != COL_CAJERO) tabla.getColumnModel().getColumn(i).setCellRenderer(centro);
         }
 
-        // Parche: Botón para ver boleta
-        tabla.getColumnModel().getColumn(7).setCellRenderer(new BoletaButtonRenderer());
-        tabla.getColumnModel().getColumn(7).setCellEditor(new BoletaButtonEditor());
+        // Columna Estado con colores
+        tabla.getColumnModel().getColumn(COL_ESTADO).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v,
+                    boolean s, boolean f, int r, int c) {
+                JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, s, f, r, c);
+                l.setHorizontalAlignment(CENTER);
+                String est = v == null ? "" : v.toString();
+                switch (est) {
+                    case "PAGADO"  -> { l.setForeground(VERDE_TEXT); l.setFont(l.getFont().deriveFont(Font.BOLD)); }
+                    case "ANULADO" -> { l.setForeground(ROJO);       l.setFont(l.getFont().deriveFont(Font.BOLD)); }
+                    default        -> l.setForeground(TEXTO_SUAVE);
+                }
+                return l;
+            }
+        });
+
+        // Columna Boleta
+        tabla.getColumnModel().getColumn(COL_BOLETA).setCellRenderer(new BoletaButtonRenderer());
+        tabla.getColumnModel().getColumn(COL_BOLETA).setCellEditor(new BoletaButtonEditor());
+
+        // Columna Anular
+        tabla.getColumnModel().getColumn(COL_ANULAR).setCellRenderer(new AnularButtonRenderer());
+        tabla.getColumnModel().getColumn(COL_ANULAR).setCellEditor(new AnularButtonEditor());
+
+        // Anchos
+        tabla.getColumnModel().getColumn(COL_TRX)   .setPreferredWidth(90);
+        tabla.getColumnModel().getColumn(COL_FECHA)  .setPreferredWidth(120);
+        tabla.getColumnModel().getColumn(COL_CAJERO) .setPreferredWidth(110);
+        tabla.getColumnModel().getColumn(COL_MESA)   .setPreferredWidth(80);
+        tabla.getColumnModel().getColumn(COL_SUB)    .setPreferredWidth(80);
+        tabla.getColumnModel().getColumn(COL_IGV)    .setPreferredWidth(70);
+        tabla.getColumnModel().getColumn(COL_TOTAL)  .setPreferredWidth(90);
+        tabla.getColumnModel().getColumn(COL_ESTADO) .setPreferredWidth(80);
+        tabla.getColumnModel().getColumn(COL_BOLETA) .setPreferredWidth(90);
+        tabla.getColumnModel().getColumn(COL_ANULAR) .setPreferredWidth(90);
 
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setBorder(new MenuSidebar.RoundedBorder(BORDE, 10));
@@ -203,25 +239,24 @@ public class HistorialTransaccionesFrame extends JFrame {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
         footer.setBorder(new EmptyBorder(10, 0, 0, 0));
-
         lblFooter = new JLabel("Mostrando 0 comprobantes");
         lblFooter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblFooter.setForeground(TEXTO_SUAVE);
-
         footer.add(lblFooter, BorderLayout.WEST);
         return footer;
     }
 
+    // ── CARGA DE DATOS ────────────────────────────────────────────────────────
     public void cargarDatosDesdeBD() {
         modeloTabla.setRowCount(0);
         Connection con = new DatabaseConnection().conectar();
         VentaDAOImpl dao = new VentaDAOImpl(con);
         List<Venta> lista = dao.listar();
-
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 
         for (Venta v : lista) {
-            Object[] fila = {
+            String estado = v.getEstadoPago() != null ? v.getEstadoPago().name() : "—";
+            modeloTabla.addRow(new Object[]{
                 "TRX-" + String.format("%04d", v.getVentaId()),
                 sdf.format(v.getFecha()),
                 v.getEmpleado().getNombre(),
@@ -229,9 +264,10 @@ public class HistorialTransaccionesFrame extends JFrame {
                 String.format(java.util.Locale.US, "S/ %.2f", v.getSubtotal()),
                 String.format(java.util.Locale.US, "S/ %.2f", v.getIgv()),
                 String.format(java.util.Locale.US, "S/ %.2f", v.getTotal()),
-                "VER BOLETA"
-            };
-            modeloTabla.addRow(fila);
+                estado,
+                "VER BOLETA",
+                "ANULADO".equals(estado) ? "ANULADO" : "ANULAR"
+            });
         }
         actualizarFooter();
     }
@@ -247,8 +283,7 @@ public class HistorialTransaccionesFrame extends JFrame {
         lblFooter.setText("Mostrando " + tabla.getRowCount() + " de " + modeloTabla.getRowCount() + " registros");
     }
 
-    // --- CLASES INTERNAS PARA EL BOTÓN ---
-
+    // ── RENDERER BOLETA ───────────────────────────────────────────────────────
     private class BoletaButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
         public BoletaButtonRenderer() {
             setText("Ver Boleta");
@@ -258,12 +293,14 @@ public class HistorialTransaccionesFrame extends JFrame {
             setBorder(BorderFactory.createLineBorder(AZUL));
         }
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
             return this;
         }
     }
 
-private class BoletaButtonEditor extends DefaultCellEditor {
+    // ── EDITOR BOLETA ─────────────────────────────────────────────────────────
+    private class BoletaButtonEditor extends DefaultCellEditor {
         private JButton btn;
         private int rowSel;
 
@@ -271,40 +308,102 @@ private class BoletaButtonEditor extends DefaultCellEditor {
             super(new JCheckBox());
             btn = new JButton("Ver Boleta");
             btn.addActionListener(e -> {
-                // 1. Detenemos la edición de la celda inmediatamente para liberar la tabla
                 fireEditingStopped();
-                
-                // 2. Obtenemos los datos de la fila
-                String val = tabla.getValueAt(rowSel, 0).toString();
+                String val = tabla.getValueAt(rowSel, COL_TRX).toString();
                 int id = Integer.parseInt(val.replace("TRX-", ""));
-                
-               // System.out.println("DEBUG: Intentando abrir boleta para TRX ID: " + id); // Para que verifiques en el output
-
-                // 3. Usamos invokeLater para que el diálogo se abra después de que Swing se refresque
                 SwingUtilities.invokeLater(() -> {
                     Connection con = new DatabaseConnection().conectar();
                     if (con != null) {
                         Boleta_View_GUI boleta = new Boleta_View_GUI(HistorialTransaccionesFrame.this, id, con);
-                        boleta.setVisible(true); // ¡Aquí debería aparecer!
-                    } else {
-                        System.err.println("Error: No hay conexión a la base de datos.");
+                        boleta.setVisible(true);
                     }
                 });
             });
         }
 
         @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            // Sincronizamos la fila correcta incluso si la tabla está filtrada
-            this.rowSel = table.convertRowIndexToModel(row); 
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            this.rowSel = table.convertRowIndexToModel(row);
             return btn;
         }
-        
-        // Esto es importante para que el botón no se quede presionado visualmente
+
         @Override
-        public Object getCellEditorValue() {
-            return "Ver Boleta";
+        public Object getCellEditorValue() { return "VER BOLETA"; }
+    }
+
+    // ── RENDERER BOTÓN ANULAR ─────────────────────────────────────────────────
+    private class AnularButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            String val = value == null ? "" : value.toString();
+            if ("ANULADO".equals(val)) {
+                setText("Anulado");
+                setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                setForeground(new Color(150, 150, 150));
+                setBackground(new Color(240, 240, 240));
+                setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+            } else {
+                setText("⛔ Anular");
+                setFont(new Font("Segoe UI", Font.BOLD, 11));
+                setForeground(Color.WHITE);
+                setBackground(ROJO);
+                setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            }
+            setOpaque(true);
+            return this;
         }
+    }
+
+    // ── EDITOR BOTÓN ANULAR ───────────────────────────────────────────────────
+    private class AnularButtonEditor extends DefaultCellEditor {
+        private JButton btn;
+        private int rowSel;
+
+        public AnularButtonEditor() {
+            super(new JCheckBox());
+            btn = new JButton();
+            btn.setOpaque(true);
+            btn.setFocusPainted(false);
+            btn.addActionListener(e -> {
+                fireEditingStopped();
+                String val = modeloTabla.getValueAt(rowSel, COL_ANULAR).toString();
+                if ("ANULADO".equals(val)) return; // Ya anulada, ignorar
+
+                String trx = modeloTabla.getValueAt(rowSel, COL_TRX).toString();
+                int ventaId = Integer.parseInt(trx.replace("TRX-", ""));
+
+                SwingUtilities.invokeLater(() -> {
+                    // Abrir AnulacionVentaFrame con la venta preseleccionada
+                    AnulacionVentaFrame frame = new AnulacionVentaFrame(ventaId);
+                    frame.setVisible(true);
+                    dispose(); // Cerrar historial
+                });
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            this.rowSel = table.convertRowIndexToModel(row);
+            String val = value == null ? "" : value.toString();
+            if ("ANULADO".equals(val)) {
+                btn.setText("Anulado");
+                btn.setBackground(new Color(240, 240, 240));
+                btn.setForeground(new Color(150, 150, 150));
+                btn.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+            } else {
+                btn.setText("⛔ Anular");
+                btn.setBackground(ROJO);
+                btn.setForeground(Color.WHITE);
+                btn.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+            }
+            return btn;
+        }
+
+        @Override
+        public Object getCellEditorValue() { return btn.getText(); }
     }
 
     public static void main(String[] args) {

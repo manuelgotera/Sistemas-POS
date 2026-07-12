@@ -630,7 +630,8 @@ public class EmpleadosFrame extends JFrame {
 
             Object idObj = modelo.getValueAt(i, COL_ID);
 
-            if (idObj != null) {
+            // Fix: también omitir si idObj es string vacío o 0 (no es fila nueva)
+            if (idObj != null && !idObj.toString().trim().isEmpty() && !idObj.toString().trim().equals("0")) {
                 continue;
             }
 

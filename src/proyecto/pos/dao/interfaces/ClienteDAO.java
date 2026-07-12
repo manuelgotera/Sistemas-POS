@@ -19,4 +19,7 @@ public interface ClienteDAO {
     void actualizar(Cliente cliente);
     void eliminar(int id);
     void eliminarPorDni(String dni);
+
+    // HU-08: Vinculación de venta con perfil de cliente (CRM)
+    List<String> vincularVentaConPerfil(int clienteId, String rolUsuario);
 }

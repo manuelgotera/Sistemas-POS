@@ -17,7 +17,10 @@ import java.util.Map;
 import proyecto.pos.config.DatabaseConnection;
 import proyecto.pos.controller.VentaController;
 import proyecto.pos.dao.impl.VentaDAOImpl;
+import proyecto.pos.dao.impl.CajaDAOImpl;
 import proyecto.pos.dao.interfaces.VentaDAO;
+import proyecto.pos.dao.interfaces.CajaDAO;
+import proyecto.pos.model.Caja;
 import proyecto.pos.model.Cliente;
 import proyecto.pos.model.Mesa;
 import proyecto.pos.model.Plato;
@@ -34,6 +37,8 @@ import proyecto.pos.model.MetodoPago;
 
 public class Pago_GUI extends JDialog {
 
+    private Connection conexion; // 📌 Guardada para poder consultar la caja abierta al momento de pagar
+    private CajaDAO caja_dao;    // 📌 Para obtener la caja realmente abierta (ya no se hardcodea)
     private EmpleadoDAO empleado_dao;
     private double total;
     private String nombreCliente;
@@ -48,7 +53,9 @@ public class Pago_GUI extends JDialog {
     
     public Pago_GUI(Caja_GUI parent, double total, Cliente cliente, ArrayList<Plato> platos, Mesa mesa, Connection conexion) {
         super(parent, "Pago", true); 
+        this.conexion = conexion;
         this.venta_controller = new VentaController(conexion);
+        this.caja_dao = new CajaDAOImpl(conexion);
         this.cajaPadre = parent;
         this.platos = platos;
         this.cliente = cliente;
@@ -128,10 +135,10 @@ public class Pago_GUI extends JDialog {
         txtTarjeta.setFont(new Font("Segoe UI", Font.PLAIN, 16));
 
         DocumentFilter decimalFilter = new DocumentFilter() {
-            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            public void insertString(DocumentFilter.FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
                 if ((fb.getDocument().getText(0, fb.getDocument().getLength()) + string).matches("\\d*\\.?\\d*")) super.insertString(fb, offset, string, attr);
             }
-            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+            public void replace(DocumentFilter.FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
                 String currentText = fb.getDocument().getText(0, fb.getDocument().getLength());
                 if ((currentText.substring(0, offset) + text + currentText.substring(offset + length)).matches("\\d*\\.?\\d*")) super.replace(fb, offset, length, text, attrs);
             }
@@ -184,6 +191,15 @@ public class Pago_GUI extends JDialog {
 
     private void procesarYGuardarVenta(String mensajeFinal) {
         try {
+            // 📌 Antes: venta.setCaja_id(1) fijo. Ahora se busca la caja realmente abierta.
+            Caja cajaAbierta = caja_dao.obtenerCajaAbierta();
+            if (cajaAbierta == null) {
+                JOptionPane.showMessageDialog(this,
+                        "No hay ninguna caja abierta en este momento. No se puede registrar la venta.",
+                        "Caja no encontrada", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             if (this.cliente == null) {
                 this.cliente = new Cliente();
                 this.cliente.setId(1); 
@@ -191,7 +207,7 @@ public class Pago_GUI extends JDialog {
 
             Venta venta = new Venta();
             venta.setCliente(this.cliente);
-            venta.setCaja_id(1); 
+            venta.setCaja_id(cajaAbierta.getCajaId()); 
             venta.setDetalles(obtenerVentaDetalle());
             venta.setDescuento(0); 
             

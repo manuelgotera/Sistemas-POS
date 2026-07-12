@@ -217,6 +217,92 @@ public class PlatoDAOImpl implements PlatoDAO{
         cm.setNombre(rs.getString("nombre_categoria"));
         return cm;
     }
-    
-    
+
+    // =========================================================
+    // HU-05: Ajuste masivo de precios con transacción
+    // Criterio 1: Bloqueo de registros en BD (SELECT FOR UPDATE)
+    // Criterio 2: Validación de integridad en cada ítem
+    // Criterio 3: Commit exitoso al actualizar todos los registros
+    // Criterio 4: Rollback automático ante cualquier error de conexión
+    // =========================================================
+    @Override
+    public List<String> ajusteMasivoPrecios(List<Integer> platoIds, float porcentaje) {
+        List<String> log = new ArrayList<>();
+        String sqlLock   = "SELECT plato_id, nombre_plato, precio_venta FROM platos_menu WHERE plato_id = ? FOR UPDATE";
+        String sqlUpdate = "UPDATE platos_menu SET precio_venta = ? WHERE plato_id = ?";
+
+        try {
+            // Criterio 1: Inicio de transacción con bloqueo de registros
+            conexion.setAutoCommit(false);
+            log.add("INFO|Transacción iniciada. Bloqueando " + platoIds.size() + " registros en BD.");
+
+            List<int[]> actualizaciones = new ArrayList<>(); // [platoId, precioNuevo]
+
+            for (int id : platoIds) {
+                try (PreparedStatement psLock = conexion.prepareStatement(sqlLock)) {
+                    psLock.setInt(1, id);
+                    try (ResultSet rs = psLock.executeQuery()) {
+                        if (!rs.next()) {
+                            log.add("ERROR|Plato ID " + id + " no encontrado.");
+                            conexion.rollback();
+                            conexion.setAutoCommit(true);
+                            log.add("ROLLBACK|Rollback ejecutado por plato no encontrado.");
+                            return log;
+                        }
+                        float precioActual = rs.getFloat("precio_venta");
+                        String nombre      = rs.getString("nombre_plato");
+
+                        // Criterio 2: Validación de integridad
+                        float precioNuevo = precioActual * (1 + porcentaje / 100f);
+                        if (precioNuevo <= 0) {
+                            log.add("ERROR|'" + nombre + "' (ID " + id + "): precio resultante <= 0 (S/. "
+                                    + String.format("%.2f", precioNuevo) + "). Ítem rechazado.");
+                            conexion.rollback();
+                            conexion.setAutoCommit(true);
+                            log.add("ROLLBACK|Rollback automático por valor negativo/nulo.");
+                            return log;
+                        }
+                        if (precioNuevo > 9999.99f) {
+                            log.add("ERROR|'" + nombre + "' (ID " + id + "): precio excede límite máximo.");
+                            conexion.rollback();
+                            conexion.setAutoCommit(true);
+                            log.add("ROLLBACK|Rollback automático por precio excesivo.");
+                            return log;
+                        }
+                        log.add("OK|'" + nombre + "' (ID " + id + "): S/. "
+                                + String.format("%.2f", precioActual) + " → S/. "
+                                + String.format("%.2f", precioNuevo) + ". Validación OK.");
+                        actualizaciones.add(new int[]{id, Float.floatToIntBits(precioNuevo)});
+                    }
+                }
+            }
+
+            // Criterio 3: Commit exitoso al actualizar todos los registros
+            try (PreparedStatement psUp = conexion.prepareStatement(sqlUpdate)) {
+                for (int[] par : actualizaciones) {
+                    float nuevoPrecio = Float.intBitsToFloat(par[1]);
+                    psUp.setFloat(1, nuevoPrecio);
+                    psUp.setInt(2, par[0]);
+                    psUp.addBatch();
+                }
+                psUp.executeBatch();
+            }
+            conexion.commit();
+            log.add("COMMIT|Commit exitoso. " + actualizaciones.size() + " registros actualizados correctamente.");
+
+        } catch (SQLException e) {
+            // Criterio 4: Rollback automático ante error de conexión
+            log.add("ERROR|Error de conexión/BD: " + e.getMessage());
+            try {
+                conexion.rollback();
+                log.add("ROLLBACK|Rollback automático ejecutado ante error de conexión.");
+            } catch (SQLException ex) {
+                log.add("ERROR|Fallo crítico en rollback: " + ex.getMessage());
+            }
+        } finally {
+            try { conexion.setAutoCommit(true); } catch (SQLException ignored) {}
+        }
+        return log;
+    }
+
 }

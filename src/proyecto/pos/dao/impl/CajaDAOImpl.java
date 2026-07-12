@@ -189,9 +189,9 @@ public class CajaDAOImpl implements CajaDAO {
     public void actualizar(Caja caja) {
 
         String sql = """
-            UPDATE caja
+            UPDATE caja_diaria
             SET fecha_cierre = ?,
-                monto_final = ?,
+                monto_final_arqueo = ?,
                 estado_caja = ?,
                 diferencia = ?
             WHERE caja_id = ?
@@ -284,4 +284,3 @@ public class CajaDAOImpl implements CajaDAO {
         return c;
     }
 }
-
