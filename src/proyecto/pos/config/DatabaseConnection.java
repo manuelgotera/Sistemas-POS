@@ -6,10 +6,10 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    private static final String DRIVER = "oracle.jdbc.driver.OracleDriver";
-    private static final String URL = "jdbc:oracle:thin:@localhost:1521/XEPDB1";
-    private static final String USER = "GUSTAVO_ALVA";
-    private static final String PASSWORD = "gustavo456";
+private static final String DRIVER = "oracle.jdbc.driver.OracleDriver";
+private static final String URL = "jdbc:oracle:thin:@localhost:1521:FREEPDB1";
+private static final String USER = "SEBASTIAN_SALINAS";
+private static final String PASSWORD = "142007";    
 
     // 🔹 Constructor vacío
     public DatabaseConnection() {}
@@ -43,4 +43,5 @@ public class DatabaseConnection {
             System.out.println("Error al cerrar conexión: " + e.getMessage());
         }
     }
+    
 }

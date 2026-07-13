@@ -74,4 +74,8 @@ public class Proveedor {
     public String toString() {
         return nombre + " (" + rucDni + ")";
     }
+
+    public void setProveedorId(int i) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }

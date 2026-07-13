@@ -450,28 +450,34 @@ public class ProveedorFrame extends JFrame {
     //  DATOS DEMO
     // ══════════════════════════════════════════════════════════════════════════
     private void cargarDemo() {
-        add(new Proveedor(nextId++, cod(), "Avícola San José",
-                "20512345678", "944100001", "Carr. Laredo km 3, Trujillo",
-                "Carnes y Aves", "La Libertad", 98, true));
-        add(new Proveedor(nextId++, cod(), "Carnicería San Pedro",
-                "20512345679", "944100002", "Mercado Mayorista, Chiclayo",
-                "Carnes y Aves", "Lambayeque", 95, true));
-        add(new Proveedor(nextId++, cod(), "Granja Orgánica Sol",
-                "10456789012", "944100003", "Comunidad Otuzco, La Libertad",
-                "Frutas y Verduras", "La Libertad", 99, true));
-        add(new Proveedor(nextId++, cod(), "Distribuidora Lindley",
-                "20100116335", "944100004", "Av. Industrial 456, Lima",
-                "Bebidas", "Lima", 97, true));
-        add(new Proveedor(nextId++, cod(), "Viñedos El Sol",
-                "20512399001", "944100005", "Zona Industrial, Ica",
-                "Bebidas", "Lima", 96, true));
-        add(new Proveedor(nextId++, cod(), "Lácteos Norteños",
-                "20405678901", "944100006", "Cajamarca Centro",
-                "Lácteos", "Cajamarca", 82, false));
-        add(new Proveedor(nextId++, cod(), "Mayorista Norte",
-                "20301234567", "944100007", "Av. España 1240, Trujillo",
-                "Insumos secos", "La Libertad", 91, true));
-    }
+    add(new Proveedor(nextId++, cod(), "Avícola San José", 
+            "20512345678", "944100001", "Carr. Laredo km 3, Trujillo", 
+            "Carnes y Aves", "La Libertad", "", "", 98, true));
+
+    add(new Proveedor(nextId++, cod(), "Carnicería San Pedro", 
+            "20512345679", "944100002", "Mercado Mayorista, Chiclayo", 
+            "Carnes y Aves", "Lambayeque", "", "", 95, true));
+
+    add(new Proveedor(nextId++, cod(), "Granja Orgánica Sol", 
+            "10456789012", "944100003", "Comunidad Otuzco, La Libertad", 
+            "Frutas y Verduras", "La Libertad", "", "", 99, true));
+
+    add(new Proveedor(nextId++, cod(), "Distribuidora Lindley", 
+            "20100116335", "944100004", "Av. Industrial 456, Lima", 
+            "Bebidas", "Lima", "", "", 97, true));
+
+    add(new Proveedor(nextId++, cod(), "Viñedos El Sol", 
+            "20512399001", "944100005", "Zona Industrial, Ica", 
+            "Bebidas", "Lima", "", "", 96, true));
+
+    add(new Proveedor(nextId++, cod(), "Lácteos Norteños", 
+            "20405678901", "944100006", "Cajamarca Centro", 
+            "Lácteos", "Cajamarca", "", "", 82, false));
+
+    add(new Proveedor(nextId++, cod(), "Mayorista Norte", 
+            "20301234567", "944100007", "Av. España 1240, Trujillo", 
+            "Insumos secos", "La Libertad", "", "", 91, true));
+}
 
     private void add(Proveedor prov) {
         proveedores.add(prov);
@@ -664,8 +670,7 @@ public class ProveedorFrame extends JFrame {
         String  region = (String)  modelo.getValueAt(fm, COL_REGION);
         int     cumpl  = (Integer) modelo.getValueAt(fm, COL_CUMPL);
         boolean activo = "activo".equals(modelo.getValueAt(fm, COL_STATUS));
-        return new Proveedor(idPorCodigo(codigo), codigo, nombre, rucDni,
-                tel, dir, tipo, region, cumpl, activo);
+        return new Proveedor(idPorCodigo(codigo), codigo, nombre, rucDni, tel, dir, tipo, region, "", "", cumpl, activo);
     }
 
     private int indexById(int id) {
@@ -1026,15 +1031,17 @@ public class ProveedorFrame extends JFrame {
             String codigo = original != null ? original.getCodigo() : "";
             return new Proveedor(
                 id, codigo,
-                fNombre    .getText().trim().toUpperCase(),
-                fRucDni    .getText().trim(),
-                fTelefono  .getText().trim(),
-                fDireccion .getText().trim(),
-                (String)  cbTipoInsumo.getSelectedItem(),
-                (String)  cbRegion.getSelectedItem(),
+                fNombre.getText().trim().toUpperCase(),
+                fRucDni.getText().trim(),
+                fTelefono.getText().trim(),
+                fDireccion.getText().trim(),
+                (String) cbTipoInsumo.getSelectedItem(),
+                (String) cbRegion.getSelectedItem(),
+                "", // <--- Para el parámetro 'contacto'
+                "", // <--- Para el parámetro 'email'
                 (Integer) spCumplimiento.getValue(),
                 "activo".equals(cbActivo.getSelectedItem())
-            );
+        );
         }
 
         private static JTextField fc(String ph) {
